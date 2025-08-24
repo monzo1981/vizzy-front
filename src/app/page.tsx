@@ -13,6 +13,7 @@ const Login = () => {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     // If user is already authenticated, redirect to chat
@@ -23,11 +24,12 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setError('');
     const result = await login({ email, password });
-    
     if (result.success) {
       router.push('/chat');
+    } else {
+      setError(result.error || 'An unexpected error occurred.');
     }
   };
 
@@ -121,9 +123,11 @@ const Login = () => {
                 </div>
               </div>
 
+              {error && <p className="text-red-500 text-center mb-4">The email or password is incorrect</p>}
+
               <Button 
                 type="submit"
-                className="w-full h-14 text-white rounded-full font-medium text-base"
+                className="cursor-pointer w-full h-14 text-white rounded-full font-medium text-base"
                 style={{ background: 'linear-gradient(92.09deg, #7FCBFD -17.23%, #4248FF 107.78%)' }}
               >
                 Sign In
@@ -133,7 +137,7 @@ const Login = () => {
             <div className="mt-4">
               <p className="text-center mb-6 max-w-[300px] mx-auto" style={{ fontWeight: 400, fontSize: '15px', color: '#6B7280' }}>
                 By continuing, you agree to our Terms and acknowledge our{' '}
-                <Link href="/privacy" className="hover:underline" style={{ color: '#4248FF' }}>Privacy Policy</Link>
+                <Link href="/" className="hover:underline" style={{ color: '#4248FF' }}>Privacy Policy</Link>
               </p>
 
                 {/* Social Login */}
@@ -178,7 +182,7 @@ const Login = () => {
 
               <p className="text-sm text-center mt-6" style={{ fontWeight: 400, color: '#6B7280' }}>
                 Don&apos;t have an account?{' '}
-                <Link href="/signup" className="hover:underline" style={{ color: '#4248FF', fontWeight: 400 }}>
+                <Link href="/" className="hover:underline" style={{ color: '#4248FF', fontWeight: 400 }}>
                   Sign up
                 </Link>
               </p>
@@ -264,6 +268,8 @@ const Login = () => {
                 </div>
               </div>
 
+              {error && <p className="text-red-500 text-center mb-4">The email or password is incorrect</p>}
+
               <Button 
                 type="submit"
                 className="w-full h-12 text-white rounded-full font-medium text-base"
@@ -276,7 +282,7 @@ const Login = () => {
             <div className="mt-4">
               <p className="text-center mb-4 max-w-[300px] mx-auto" style={{ fontWeight: 400, fontSize: '15px', color: '#6B7280' }}>
                 By continuing, you agree to our Terms and acknowledge our{' '}
-                <Link href="/privacy" className="hover:underline" style={{ color: '#4248FF' }}>Privacy Policy</Link>
+                <Link href="/" className="hover:underline" style={{ color: '#4248FF' }}>Privacy Policy</Link>
               </p>
 
                 {/* Social Login */}
@@ -321,7 +327,7 @@ const Login = () => {
 
               <p className="text-sm text-center mt-4" style={{ fontWeight: 400, color: '#6B7280' }}>
                 Don&apos;t have an account?{' '}
-                <Link href="/signup" className="hover:underline" style={{ color: '#4248FF', fontWeight: 400 }}>
+                <Link href="/" className="hover:underline" style={{ color: '#4248FF', fontWeight: 400 }}>
                   Sign up
                 </Link>
               </p>

@@ -152,15 +152,17 @@ export class ResponseNormalizer {
 
     // Multiple patterns to match various URL formats
     const urlPatterns = [
-      /(?:(Design image URL|Image URL|Video link|URL):\s*\n*)?(https?:\/\/[^\s'"<>\n]+)/gi,
-      /(https?:\/\/[^\s'"<>\n]+)/gi
+      /(?:(Design image URL|Image URL|Video link|URL):\s*\n*)?(https?:\/\/[^\s'"<>\n\)\]]+)/gi,
+      /(https?:\/\/[^\s'"<>\n\)\]]+)/gi
     ];
 
     for (const pattern of urlPatterns) {
       const matches = text.matchAll(pattern);
       for (const match of matches) {
-        const url = match[2] || match[1] || match[0];
+        let url = match[2] || match[1] || match[0];
         if (url && url.startsWith('http')) {
+          // Clean URL by removing common trailing characters
+          url = this._cleanUrl(url);
           console.log("🔗 URL extracted:", url);
           const mediaType = this._getMediaType(url);
           const remainingText = text.replace(match[0], "").trim();
@@ -232,5 +234,18 @@ export class ResponseNormalizer {
     }
     
     return undefined;
+  }
+
+  private _cleanUrl(url: string): string {
+    if (!url) return url;
+    
+    // Remove common trailing characters that might accidentally get included
+    const trailingCharsToRemove = /[)\]\}>\s.,;!]+$/;
+    let cleanedUrl = url.replace(trailingCharsToRemove, '');
+    
+    // Also remove any markdown link syntax at the end
+    cleanedUrl = cleanedUrl.replace(/\)$/, '');
+    
+    return cleanedUrl;
   }
 }

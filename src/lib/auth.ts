@@ -71,3 +71,34 @@ export const getUser = () => {
 export const isAuthenticated = (): boolean => {
   return !!getAccessToken();
 };
+
+export const refreshToken = async (): Promise<boolean> => {
+  const refreshToken = localStorage.getItem('refresh_token');
+  if (!refreshToken) {
+    logout();
+    return false;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/token/refresh/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refresh: refreshToken }),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      localStorage.setItem('access_token', data.access);
+      return true;
+    } else {
+      logout();
+      return false;
+    }
+  } catch (error) {
+    logout();
+    return false;
+  }
+};

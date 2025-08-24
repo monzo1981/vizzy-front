@@ -63,18 +63,27 @@ export default function Chat() {
     // Initialize N8N webhook with user info
     // TODO: Replace with your actual N8N webhook URL
     n8nWebhook.current = new N8NWebhook(
-      'https://monzology.app.n8n.cloud/webhook-test/2fe03fcd-7ff3-4a55-9d38-064722b844ab',
+      'http://localhost:5678/webhook/0d87fbae-5950-418e-b41b-874cccee5252',
       user?.id,
       user?.email
     )
   }, [router])
 
+  const hasMessages = messages.length > 0
+
+  useEffect(() => {
+    // Auto-focus on the correct input field
+    if (hasMessages) {
+      compactInputRef.current?.focus()
+    } else {
+      inputRef.current?.focus()
+    }
+  }, [hasMessages, messages.length])
+
   const handleLogout = () => {
     logout()
     router.push('/')
   }
-
-  const hasMessages = messages.length > 0
 
   // Helper function to check if URL is base64
   const isBase64Image = (url: string | undefined): boolean => {
@@ -313,7 +322,7 @@ export default function Chat() {
               <LogOut size={16} />
               Logout
             </Button>
-            <Avatar src="/Personal-branding-headshot-photography-example-1-1.jpg" alt="User" size="md" />
+            <Avatar fallback={currentUser ? `${currentUser.first_name.charAt(0)}${currentUser.last_name.charAt(0)}`.toUpperCase() : ''} alt="User" size="md" />
           </div>
         </header>
 
@@ -611,11 +620,11 @@ export default function Chat() {
                         />
                       </div>
                       <div className="max-w-2xl">
-                        <div className="bg-white/60 backdrop-blur-xl rounded-3xl rounded-tl-lg px-6 py-4 border border-white/30">
+                        <div className="bg-white/60 backdrop-blur-xl rounded-3xl rounded-tl-lg px-4 py-4 border border-white/30">
                           <div className="flex space-x-2">
                             <div className="w-2 h-2 bg-[#4248FF] rounded-full animate-bounce"></div>
-                            <div className="w-2 h-2 bg-[#4248FF] rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                            <div className="w-2 h-2 bg-[#4248FF] rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                            <div className="w-2 h-2 bg-[#A2498A] rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                            <div className="w-2 h-2 bg-[#FF4A19] rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                           </div>
                         </div>
                       </div>

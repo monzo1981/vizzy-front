@@ -7,6 +7,8 @@ interface N8NRequest {
   image_data?: string;
   user_id: string;
   user_email?: string;
+  first_name?: string;
+  last_name?: string;
   timestamp: string;
 }
 
@@ -27,19 +29,23 @@ export class N8NWebhook {
   private webhookUrl: string;
   private userId: string;
   private userEmail: string;
+  private firstName: string = '';
+  private lastName: string = '';
 
-  constructor(webhookUrl: string = 'https://monzology.app.n8n.cloud/webhook-test/2fe03fcd-7ff3-4a55-9d38-064722b844ab', userId?: string, userEmail?: string) {
+  constructor(webhookUrl: string = 'http://localhost:5678/webhook/0d87fbae-5950-418e-b41b-874cccee5252', userId?: string, userEmail?: string) {
     this.webhookUrl = webhookUrl;
-    // Get user info from localStorage if not provided
+    // Always get name fields from localStorage if available
+    const user = localStorage.getItem('user');
+    const userData = user ? JSON.parse(user) : null;
     if (userId) {
       this.userId = userId;
       this.userEmail = userEmail || '';
     } else {
-      const user = localStorage.getItem('user');
-      const userData = user ? JSON.parse(user) : null;
       this.userId = userData?.id || 'anonymous';
       this.userEmail = userData?.email || '';
     }
+    this.firstName = userData?.first_name || '';
+    this.lastName = userData?.last_name || '';
   }
 
   async sendMessage(message: string): Promise<N8NResponse> {
@@ -51,11 +57,14 @@ export class N8NWebhook {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          '_method': 'POST'
         },
         body: JSON.stringify({
           message,
           user_id: this.userId,
           user_email: this.userEmail,
+          name: `${this.firstName} ${this.lastName}`,
+          quota: "paid",
           timestamp: new Date().toISOString(),
         } as N8NRequest),
       });
@@ -83,11 +92,14 @@ export class N8NWebhook {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          '_method': 'POST'
         },
         body: JSON.stringify({
           audio_data: audioData,
           user_id: this.userId,
           user_email: this.userEmail,
+          name: `${this.firstName} ${this.lastName}`,
+          quota: "paid",
           timestamp: new Date().toISOString(),
         } as N8NRequest),
       });
@@ -115,12 +127,15 @@ export class N8NWebhook {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          '_method': 'POST'
         },
         body: JSON.stringify({
           message: text,
           image_data: imageData,
           user_id: this.userId,
           user_email: this.userEmail,
+          name: `${this.firstName} ${this.lastName}`,
+          quota: "paid",
           timestamp: new Date().toISOString(),
         } as N8NRequest),
       });
