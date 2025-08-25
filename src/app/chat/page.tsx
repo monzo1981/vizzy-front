@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Waves, LogOut, MicOff, X, Mic } from "lucide-react"
+import { Plus, Waves, LogOut, MicOff, X, Mic, Wifi, WifiOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar } from "@/components/ui/avatar"
 import { GradientBackground } from "../../components/gradient-background"
@@ -10,6 +10,7 @@ import { Sidebar, useSidebar } from "../../components/sidebar"
 import Image from "next/image"
 import { isAuthenticated, getUser, logout, type User } from "@/lib/auth"
 import { N8NWebhook } from "@/lib/n8n-webhook"
+import { N8NWebSocketClient, type N8NUpdate } from "@/lib/n8n-websocket"
 import { ResponseNormalizer } from "@/lib/response-normalizer";
 import { isVideoUrl, getVideoMimeType } from "@/lib/videoUtils";
 
@@ -17,11 +18,11 @@ import { isVideoUrl, getVideoMimeType } from "@/lib/videoUtils";
 interface Message {
   id: string;
   content: string;
-  sender: 'user' | 'assistant';
+  sender: 'user' | 'assistant' | 'system';  // Added 'system' for N8N updates
   timestamp: Date;
   visual?: string;
   isProcessing?: boolean;
-  isVoice?: boolean;  // Flag for voice messages
+  isVoice?: boolean;
   serviceType?: string;
 }
 
@@ -38,6 +39,7 @@ export default function Chat() {
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null)
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [wsConnected, setWsConnected] = useState(false)  // WebSocket connection status
   
   // Refs
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -46,8 +48,10 @@ export default function Chat() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   
-  // N8N Webhook instance
+  // N8N instances
   const n8nWebhook = useRef<N8NWebhook | null>(null)
+  const wsClient = useRef<N8NWebSocketClient | null>(null)
+  const processedMessages = useRef<Set<string>>(new Set()) // Track processed messages
 
   useEffect(() => {
     // Check if user is authenticated
@@ -60,14 +64,75 @@ export default function Chat() {
     const user = getUser()
     setCurrentUser(user)
     
-    // Initialize N8N webhook with user info
-    // TODO: Replace with your actual N8N webhook URL
-    n8nWebhook.current = new N8NWebhook(
-      'http://localhost:5678/webhook/0d87fbae-5950-418e-b41b-874cccee5252',
-      user?.id,
-      user?.email
-    )
-  }, [router])
+    // Initialize N8N webhook with user info (only if not already initialized)
+    if (!n8nWebhook.current) {
+      n8nWebhook.current = new N8NWebhook(
+        process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'http://localhost:5678/webhook-test/0d87fbae-5950-418e-b41b-874cccee5252',
+        user?.id,
+        user?.email
+      )
+    }
+    
+    // Initialize WebSocket client for N8N updates (only if not already initialized)
+    if (!wsClient.current) {
+      wsClient.current = new N8NWebSocketClient(
+        // Message handler for N8N updates
+        (update: N8NUpdate) => {
+          console.log('📨 N8N Update via WebSocket:', update);
+          const { data } = update;
+          // Handle different message types from N8N
+          if (data.status === 'processing') {
+            setMessages(prev => [...prev, {
+              id: `n8n-${Date.now()}-${Math.random()}`,
+              content: data.message || '🔄 Processing your request...',
+              sender: 'system' as const,
+              timestamp: new Date(),
+              isProcessing: true
+            }]);
+          } 
+          else if (data.status === 'completed') {
+            setMessages(prev => [...prev, {
+              id: `n8n-complete-${Date.now()}-${Math.random()}`,
+              content: data.message || '✅ Task completed successfully!',
+              sender: 'system' as const,
+              timestamp: new Date(),
+              visual: data.visual || data.data?.url,
+              serviceType: data.data?.service_type
+            }]);
+            setIsLoading(false);
+          }
+          else if (data.status === 'error') {
+            setMessages(prev => [...prev, {
+              id: `n8n-error-${Date.now()}-${Math.random()}`,
+              content: data.message || '❌ An error occurred. Please try again.',
+              sender: 'system' as const,
+              timestamp: new Date()
+            }]);
+            setIsLoading(false);
+          }
+          else if (data.message) {
+            setMessages(prev => [...prev, {
+              id: `n8n-msg-${Date.now()}-${Math.random()}`,
+              content: typeof data.message === 'string' ? data.message : '',
+              sender: 'system' as const,
+              timestamp: new Date(),
+              visual: data.visual || data.data?.url
+            }]);
+          }
+        },
+        // Connection status handler
+        (connected: boolean) => {
+          setWsConnected(connected);
+          console.log(`🔌 WebSocket ${connected ? 'connected ✅' : 'disconnected ❌'}`);
+        }
+      );
+      wsClient.current.connect();
+    }
+    // Cleanup on unmount (always returned from useEffect, not inside if-block)
+    return () => {
+      wsClient.current?.disconnect();
+    };
+  }, [router]);
 
   const hasMessages = messages.length > 0
 
@@ -103,7 +168,7 @@ export default function Chat() {
       content: messageToSend || (selectedImage ? 'Sent an image' : ''),
       sender: 'user',
       timestamp: new Date(),
-      visual: selectedImage || undefined  // Include the image in user message
+      visual: selectedImage || undefined
     }
     setMessages(prev => [...prev, userMessage])
     setInputValue("")
@@ -128,7 +193,7 @@ export default function Chat() {
         response = await n8nWebhook.current.sendMessage(messageToSend)
       }
 
-      console.log("📥 N8N Response:", response);
+      console.log("🔥 N8N Direct Response:", response);
 
       const normalizer = new ResponseNormalizer(response);
       const { text, mediaUrl } = normalizer.normalize();
@@ -208,61 +273,63 @@ export default function Chat() {
       
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
-        const reader = new FileReader()
-        
-        reader.onloadend = async () => {
-          const base64Audio = reader.result as string
+        if (audioBlob.size > 0) {
+          const reader = new FileReader()
           
-          // Add voice indicator message for user
-          const voiceMessage: Message = {
-            id: `msg-voice-${Date.now()}`,
-            content: '🎤 Voice message',
-            sender: 'user',
-            timestamp: new Date(),
-            isVoice: true
-          }
-          setMessages(prev => [...prev, voiceMessage])
-          
-          // Add loading state
-          setIsLoading(true)
-          
-          try {
-            if (n8nWebhook.current) {
-              const response = await n8nWebhook.current.sendVoiceMessage(base64Audio)
-              
-              console.log("🎤 Voice response:", response);
-              
-              // Process the AI response separately
-              const normalizer = new ResponseNormalizer(response);
-              const { text, mediaUrl } = normalizer.normalize();
-              
-              if (text || mediaUrl) {
-                // Add AI response as a separate assistant message
-                const assistantMessage: Message = {
-                  id: `msg-${Date.now()}`,
-                  content: text || "I received your voice message",
-                  sender: 'assistant',
-                  timestamp: new Date(),
-                  visual: mediaUrl
+          reader.onloadend = async () => {
+            const base64Audio = reader.result as string
+            
+            // Add voice indicator message for user
+            const voiceMessage: Message = {
+              id: `msg-voice-${Date.now()}`,
+              content: '🎤 Voice message',
+              sender: 'user',
+              timestamp: new Date(),
+              isVoice: true
+            }
+            setMessages(prev => [...prev, voiceMessage])
+            
+            // Add loading state
+            setIsLoading(true)
+            
+            try {
+              if (n8nWebhook.current) {
+                const response = await n8nWebhook.current.sendVoiceMessage(base64Audio)
+                
+                console.log("🎤 Voice response:", response);
+                
+                // Process the AI response separately
+                const normalizer = new ResponseNormalizer(response);
+                const { text, mediaUrl } = normalizer.normalize();
+                
+                if (text || mediaUrl) {
+                  // Add AI response as a separate assistant message
+                  const assistantMessage: Message = {
+                    id: `msg-${Date.now()}`,
+                    content: text || "I received your voice message",
+                    sender: 'assistant',
+                    timestamp: new Date(),
+                    visual: mediaUrl
+                  }
+                  setMessages(prev => [...prev, assistantMessage])
                 }
-                setMessages(prev => [...prev, assistantMessage])
               }
+            } catch (error) {
+              console.error('Error processing voice:', error)
+              const errorMessage: Message = {
+                id: `msg-${Date.now()}`,
+                content: 'Failed to process voice message. Please try again.',
+                sender: 'assistant',
+                timestamp: new Date()
+              }
+              setMessages(prev => [...prev, errorMessage])
+            } finally {
+              setIsLoading(false)
             }
-          } catch (error) {
-            console.error('Error processing voice:', error)
-            const errorMessage: Message = {
-              id: `msg-${Date.now()}`,
-              content: 'Failed to process voice message. Please try again.',
-              sender: 'assistant',
-              timestamp: new Date()
-            }
-            setMessages(prev => [...prev, errorMessage])
-          } finally {
-            setIsLoading(false)
           }
+          
+          reader.readAsDataURL(audioBlob)
         }
-        
-        reader.readAsDataURL(audioBlob)
         
         // Stop all tracks
         stream.getTracks().forEach(track => track.stop())
@@ -281,6 +348,20 @@ export default function Chat() {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop()
       setIsRecording(false)
+    }
+  }
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      // Detach the onstop handler to prevent sending the recording
+      mediaRecorderRef.current.onstop = () => { 
+        console.log("Recording cancelled.");
+        // Stop the stream tracks
+        mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
+      };
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      audioChunksRef.current = [];
     }
   }
 
@@ -313,6 +394,12 @@ export default function Chat() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            {/* WebSocket Connection Status Indicator */}
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${wsConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              {wsConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
+              {wsConnected ? 'Live' : 'Offline'}
+            </div>
+            
             <Button
               onClick={handleLogout}
               variant="ghost"
@@ -427,60 +514,45 @@ export default function Chat() {
                   </div>
 
                   {/* Voice Recording Button */}
-                  <button 
-                    onClick={toggleRecording}
-                    disabled={isLoading}
-                    className={`hover:scale-105 transition-transform cursor-pointer ${isRecording ? 'animate-pulse' : ''}`}
-                    title={isRecording ? "Stop Recording" : "Start Recording"}
-                  >
-                    {isRecording ? (
-                      <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center">
-                        <MicOff size={24} className="text-white" />
-                      </div>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 58 53" fill="none">
-                        <g clipPath="url(#clip0_489_1814)">
-                          <path fillRule="evenodd" clipRule="evenodd" d="M37.8361 1.58398C39.0162 1.58398 39.9729 2.54065 39.9729 3.72074V49.3048C39.9729 50.4848 39.0162 51.4415 37.8361 51.4415C36.6561 51.4415 35.6994 50.4848 35.6994 49.3048V3.72074C35.6994 2.54065 36.6561 1.58398 37.8361 1.58398ZM29.2891 10.131C30.4692 10.131 31.4259 11.0877 31.4259 12.2677V40.7578C31.4259 41.9378 30.4692 42.8945 29.2891 42.8945C28.109 42.8945 27.1523 41.9378 27.1523 40.7578V12.2677C27.1523 11.0877 28.109 10.131 29.2891 10.131ZM12.1951 12.98C13.3752 12.98 14.3318 13.9367 14.3318 15.1167V37.9088C14.3318 39.0888 13.3752 40.0455 12.1951 40.0455C11.015 40.0455 10.0583 39.0888 10.0583 37.9088V15.1167C10.0583 13.9367 11.015 12.98 12.1951 12.98ZM46.3831 15.829C47.5632 15.829 48.5199 16.7857 48.5199 17.9658V35.0598C48.5199 36.2398 47.5632 37.1965 46.3831 37.1965C45.2031 37.1965 44.2464 36.2398 44.2464 35.0598V17.9658C44.2464 16.7857 45.2031 15.829 46.3831 15.829ZM20.7421 18.678C21.9222 18.678 22.8788 19.6347 22.8788 20.8148V32.2108C22.8788 33.3908 21.9222 34.3475 20.7421 34.3475C19.562 34.3475 18.6053 33.3908 18.6053 32.2108V20.8148C18.6053 19.6347 19.562 18.678 20.7421 18.678ZM3.64807 21.527C4.82816 21.527 5.78483 22.4837 5.78483 23.6638V29.3618C5.78483 30.5418 4.82816 31.4985 3.64807 31.4985C2.46799 31.4985 1.51132 30.5418 1.51132 29.3618V23.6638C1.51132 22.4837 2.46799 21.527 3.64807 21.527ZM54.9301 21.527C56.1102 21.527 57.0669 22.4837 57.0669 23.6638V29.3618C57.0669 30.5418 56.1102 31.4985 54.9301 31.4985C53.7501 31.4985 52.7934 30.5418 52.7934 29.3618V23.6638C52.7934 22.4837 53.7501 21.527 54.9301 21.527Z" fill="#4248FF"/>
-                        </g>
-                        <defs>
-                          <clipPath id="clip0_489_1814">
-                            <rect width="56.9801" height="51.2821" fill="white" transform="translate(0.799072 0.87207)"/>
-                          </clipPath>
-                        </defs>
-                      </svg>
+                  <div className="flex items-center gap-4">
+                    <button 
+                      onClick={toggleRecording}
+                      disabled={isLoading}
+                      className={`hover:scale-105 transition-transform cursor-pointer ${isRecording ? 'animate-pulse' : ''}`}
+                      title={isRecording ? "Stop Recording" : "Start Recording"}
+                    >
+                      {isRecording ? (
+                        <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center">
+                          <MicOff size={24} className="text-white" />
+                        </div>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 58 53" fill="none">
+                          <g clipPath="url(#clip0_489_1814)">
+                            <path fillRule="evenodd" clipRule="evenodd" d="M37.8361 1.58398C39.0162 1.58398 39.9729 2.54065 39.9729 3.72074V49.3048C39.9729 50.4848 39.0162 51.4415 37.8361 51.4415C36.6561 51.4415 35.6994 50.4848 35.6994 49.3048V3.72074C35.6994 2.54065 36.6561 1.58398 37.8361 1.58398ZM29.2891 10.131C30.4692 10.131 31.4259 11.0877 31.4259 12.2677V40.7578C31.4259 41.9378 30.4692 42.8945 29.2891 42.8945C28.109 42.8945 27.1523 41.9378 27.1523 40.7578V12.2677C27.1523 11.0877 28.109 10.131 29.2891 10.131ZM12.1951 12.98C13.3752 12.98 14.3318 13.9367 14.3318 15.1167V37.9088C14.3318 39.0888 13.3752 40.0455 12.1951 40.0455C11.015 40.0455 10.0583 39.0888 10.0583 37.9088V15.1167C10.0583 13.9367 11.015 12.98 12.1951 12.98ZM46.3831 15.829C47.5632 15.829 48.5199 16.7857 48.5199 17.9658V35.0598C48.5199 36.2398 47.5632 37.1965 46.3831 37.1965C45.2031 37.1965 44.2464 36.2398 44.2464 35.0598V17.9658C44.2464 16.7857 45.2031 15.829 46.3831 15.829ZM20.7421 18.678C21.9222 18.678 22.8788 19.6347 22.8788 20.8148V32.2108C22.8788 33.3908 21.9222 34.3475 20.7421 34.3475C19.562 34.3475 18.6053 33.3908 18.6053 32.2108V20.8148C18.6053 19.6347 19.562 18.678 20.7421 18.678ZM3.64807 21.527C4.82816 21.527 5.78483 22.4837 5.78483 23.6638V29.3618C5.78483 30.5418 4.82816 31.4985 3.64807 31.4985C2.46799 31.4985 1.51132 30.5418 1.51132 29.3618V23.6638C1.51132 22.4837 2.46799 21.527 3.64807 21.527ZM54.9301 21.527C56.1102 21.527 57.0669 22.4837 57.0669 23.6638V29.3618C57.0669 30.5418 56.1102 31.4985 54.9301 31.4985C53.7501 31.4985 52.7934 30.5418 52.7934 29.3618V23.6638C52.7934 22.4837 53.7501 21.527 54.9301 21.527Z" fill="#4248FF"/>
+                          </g>
+                          <defs>
+                            <clipPath id="clip0_489_1814">
+                              <rect width="56.9801" height="51.2821" fill="white" transform="translate(0.799072 0.87207)"/>
+                            </clipPath>
+                          </defs>
+                        </svg>
+                      )}
+                    </button>
+                    {isRecording && (
+                      <button 
+                        onClick={cancelRecording}
+                        className="hover:scale-105 transition-transform cursor-pointer"
+                        title="Cancel Recording"
+                      >
+                        <div className="w-12 h-12 bg-gray-400 rounded-full flex items-center justify-center">
+                          <X size={24} className="text-white" />
+                        </div>
+                      </button>
                     )}
-                  </button>
+                  </div>
                 </div>
                 
               </div>
-            </div>
-
-            {/* Suggestion Pills */}
-            <div className="flex flex-wrap justify-center gap-4 max-w-4xl">
-              <Button
-                onClick={() => handleSend("Create a Marketing Plan?")}
-                disabled={isLoading}
-                variant="ghost"
-                className="bg-white/60 text-[#11002E] rounded-full px-8 py-8 text-base font-normal shadow-sm hover:shadow-md transition-all duration-300"
-              >
-                Create a Marketing Plan?
-              </Button>
-              <Button
-                onClick={() => handleSend("Create a Facebook Post?")}
-                disabled={isLoading}
-                variant="ghost"
-                className="bg-white/60 text-[#11002E] rounded-full px-8 py-8 text-base font-normal shadow-sm hover:shadow-md transition-all duration-300"
-              >
-                Create a Facebook Post?
-              </Button>
-              <Button
-                onClick={() => handleSend("Create a Design?")}
-                disabled={isLoading}
-                variant="ghost"
-                className="bg-white/60 text-[#11002E] rounded-full px-8 py-8 text-base font-normal shadow-sm hover:shadow-md transition-all duration-300"
-              >
-                Create a Design?
-              </Button>
             </div>
 
           </main>
@@ -492,7 +564,8 @@ export default function Chat() {
               <div className="w-full max-w-4xl space-y-6">
                 {messages.map((message) => (
                   <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    {message.sender === 'assistant' && (
+                    {/* Assistant or System Messages */}
+                    {(message.sender === 'assistant' || message.sender === 'system') && (
                       <div className="flex items-start space-x-4">
                         <div className="w-8 h-8 flex items-center justify-center">
                           <Image 
@@ -503,6 +576,7 @@ export default function Chat() {
                           />
                         </div>
                         <div className="max-w-2xl">
+                          {/* Message content */}
                           <p className="text-[#11002E] text-base leading-relaxed whitespace-pre-line">
                             {message.content}
                           </p>
@@ -513,7 +587,6 @@ export default function Chat() {
                               className="mt-4 backdrop-blur-xl rounded-3xl p-6 flex items-center justify-center cursor-pointer" 
                               style={{ 
                                 width: '370px', 
-                                height: '320px',
                                 background: 'linear-gradient(109.03deg, #BEDCFF -35.22%, rgba(255, 255, 255, 0.9) 17.04%, rgba(255, 232, 228, 0.4) 57.59%, #BEDCFF 97.57%)',
                                 boxShadow: '0px 0px 6px 0px rgba(0, 0, 0, 0.2)'
                               }}
@@ -526,7 +599,7 @@ export default function Chat() {
                                   playsInline
                                   muted={false}
                                   className="max-w-full max-h-full rounded-lg object-contain"
-                                  style={{ maxWidth: '100%', maxHeight: '100%' }}
+                                  style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }}
                                   crossOrigin="anonymous"
                                 >
                                   <source src={message.visual} type={getVideoMimeType(message.visual)} />
@@ -534,11 +607,11 @@ export default function Chat() {
                                   Your browser does not support the video tag.
                                 </video>
                               ) : isBase64Image(message.visual) ? (
-                                <img 
+                                <Image 
                                   src={message.visual} 
                                   alt="Generated visual content" 
                                   className="rounded-lg max-w-full max-h-full object-contain"
-                                  style={{ maxWidth: '100%', maxHeight: '100%' }}
+                                  style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }}
                                   onError={(e) => {
                                     console.error('Image failed to load:', message.visual);
                                     (e.currentTarget as HTMLImageElement).style.display = 'none';
@@ -563,6 +636,7 @@ export default function Chat() {
                       </div>
                     )}
                     
+                    {/* User Messages */}
                     {message.sender === 'user' && (
                       <div className="flex justify-end">
                         <div className="max-w-2xl">
@@ -728,29 +802,42 @@ export default function Chat() {
                     </div>
 
                     {/* Voice Recording Button */}
-                    <button 
-                      onClick={toggleRecording}
-                      disabled={isLoading}
-                      className={`hover:scale-105 transition-transform cursor-pointer ${isRecording ? 'animate-pulse' : ''} ${isLoading ? 'opacity-50' : ''}`}
-                      title={isRecording ? "Stop Recording" : "Start Recording"}
-                    >
-                      {isRecording ? (
-                        <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
-                          <MicOff size={16} className="text-white" />
-                        </div>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 58 53" fill="none">
-                          <g clipPath="url(#clip0_489_1814)">
-                            <path fillRule="evenodd" clipRule="evenodd" d="M37.8361 1.58398C39.0162 1.58398 39.9729 2.54065 39.9729 3.72074V49.3048C39.9729 50.4848 39.0162 51.4415 37.8361 51.4415C36.6561 51.4415 35.6994 50.4848 35.6994 49.3048V3.72074C35.6994 2.54065 36.6561 1.58398 37.8361 1.58398ZM29.2891 10.131C30.4692 10.131 31.4259 11.0877 31.4259 12.2677V40.7578C31.4259 41.9378 30.4692 42.8945 29.2891 42.8945C28.109 42.8945 27.1523 41.9378 27.1523 40.7578V12.2677C27.1523 11.0877 28.109 10.131 29.2891 10.131ZM12.1951 12.98C13.3752 12.98 14.3318 13.9367 14.3318 15.1167V37.9088C14.3318 39.0888 13.3752 40.0455 12.1951 40.0455C11.015 40.0455 10.0583 39.0888 10.0583 37.9088V15.1167C10.0583 13.9367 11.015 12.98 12.1951 12.98ZM46.3831 15.829C47.5632 15.829 48.5199 16.7857 48.5199 17.9658V35.0598C48.5199 36.2398 47.5632 37.1965 46.3831 37.1965C45.2031 37.1965 44.2464 36.2398 44.2464 35.0598V17.9658C44.2464 16.7857 45.2031 15.829 46.3831 15.829ZM20.7421 18.678C21.9222 18.678 22.8788 19.6347 22.8788 20.8148V32.2108C22.8788 33.3908 21.9222 34.3475 20.7421 34.3475C19.562 34.3475 18.6053 33.3908 18.6053 32.2108V20.8148C18.6053 19.6347 19.562 18.678 20.7421 18.678ZM3.64807 21.527C4.82816 21.527 5.78483 22.4837 5.78483 23.6638V29.3618C5.78483 30.5418 4.82816 31.4985 3.64807 31.4985C2.46799 31.4985 1.51132 30.5418 1.51132 29.3618V23.6638C1.51132 22.4837 2.46799 21.527 3.64807 21.527ZM54.9301 21.527C56.1102 21.527 57.0669 22.4837 57.0669 23.6638V29.3618C57.0669 30.5418 56.1102 31.4985 54.9301 31.4985C53.7501 31.4985 52.7934 30.5418 52.7934 29.3618V23.6638C52.7934 22.4837 53.7501 21.527 54.9301 21.527Z" fill="#4248FF"/>
-                          </g>
-                          <defs>
-                            <clipPath id="clip0_489_1814">
-                              <rect width="56.9801" height="51.2821" fill="white" transform="translate(0.799072 0.87207)"/>
-                            </clipPath>
-                          </defs>
-                        </svg>
+                    <div className="flex items-center gap-4">
+                      <button 
+                        onClick={toggleRecording}
+                        disabled={isLoading}
+                        className={`hover:scale-105 transition-transform cursor-pointer ${isRecording ? 'animate-pulse' : ''} ${isLoading ? 'opacity-50' : ''}`}
+                        title={isRecording ? "Stop Recording" : "Start Recording"}
+                      >
+                        {isRecording ? (
+                          <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
+                            <MicOff size={16} className="text-white" />
+                          </div>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 58 53" fill="none">
+                            <g clipPath="url(#clip0_489_1814)">
+                              <path fillRule="evenodd" clipRule="evenodd" d="M37.8361 1.58398C39.0162 1.58398 39.9729 2.54065 39.9729 3.72074V49.3048C39.9729 50.4848 39.0162 51.4415 37.8361 51.4415C36.6561 51.4415 35.6994 50.4848 35.6994 49.3048V3.72074C35.6994 2.54065 36.6561 1.58398 37.8361 1.58398ZM29.2891 10.131C30.4692 10.131 31.4259 11.0877 31.4259 12.2677V40.7578C31.4259 41.9378 30.4692 42.8945 29.2891 42.8945C28.109 42.8945 27.1523 41.9378 27.1523 40.7578V12.2677C27.1523 11.0877 28.109 10.131 29.2891 10.131ZM12.1951 12.98C13.3752 12.98 14.3318 13.9367 14.3318 15.1167V37.9088C14.3318 39.0888 13.3752 40.0455 12.1951 40.0455C11.015 40.0455 10.0583 39.0888 10.0583 37.9088V15.1167C10.0583 13.9367 11.015 12.98 12.1951 12.98ZM46.3831 15.829C47.5632 15.829 48.5199 16.7857 48.5199 17.9658V35.0598C48.5199 36.2398 47.5632 37.1965 46.3831 37.1965C45.2031 37.1965 44.2464 36.2398 44.2464 35.0598V17.9658C44.2464 16.7857 45.2031 15.829 46.3831 15.829ZM20.7421 18.678C21.9222 18.678 22.8788 19.6347 22.8788 20.8148V32.2108C22.8788 33.3908 21.9222 34.3475 20.7421 34.3475C19.562 34.3475 18.6053 33.3908 18.6053 32.2108V20.8148C18.6053 19.6347 19.562 18.678 20.7421 18.678ZM3.64807 21.527C4.82816 21.527 5.78483 22.4837 5.78483 23.6638V29.3618C5.78483 30.5418 4.82816 31.4985 3.64807 31.4985C2.46799 31.4985 1.51132 30.5418 1.51132 29.3618V23.6638C1.51132 22.4837 2.46799 21.527 3.64807 21.527ZM54.9301 21.527C56.1102 21.527 57.0669 22.4837 57.0669 23.6638V29.3618C57.0669 30.5418 56.1102 31.4985 54.9301 31.4985C53.7501 31.4985 52.7934 30.5418 52.7934 29.3618V23.6638C52.7934 22.4837 53.7501 21.527 54.9301 21.527Z" fill="#4248FF"/>
+                            </g>
+                            <defs>
+                              <clipPath id="clip0_489_1814">
+                                <rect width="56.9801" height="51.2821" fill="white" transform="translate(0.799072 0.87207)"/>
+                              </clipPath>
+                            </defs>
+                          </svg>
+                        )}
+                      </button>
+                      {isRecording && (
+                        <button 
+                          onClick={cancelRecording}
+                          className="hover:scale-105 transition-transform cursor-pointer"
+                          title="Cancel Recording"
+                        >
+                          <div className="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center">
+                            <X size={16} className="text-white" />
+                          </div>
+                        </button>
                       )}
-                    </button>
+                    </div>
                   </div>
                 </div>
               </div>
