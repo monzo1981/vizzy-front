@@ -11,14 +11,14 @@ import Image from "next/image"
 import { isAuthenticated, getUser, logout, type User } from "@/lib/auth"
 import { N8NWebhook } from "@/lib/n8n-webhook"
 import { N8NWebSocketClient, type N8NUpdate } from "@/lib/n8n-websocket"
-import { ResponseNormalizer } from "@/lib/response-normalizer";
-import { isVideoUrl, getVideoMimeType } from "@/lib/videoUtils";
+import { ResponseNormalizer } from "@/lib/response-normalizer"
+import { isVideoUrl, getVideoMimeType } from "@/lib/videoUtils"
 
 // Message interface
 interface Message {
   id: string;
   content: string;
-  sender: 'user' | 'assistant' | 'system';  // Added 'system' for N8N updates
+  sender: 'user' | 'assistant' | 'system';
   timestamp: Date;
   visual?: string;
   isProcessing?: boolean;
@@ -39,7 +39,7 @@ export default function Chat() {
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null)
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
-  const [wsConnected, setWsConnected] = useState(false)  // WebSocket connection status
+  const [wsConnected, setWsConnected] = useState(false)
   
   // Refs
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -47,11 +47,37 @@ export default function Chat() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   
   // N8N instances
   const n8nWebhook = useRef<N8NWebhook | null>(null)
   const wsClient = useRef<N8NWebSocketClient | null>(null)
-  const processedMessages = useRef<Set<string>>(new Set()) // Track processed messages
+  const processedMessages = useRef<Set<string>>(new Set())
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'end'
+      })
+    }
+  }, [messages])
+
+  // Ensure proper scroll on initial render with messages
+  useEffect(() => {
+    if (messages.length > 0 && messagesContainerRef.current) {
+      setTimeout(() => {
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ 
+            behavior: 'auto',
+            block: 'end'
+          })
+        }
+      }, 100)
+    }
+  }, [messages.length])
 
   useEffect(() => {
     // Check if user is authenticated
@@ -67,7 +93,7 @@ export default function Chat() {
     // Initialize N8N webhook with user info (only if not already initialized)
     if (!n8nWebhook.current) {
       n8nWebhook.current = new N8NWebhook(
-        process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'http://localhost:5678/webhook-test/0d87fbae-5950-418e-b41b-874cccee5252',
+        process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'http://localhost:5678/webhook/0d87fbae-5950-418e-b41b-874cccee5252',
         user?.id,
         user?.email
       )
@@ -78,7 +104,7 @@ export default function Chat() {
       wsClient.current = new N8NWebSocketClient(
         // Message handler for N8N updates
         (update: N8NUpdate) => {
-          console.log('📨 N8N Update via WebSocket:', update);
+          console.log('🔨 N8N Update via WebSocket:', update);
           const { data } = update;
           // Handle different message types from N8N
           if (data.status === 'processing') {
@@ -128,7 +154,7 @@ export default function Chat() {
       );
       wsClient.current.connect();
     }
-    // Cleanup on unmount (always returned from useEffect, not inside if-block)
+    // Cleanup on unmount
     return () => {
       wsClient.current?.disconnect();
     };
@@ -379,26 +405,26 @@ export default function Chat() {
       <Sidebar isOpen={isOpen} onToggle={toggle} />
 
       {/* Main Content */}
-      <div className={`min-h-screen flex flex-col transition-all duration-300 ${isOpen ? 'lg:ml-20' : 'lg:ml-20'}`}>
-        {/* Header */}
-        <header className="flex items-center justify-between p-10">
+      <div className={`h-screen flex flex-col transition-all duration-300 ${isOpen ? 'lg:ml-20' : 'lg:ml-20'}`}>
+        {/* Header - Fixed */}
+        <header className="flex-shrink-0 flex items-center justify-between px-10 py-4">
           <div className="w-8" />
           <div className="flex justify-center mb-2">
             <div className="relative">
               <Image 
                 src="/vizzy-logo.svg" 
                 alt="Vizzy Logo" 
-                width={300}
+                width={350}
                 height={200}
               />
             </div>
           </div>
           <div className="flex items-center gap-4">
             {/* WebSocket Connection Status Indicator */}
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${wsConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+            {/* <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${wsConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
               {wsConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
               {wsConnected ? 'Live' : 'Offline'}
-            </div>
+            </div> */}
             
             <Button
               onClick={handleLogout}
@@ -413,7 +439,7 @@ export default function Chat() {
           </div>
         </header>
 
-        {/* Main Content */}
+        {/* Main Content Area - Flexible */}
         {!hasMessages ? (
           // Initial State - Welcome Screen
           <main className="flex-1 flex flex-col items-center justify-center px-6 pb-8">
@@ -469,7 +495,7 @@ export default function Chat() {
                       // Auto-resize
                       const target = e.target
                       target.style.height = 'auto'
-                      target.style.height = `${Math.min(target.scrollHeight, 120)}px` // Max 3 lines (40px * 3)
+                      target.style.height = `${Math.min(target.scrollHeight, 120)}px`
                     }}
                     onKeyPress={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
@@ -557,15 +583,137 @@ export default function Chat() {
 
           </main>
         ) : (
-          // Chat State - Messages Interface
-          <main className="flex-1 flex flex-col">
-            {/* Messages Container */}
-            <div className="flex-1 overflow-y-auto flex justify-center px-6 py-6">
-              <div className="w-full max-w-4xl space-y-6">
-                {messages.map((message) => (
-                  <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    {/* Assistant or System Messages */}
-                    {(message.sender === 'assistant' || message.sender === 'system') && (
+          // Chat State - Messages Interface with proper layout
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Messages Container - Scrollable */}
+            <div 
+              ref={messagesContainerRef}
+              className="flex-1 overflow-y-auto px-6 py-6 no-scrollbar"
+            >
+              <div className="flex justify-center">
+                <div className="w-full max-w-4xl space-y-6">
+                  {messages.map((message) => (
+                    <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      {/* Assistant or System Messages */}
+                      {(message.sender === 'assistant' || message.sender === 'system') && (
+                        <div className="flex items-start space-x-4">
+                          <div className="w-8 h-8 flex items-center justify-center">
+                            <Image 
+                              src="/vizzy-chat-icon.svg" 
+                              alt="Vizzy AI" 
+                              width={24}
+                              height={24}
+                            />
+                          </div>
+                          <div className="max-w-2xl">
+                            {/* Message content */}
+                            <p className="text-[#11002E] text-base leading-relaxed whitespace-pre-line">
+                              {message.content}
+                            </p>
+                            
+                            {/* Show visual content */}
+                            {message.visual && (
+                              <div 
+                                className="mt-4 backdrop-blur-xl rounded-3xl p-6 flex items-center justify-center cursor-pointer" 
+                                style={{ 
+                                  width: '370px', 
+                                  background: 'linear-gradient(109.03deg, #BEDCFF -35.22%, rgba(255, 255, 255, 0.9) 17.04%, rgba(255, 232, 228, 0.4) 57.59%, #BEDCFF 97.57%)',
+                                  boxShadow: '0px 0px 6px 0px rgba(0, 0, 0, 0.2)'
+                                }}
+                                onClick={() => setExpandedImage(message.visual || null)}
+                              >
+                                {isVideoUrl(message.visual) ? (
+                                  <video 
+                                    controls 
+                                    preload="metadata"
+                                    playsInline
+                                    muted={false}
+                                    className="max-w-full max-h-full rounded-lg object-contain"
+                                    style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }}
+                                    crossOrigin="anonymous"
+                                  >
+                                    <source src={message.visual} type={getVideoMimeType(message.visual)} />
+                                    <source src={message.visual} type="video/mp4" />
+                                    Your browser does not support the video tag.
+                                  </video>
+                                ) : isBase64Image(message.visual) ? (
+                                  <img 
+                                    src={message.visual} 
+                                    alt="Generated visual content" 
+                                    className="rounded-lg max-w-full max-h-full object-contain"
+                                    style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }}
+                                    onError={(e) => {
+                                      console.error('Image failed to load:', message.visual);
+                                      (e.currentTarget as HTMLImageElement).style.display = 'none';
+                                    }}
+                                  />
+                                ) : (
+                                  <Image 
+                                    src={message.visual} 
+                                    alt="Generated visual content" 
+                                    className="rounded-lg max-w-full max-h-full object-contain"
+                                    width={320}
+                                    height={280}
+                                    onError={(e) => {
+                                      console.error('Image failed to load:', message.visual);
+                                      (e.target as HTMLImageElement).style.display = 'none';
+                                    }}
+                                  />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* User Messages */}
+                      {message.sender === 'user' && (
+                        <div className="flex justify-end">
+                          <div className="max-w-2xl">
+                            <div 
+                              className="px-6 py-4"
+                              style={{
+                                background: 'linear-gradient(90.26deg, rgba(255, 255, 255, 0.65) -46.71%, rgba(127, 202, 254, 0.65) 145.13%)',
+                                backdropFilter: 'blur(16px)',
+                                boxShadow: '0px 0px 10px 0px rgba(0, 0, 0, 0.2)',
+                                borderRadius: '25px 25px 4px 25px'
+                              }}
+                            >
+                              {/* Show voice indicator if it's a voice message */}
+                              {message.isVoice ? (
+                                <div className="flex items-center gap-2">
+                                  <Mic size={20} className="text-[#4248FF]" />
+                                  <p className="text-[#11002E] text-base leading-relaxed">
+                                    Voice message
+                                  </p>
+                                </div>
+                              ) : (
+                                <p className="text-[#11002E] text-base leading-relaxed">
+                                  {message.content}
+                                </p>
+                              )}
+                              
+                              {/* Show image if attached to user message */}
+                              {message.visual && (
+                                <div className="mt-3">
+                                  <img 
+                                    src={message.visual} 
+                                    alt="Uploaded image" 
+                                    className="rounded-lg max-w-full"
+                                    style={{ maxWidth: '200px', height: 'auto' }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {/* Loading Animation */}
+                  {isLoading && (
+                    <div className="flex justify-start">
                       <div className="flex items-start space-x-4">
                         <div className="w-8 h-8 flex items-center justify-center">
                           <Image 
@@ -576,140 +724,26 @@ export default function Chat() {
                           />
                         </div>
                         <div className="max-w-2xl">
-                          {/* Message content */}
-                          <p className="text-[#11002E] text-base leading-relaxed whitespace-pre-line">
-                            {message.content}
-                          </p>
-                          
-                          {/* Show visual content */}
-                          {message.visual && (
-                            <div 
-                              className="mt-4 backdrop-blur-xl rounded-3xl p-6 flex items-center justify-center cursor-pointer" 
-                              style={{ 
-                                width: '370px', 
-                                background: 'linear-gradient(109.03deg, #BEDCFF -35.22%, rgba(255, 255, 255, 0.9) 17.04%, rgba(255, 232, 228, 0.4) 57.59%, #BEDCFF 97.57%)',
-                                boxShadow: '0px 0px 6px 0px rgba(0, 0, 0, 0.2)'
-                              }}
-                              onClick={() => setExpandedImage(message.visual || null)}
-                            >
-                              {isVideoUrl(message.visual) ? (
-                                <video 
-                                  controls 
-                                  preload="metadata"
-                                  playsInline
-                                  muted={false}
-                                  className="max-w-full max-h-full rounded-lg object-contain"
-                                  style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }}
-                                  crossOrigin="anonymous"
-                                >
-                                  <source src={message.visual} type={getVideoMimeType(message.visual)} />
-                                  <source src={message.visual} type="video/mp4" />
-                                  Your browser does not support the video tag.
-                                </video>
-                              ) : isBase64Image(message.visual) ? (
-                                <Image 
-                                  src={message.visual} 
-                                  alt="Generated visual content" 
-                                  className="rounded-lg max-w-full max-h-full object-contain"
-                                  style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }}
-                                  onError={(e) => {
-                                    console.error('Image failed to load:', message.visual);
-                                    (e.currentTarget as HTMLImageElement).style.display = 'none';
-                                  }}
-                                />
-                              ) : (
-                                <Image 
-                                  src={message.visual} 
-                                  alt="Generated visual content" 
-                                  className="rounded-lg max-w-full max-h-full object-contain"
-                                  width={320}
-                                  height={280}
-                                  onError={(e) => {
-                                    console.error('Image failed to load:', message.visual);
-                                    (e.target as HTMLImageElement).style.display = 'none';
-                                  }}
-                                />
-                              )}
+                          <div className="bg-white/60 backdrop-blur-xl rounded-3xl rounded-tl-lg px-4 py-4 border border-white/30">
+                            <div className="flex space-x-2">
+                              <div className="w-2 h-2 bg-[#4248FF] rounded-full animate-bounce"></div>
+                              <div className="w-2 h-2 bg-[#A2498A] rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                              <div className="w-2 h-2 bg-[#FF4A19] rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                             </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* User Messages */}
-                    {message.sender === 'user' && (
-                      <div className="flex justify-end">
-                        <div className="max-w-2xl">
-                          <div 
-                            className="px-6 py-4"
-                            style={{
-                              background: 'linear-gradient(90.26deg, rgba(255, 255, 255, 0.65) -46.71%, rgba(127, 202, 254, 0.65) 145.13%)',
-                              backdropFilter: 'blur(16px)',
-                              boxShadow: '0px 0px 10px 0px rgba(0, 0, 0, 0.2)',
-                              borderRadius: '25px 25px 4px 25px'
-                            }}
-                          >
-                            {/* Show voice indicator if it's a voice message */}
-                            {message.isVoice ? (
-                              <div className="flex items-center gap-2">
-                                <Mic size={20} className="text-[#4248FF]" />
-                                <p className="text-[#11002E] text-base leading-relaxed">
-                                  Voice message
-                                </p>
-                              </div>
-                            ) : (
-                              <p className="text-[#11002E] text-base leading-relaxed">
-                                {message.content}
-                              </p>
-                            )}
-                            
-                            {/* Show image if attached to user message */}
-                            {message.visual && (
-                              <div className="mt-3">
-                                <img 
-                                  src={message.visual} 
-                                  alt="Uploaded image" 
-                                  className="rounded-lg max-w-full"
-                                  style={{ maxWidth: '200px', height: 'auto' }}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                
-                {/* Loading Animation */}
-                {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="flex items-start space-x-4">
-                      <div className="w-8 h-8 flex items-center justify-center">
-                        <Image 
-                          src="/vizzy-chat-icon.svg" 
-                          alt="Vizzy AI" 
-                          width={24}
-                          height={24}
-                        />
-                      </div>
-                      <div className="max-w-2xl">
-                        <div className="bg-white/60 backdrop-blur-xl rounded-3xl rounded-tl-lg px-4 py-4 border border-white/30">
-                          <div className="flex space-x-2">
-                            <div className="w-2 h-2 bg-[#4248FF] rounded-full animate-bounce"></div>
-                            <div className="w-2 h-2 bg-[#A2498A] rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                            <div className="w-2 h-2 bg-[#FF4A19] rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                  
+                  {/* Invisible element for scrolling reference */}
+                  <div ref={messagesEndRef} />
+                </div>
               </div>
             </div>
 
-            {/* Bottom Input - Compact Mode */}
-            <div className="sticky bottom-0 bg-gradient-to-t from-white/20 to-transparent backdrop-blur-sm p-6">
+            {/* Bottom Input - Fixed at bottom */}
+            <div className="flex-shrink-0 bg-gradient-to-t from-white/20 to-transparent backdrop-blur-sm p-6 pt-0">
               <div className="max-w-4xl mx-auto">
                 <div className="relative bg-white/60 backdrop-blur-xl border border-white/30 px-8 py-7 transition-all duration-500 ease-in-out" style={{ borderRadius: '50px' }}>
                   
@@ -757,7 +791,7 @@ export default function Chat() {
                           // Auto-resize
                           const target = e.target
                           target.style.height = 'auto'
-                          target.style.height = `${Math.min(target.scrollHeight, 72)}px` // Max 3 lines (24px * 3)
+                          target.style.height = `${Math.min(target.scrollHeight, 72)}px`
                         }}
                         onKeyPress={(e) => {
                           if (e.key === 'Enter' && !e.shiftKey) {
@@ -842,7 +876,7 @@ export default function Chat() {
                 </div>
               </div>
             </div>
-          </main>
+          </div>
         )}
 
         {/* Expanded Image Modal */}
