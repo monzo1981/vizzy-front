@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Waves, LogOut, MicOff, X, Mic, Wifi, WifiOff } from "lucide-react"
+import { Plus, LogOut, MicOff, X, Mic, Wifi, WifiOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar } from "@/components/ui/avatar"
 import { GradientBackground } from "../../components/gradient-background"
@@ -414,7 +414,7 @@ export default function Chat() {
               <Image 
                 src="/vizzy-logo.svg" 
                 alt="Vizzy Logo" 
-                width={350}
+                width={300}
                 height={200}
               />
             </div>
@@ -534,8 +534,7 @@ export default function Chat() {
 
                     {/* Tools Button */}
                     <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
-                      <Waves size={32} className="text-[#4248FF]"/>
-                      <span className="text-[#4248FF] text-xl">Tools</span>
+                      <Image src="/tool-icon.svg" alt="Tool Icon" width={32} height={32} />
                     </div>
                   </div>
 
@@ -831,7 +830,7 @@ export default function Chat() {
 
                       {/* Tools Button */}
                       <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
-                        <Waves size={24} className="text-[#4248FF]"/>
+                        <Image src="/tool-icon.svg" alt="Tool Icon" width={24} height={24} />
                       </div>
                     </div>
 
