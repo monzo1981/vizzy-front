@@ -10,6 +10,8 @@ interface N8NRequest {
   first_name?: string;
   last_name?: string;
   timestamp: string;
+  quota: string;
+  session_id?: string;
 }
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
@@ -32,7 +34,7 @@ export class N8NWebhook {
   private firstName: string = '';
   private lastName: string = '';
 
-  constructor(webhookUrl: string = 'http://localhost:5678/webhook/0d87fbae-5950-418e-b41b-874cccee5252', userId?: string, userEmail?: string) {
+  constructor(webhookUrl: string = 'https://monzology.app.n8n.cloud/webhook/2fe03fcd-7ff3-4a55-9d38-064722b844ab', userId?: string, userEmail?: string) {
     this.webhookUrl = webhookUrl;
     // Always get name fields from localStorage if available
     const user = localStorage.getItem('user');
@@ -48,7 +50,7 @@ export class N8NWebhook {
     this.lastName = userData?.last_name || '';
   }
 
-  async sendMessage(message: string): Promise<N8NResponse> {
+  async sendMessage(message: string, sessionId?: string): Promise<N8NResponse> {
     try {
       console.log('📤 Sending message to N8N:', message);
       
@@ -62,6 +64,7 @@ export class N8NWebhook {
         body: JSON.stringify({
           message,
           user_id: this.userId,
+          session_id: sessionId,
           user_email: this.userEmail,
           name: `${this.firstName} ${this.lastName}`,
           quota: "paid",
@@ -84,7 +87,7 @@ export class N8NWebhook {
     }
   }
 
-  async sendVoiceMessage(audioData: string): Promise<N8NResponse> {
+  async sendVoiceMessage(audioData: string, sessionId?: string): Promise<N8NResponse> {
     try {
       console.log('🎤 Sending voice message to N8N');
       
@@ -98,6 +101,7 @@ export class N8NWebhook {
           audio_data: audioData,
           user_id: this.userId,
           user_email: this.userEmail,
+          session_id: sessionId,
           name: `${this.firstName} ${this.lastName}`,
           quota: "paid",
           timestamp: new Date().toISOString(),
@@ -119,7 +123,7 @@ export class N8NWebhook {
     }
   }
 
-  async sendImageMessage(imageData: string, text?: string): Promise<N8NResponse> {
+  async sendImageMessage(imageData: string, text?: string, sessionId?: string): Promise<N8NResponse> {
     try {
       console.log('🖼️ Sending image message to N8N with text:', text);
       
@@ -133,6 +137,7 @@ export class N8NWebhook {
           message: text,
           image_data: imageData,
           user_id: this.userId,
+          session_id: sessionId,
           user_email: this.userEmail,
           name: `${this.firstName} ${this.lastName}`,
           quota: "paid",

@@ -1,6 +1,27 @@
 import React from 'react';
 
-export function GradientBackground({ children, opacity = 1 }: { children: React.ReactNode; opacity?: number }) {
+export function GradientBackground({ 
+  children, 
+  opacity = 1, 
+  isDarkMode = false 
+}: { 
+  children: React.ReactNode; 
+  opacity?: number;
+  isDarkMode?: boolean;
+}) {
+  // If dark mode is enabled, render a solid dark background
+  if (isDarkMode) {
+    return (
+      <div className="min-h-screen w-full relative overflow-hidden" style={{ background: 'rgba(24, 24, 25, 1)' }}>
+        {/* Content */}
+        <div className="relative z-10">
+          {children}
+        </div>
+      </div>
+    );
+  }
+
+  // Light mode gradient (original implementation)
   return (
     <div className="min-h-screen w-full relative overflow-hidden">
       {/* Base gradient background */}
