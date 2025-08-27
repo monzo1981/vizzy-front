@@ -279,6 +279,7 @@ export default function Chat() {
   }
 
   const handleSend = async (message?: string) => {
+    if (isLoading || isCreatingSession) return
     const messageToSend = message || inputValue.trim()
     
     if (!messageToSend && !selectedImage) return
@@ -627,7 +628,6 @@ export default function Chat() {
                           handleSend()
                         }
                       }}
-                      disabled={isLoading || isCreatingSession}
                       placeholder=""
                       className={`w-full text-[40px] font-thin border-none bg-transparent px-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto relative z-10 ${
                         isDarkMode ? 'text-white' : 'text-black'
@@ -943,7 +943,6 @@ export default function Chat() {
                               handleSend()
                             }
                           }}
-                          disabled={isLoading || isCreatingSession}
                           placeholder=""
                           className={`w-full text-[24px] font-thin border-none bg-transparent px-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto relative z-10 ${
                             isDarkMode ? 'text-white' : 'text-black'
@@ -972,8 +971,8 @@ export default function Chat() {
                           size={24} 
                           className={`cursor-pointer hover:opacity-80 transition-opacity ${
                             isDarkMode ? 'text-white' : 'text-[#4248FF]'
-                          } ${isLoading || isCreatingSession ? 'opacity-50' : ''}`}
-                          onClick={() => !isLoading && !isCreatingSession && fileInputRef.current?.click()}
+                          }`}
+                          onClick={() => fileInputRef.current?.click()}
                         />
 
                         {/* Tools Button */}
