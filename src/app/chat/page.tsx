@@ -13,6 +13,7 @@ import { N8NWebhook } from "@/lib/n8n-webhook"
 import { N8NWebSocketClient, type N8NUpdate } from "@/lib/n8n-websocket"
 import { ResponseNormalizer } from "@/lib/response-normalizer"
 import { isVideoUrl, getVideoMimeType } from "@/lib/videoUtils"
+import { TextDirectionHandler } from "@/lib/text-direction-handler"
 
 // API Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
@@ -187,7 +188,7 @@ export default function Chat() {
     // Initialize N8N webhook with user info (only if not already initialized)
     if (!n8nWebhook.current) {
       n8nWebhook.current = new N8NWebhook(
-        process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://monzology.app.n8n.cloud/webhook/2fe03fcd-7ff3-4a55-9d38-064722b844ab',
+        process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'http://localhost:5678/webhook/0d87fbae-5950-418e-b41b-874cccee5252',
         user?.id,
         user?.email
       )
@@ -739,11 +740,17 @@ export default function Chat() {
                             </div>
                             <div className="max-w-2xl">
                               {/* Message content */}
-                              <p className={`text-base leading-relaxed whitespace-pre-line ${
-                                isDarkMode ? 'text-white' : 'text-[#11002E]'
-                              }`}>
+                              <div  className={`text-base leading-relaxed whitespace-pre-line chat-message-content ${
+                                   isDarkMode ? 'text-white' : 'text-[#11002E]'
+                                 } ${TextDirectionHandler.getTextDirectionClasses(message.content)}`}
+                               dir="auto"
+                               style={{
+                                textAlign: 'start',
+                                unicodeBidi: 'plaintext',
+                                wordBreak: 'break-word'
+                               }}>
                                 {message.content}
-                              </p>
+                              </div>
                               
                               {/* Show visual content */}
                               {message.visual && (
@@ -819,14 +826,14 @@ export default function Chat() {
                                 {message.isVoice ? (
                                   <div className="flex items-center gap-2">
                                     <Mic size={20} className={isDarkMode ? 'text-black' : 'text-[#4248FF]'} />
-                                    <p className="text-base leading-relaxed text-black">
+                                    <div  className="text-base leading-relaxed text-black chat-message-content" dir="auto" style={{  textAlign: 'start',  unicodeBidi: 'plaintext' }}>
                                       Voice message
-                                    </p>
+                                    </div>
                                   </div>
                                 ) : (
-                                  <p className="text-base leading-relaxed text-black">
+                                  <div  className="text-base leading-relaxed text-black chat-message-content" dir="auto" style={{  textAlign: 'start',  unicodeBidi: 'plaintext', wordBreak: 'break-word' }}>
                                     {message.content}
-                                  </p>
+                                  </div>
                                 )}
                                 
                                 {/* Show image if attached to user message */}

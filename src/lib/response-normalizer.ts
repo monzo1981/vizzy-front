@@ -1,4 +1,4 @@
-// src/lib/response-normalizer.ts
+// lib/response-normalizer.ts - Updated with Arabic text handling
 
 interface NormalizedResponse {
   text: string;
@@ -6,6 +6,47 @@ interface NormalizedResponse {
 }
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
+// Helper class لتحسين النصوص المختلطة
+export class ResponseTextCleaner {
+  /**
+   * تنظيف النصوص المختلطة من N8N
+   */
+  static cleanMixedText(text: string): string {
+    if (!text) return text;
+    
+    // إزالة مسافات زيادة وأسطر فارغة
+    let cleaned = text.replace(/\n\s*\n/g, '\n').trim();
+    
+    // تحسين التنسيق للنص المختلط - إضافة مسافة بين العربي والإنجليزي
+    cleaned = cleaned.replace(/([أ-ي])([A-Za-z])/g, '$1 $2');
+    cleaned = cleaned.replace(/([A-Za-z])([أ-ي])/g, '$1 $2');
+    
+    // تصحيح مسائل علامات الترقيم
+    cleaned = cleaned.replace(/\s+([.!؟،])/g, '$1');
+    cleaned = cleaned.replace(/([.!؟،])([أ-يA-Za-z])/g, '$1 $2');
+    
+    return cleaned;
+  }
+  
+  /**
+   * تحسين النص للعرض مع تحسينات خاصة
+   */
+  static improveDisplayText(text: string): string {
+    if (!text) return text;
+    
+    let improved = this.cleanMixedText(text);
+    
+    // تحسين التحية مع الأسماء الإنجليزية
+    improved = improved.replace(/اسمك\s*([A-Za-z\s]+)!/g, 'اسمك $1!');
+    improved = improved.replace(/اسمك\s*([A-Za-z\s]+)\s*!/g, 'اسمك $1!');
+    
+    // تحسين عبارات أخرى شائعة
+    improved = improved.replace(/([أ-ي])\s+([A-Za-z])\s+([أ-ي])/g, '$1 $2 $3');
+    
+    return improved;
+  }
+}
 
 export class ResponseNormalizer {
   private readonly jsonResponse: JsonValue;
@@ -29,10 +70,11 @@ export class ResponseNormalizer {
 
     // Handle direct string responses
     if (typeof this.jsonResponse === 'string') {
-      console.log("📝 Direct string response detected");
+      console.log("🔤 Direct string response detected");
       const [urlInText, , remainingText] = this._extractUrlFromText(this.jsonResponse);
+      const cleanedText = ResponseTextCleaner.improveDisplayText(remainingText || this.jsonResponse);
       return { 
-        text: remainingText || this.jsonResponse, 
+        text: cleanedText, 
         mediaUrl: urlInText 
       };
     }
@@ -47,7 +89,8 @@ export class ResponseNormalizer {
       // Process first item in array
       const firstItem = this.jsonResponse[0];
       if (typeof firstItem === 'string') {
-        return { text: firstItem, mediaUrl: undefined };
+        const cleanedText = ResponseTextCleaner.improveDisplayText(firstItem);
+        return { text: cleanedText, mediaUrl: undefined };
       } else if (typeof firstItem === 'object' && firstItem !== null) {
         return this._processObjectResponse(firstItem as { [key: string]: JsonValue });
       }
@@ -61,8 +104,9 @@ export class ResponseNormalizer {
 
     // Fallback for any other type
     console.warn("⚠️ Unknown response type, converting to string");
+    const cleanedText = ResponseTextCleaner.improveDisplayText(String(this.jsonResponse));
     return { 
-      text: String(this.jsonResponse), 
+      text: cleanedText, 
       mediaUrl: undefined 
     };
   }
@@ -120,9 +164,9 @@ export class ResponseNormalizer {
       }
     }
 
-    // Clean up text
+    // Clean up text with Arabic/English improvements
     if (text) {
-      text = this._cleanText(text);
+      text = ResponseTextCleaner.improveDisplayText(this._cleanText(text));
     }
 
     // Provide fallback text if none found

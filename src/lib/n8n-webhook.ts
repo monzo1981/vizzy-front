@@ -34,7 +34,7 @@ export class N8NWebhook {
   private firstName: string = '';
   private lastName: string = '';
 
-  constructor(webhookUrl: string = 'https://monzology.app.n8n.cloud/webhook/2fe03fcd-7ff3-4a55-9d38-064722b844ab', userId?: string, userEmail?: string) {
+  constructor(webhookUrl: string = 'http://localhost:5678/webhook/0d87fbae-5950-418e-b41b-874cccee5252', userId?: string, userEmail?: string) {
     this.webhookUrl = webhookUrl;
     // Always get name fields from localStorage if available
     const user = localStorage.getItem('user');
