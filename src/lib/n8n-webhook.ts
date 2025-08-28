@@ -1,6 +1,8 @@
 // lib/n8n-webhook.ts
 // Direct communication with N8N webhook - no backend needed
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
+
 interface N8NRequest {
   message?: string;
   audio_data?: string;
@@ -12,6 +14,9 @@ interface N8NRequest {
   timestamp: string;
   quota: string;
   session_id?: string;
+  remaining_images?: number | null;
+  remaining_videos?: number | null;
+  is_first_time_user?: boolean;
 }
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
@@ -25,6 +30,12 @@ interface N8NResponse {
   service_type?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
+}
+
+interface UserLimits {
+    remaining_images: number;
+    remaining_videos: number;
+    is_first_time_user: boolean;
 }
 
 export class N8NWebhook {
@@ -50,10 +61,56 @@ export class N8NWebhook {
     this.lastName = userData?.last_name || '';
   }
 
+
+    private async getUserLimits(): Promise<Partial<UserLimits> | null> {
+    if (!this.userId || this.userId === 'anonymous') {
+        console.log('No user ID, skipping limits fetch.');
+        return null;
+    }
+
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        console.warn('Authentication token not found. Cannot fetch user limits.');
+        return null;
+    }
+
+    const url = `${API_BASE_URL}/user-limits/${this.userId}/`;
+    console.log(`Fetching user limits from: ${url}`);
+
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (response.status === 401 || response.status === 403) {
+            console.error(`Authentication error fetching user limits: ${response.status}`);
+            return null;
+        }
+
+        if (!response.ok) {
+            console.error(`Failed to fetch user limits. Status: ${response.status}`);
+            return null;
+        }
+
+        const data: UserLimits = await response.json();
+        console.log('Successfully fetched user limits:', data);
+        return data;
+    } catch (error) {
+        console.error('An error occurred while fetching user limits:', error);
+        return null;
+    }
+  }
+
+
   async sendMessage(message: string, sessionId?: string): Promise<N8NResponse> {
     try {
       console.log('📤 Sending message to N8N:', message);
-      
+
+      const userLimits = await this.getUserLimits();
+
       const response = await fetch(this.webhookUrl, {
         method: 'POST',
         headers: {
@@ -69,6 +126,7 @@ export class N8NWebhook {
           name: `${this.firstName} ${this.lastName}`,
           quota: "paid",
           timestamp: new Date().toISOString(),
+          ...userLimits,
         } as N8NRequest),
       });
 
@@ -90,7 +148,9 @@ export class N8NWebhook {
   async sendVoiceMessage(audioData: string, sessionId?: string): Promise<N8NResponse> {
     try {
       console.log('🎤 Sending voice message to N8N');
-      
+
+      const userLimits = await this.getUserLimits();
+
       const response = await fetch(this.webhookUrl, {
         method: 'POST',
         headers: {
@@ -105,6 +165,7 @@ export class N8NWebhook {
           name: `${this.firstName} ${this.lastName}`,
           quota: "paid",
           timestamp: new Date().toISOString(),
+          ...userLimits,
         } as N8NRequest),
       });
 
@@ -126,7 +187,9 @@ export class N8NWebhook {
   async sendImageMessage(imageData: string, text?: string, sessionId?: string): Promise<N8NResponse> {
     try {
       console.log('🖼️ Sending image message to N8N with text:', text);
-      
+
+      const userLimits = await this.getUserLimits();
+
       const response = await fetch(this.webhookUrl, {
         method: 'POST',
         headers: {
@@ -142,6 +205,7 @@ export class N8NWebhook {
           name: `${this.firstName} ${this.lastName}`,
           quota: "paid",
           timestamp: new Date().toISOString(),
+          ...userLimits,
         } as N8NRequest),
       });
 

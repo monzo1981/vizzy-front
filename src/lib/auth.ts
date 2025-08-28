@@ -234,6 +234,42 @@ export const login = async (credentials: LoginCredentials): Promise<LoginRespons
   }
 };
 
+export const register = async (userData: {
+  first_name: string;
+  last_name: string;
+  email: string;
+  password: string;
+}) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/register/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData),
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data.success) {
+      // Store tokens in localStorage
+      localStorage.setItem('access_token', data.data.tokens.access);
+      localStorage.setItem('refresh_token', data.data.tokens.refresh);
+      localStorage.setItem('user', JSON.stringify(data.data.user));
+      
+      // Start automatic refresh cycle
+      tokenRefreshManager.scheduleRefresh(data.data.tokens.access);
+      
+      return { success: true, data: data.data };
+    } else {
+      return { success: false, error: data.message || 'Registration failed' };
+    }
+  } catch (error) {
+    console.error('[Register] Network error:', error);
+    return { success: false, error: 'Network error' };
+  }
+};
+
 export const logout = () => {
   // Stop refresh cycle
   tokenRefreshManager.stopRefreshCycle();
