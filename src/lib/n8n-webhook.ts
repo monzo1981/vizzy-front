@@ -45,7 +45,7 @@ export class N8NWebhook {
   private firstName: string = '';
   private lastName: string = '';
 
-  constructor(webhookUrl: string = 'http://localhost:5678/webhook-test/0d87fbae-5950-418e-b41b-874cccee5252', userId?: string, userEmail?: string) {
+  constructor(webhookUrl: string = 'https://monzology.app.n8n.cloud/webhook/2fe03fcd-7ff3-4a55-9d38-064722b844ab', userId?: string, userEmail?: string) {
     this.webhookUrl = webhookUrl;
     // Always get name fields from localStorage if available
     const user = localStorage.getItem('user');
@@ -95,9 +95,20 @@ export class N8NWebhook {
             return null;
         }
 
-        const data: UserLimits = await response.json();
-        console.log('Successfully fetched user limits:', data);
-        return data;
+        const responseData = await response.json();
+        console.log('API Response:', responseData);
+        
+        // Extract the actual data from the response structure
+        const limitsData = responseData.data || responseData;
+        
+        const limits: Partial<UserLimits> = {
+            remaining_images: limitsData.remaining_images ?? null,
+            remaining_videos: limitsData.remaining_videos ?? null,
+            is_first_time_user: limitsData.is_first_time_user ?? false,
+        };
+        
+        console.log('Successfully extracted user limits:', limits);
+        return limits;
     } catch (error) {
         console.error('An error occurred while fetching user limits:', error);
         return null;
@@ -116,17 +127,20 @@ export class N8NWebhook {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          '_method': 'POST'
+          '_method': 'POST',
+          'key': 'RdMguPBDn8_a60TKTsTh06HnLIJ3To3TY0u_rCWggEU'
         },
         body: JSON.stringify({
-          message,
+          message: message,
           user_id: this.userId,
           session_id: sessionId,
           user_email: this.userEmail,
           name: `${this.firstName} ${this.lastName}`,
           quota: "paid",
           timestamp: new Date().toISOString(),
-          ...userLimits,
+          remaining_images: userLimits?.remaining_images ?? null,
+          remaining_videos: userLimits?.remaining_videos ?? null,
+          is_first_time_user: userLimits?.is_first_time_user ?? false,
         } as N8NRequest),
       });
 
@@ -165,7 +179,9 @@ export class N8NWebhook {
           name: `${this.firstName} ${this.lastName}`,
           quota: "paid",
           timestamp: new Date().toISOString(),
-          ...userLimits,
+          remaining_images: userLimits?.remaining_images ?? null,
+          remaining_videos: userLimits?.remaining_videos ?? null,
+          is_first_time_user: userLimits?.is_first_time_user ?? false,
         } as N8NRequest),
       });
 
@@ -205,7 +221,9 @@ export class N8NWebhook {
           name: `${this.firstName} ${this.lastName}`,
           quota: "paid",
           timestamp: new Date().toISOString(),
-          ...userLimits,
+          remaining_images: userLimits?.remaining_images ?? null,
+          remaining_videos: userLimits?.remaining_videos ?? null,
+          is_first_time_user: userLimits?.is_first_time_user ?? false,
         } as N8NRequest),
       });
 
@@ -223,6 +241,7 @@ export class N8NWebhook {
       return { error: 'Failed to upload image. Please try again.' };
     }
   }
+  
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private normalizeResponse(data: any): N8NResponse {
     console.log('🔄 Normalizing N8N response...');

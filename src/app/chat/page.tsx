@@ -188,7 +188,7 @@ export default function Chat() {
     // Initialize N8N webhook with user info (only if not already initialized)
     if (!n8nWebhook.current) {
       n8nWebhook.current = new N8NWebhook(
-        process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'http://localhost:5678/webhook-test/0d87fbae-5950-418e-b41b-874cccee5252',
+        process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://monzology.app.n8n.cloud/webhook/2fe03fcd-7ff3-4a55-9d38-064722b844ab',
         user?.id,
         user?.email
       )
