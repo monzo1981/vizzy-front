@@ -188,7 +188,7 @@ export default function Chat() {
     // Initialize N8N webhook with user info (only if not already initialized)
     if (!n8nWebhook.current) {
       n8nWebhook.current = new N8NWebhook(
-        process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'http://localhost:5678/webhook/0d87fbae-5950-418e-b41b-874cccee5252',
+        process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'http://localhost:5678/webhook-test/0d87fbae-5950-418e-b41b-874cccee5252',
         user?.id,
         user?.email
       )
@@ -208,7 +208,9 @@ export default function Chat() {
               content: data.message || '🔄 Processing your request...',
               sender: 'system' as const,
               timestamp: new Date(),
-              isProcessing: true
+              isProcessing: true,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              visual: ("visual_url" in data ? (data as any).visual_url : undefined) || data.visual || data.data?.url
             }]);
           } 
           else if (data.status === 'completed') {
@@ -217,7 +219,8 @@ export default function Chat() {
               content: data.message || '✅ Task completed successfully!',
               sender: 'system' as const,
               timestamp: new Date(),
-              visual: data.visual || data.data?.url,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              visual: ("visual_url" in data ? (data as any).visual_url : undefined) || data.visual || data.data?.url,
               serviceType: data.data?.service_type
             }]);
             setIsLoading(false);
@@ -227,7 +230,9 @@ export default function Chat() {
               id: `n8n-error-${Date.now()}-${Math.random()}`,
               content: data.message || '❌ An error occurred. Please try again.',
               sender: 'system' as const,
-              timestamp: new Date()
+              timestamp: new Date(),
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              visual: ("visual_url" in data ? (data as any).visual_url : undefined) || data.visual || data.data?.url
             }]);
             setIsLoading(false);
           }
@@ -237,7 +242,8 @@ export default function Chat() {
               content: typeof data.message === 'string' ? data.message : '',
               sender: 'system' as const,
               timestamp: new Date(),
-              visual: data.visual || data.data?.url
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              visual: ("visual_url" in data ? (data as any).visual_url : undefined) || data.visual || data.data?.url
             }]);
           }
         },
@@ -266,12 +272,98 @@ export default function Chat() {
     }
   }, [hasMessages, messages.length])
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const activeElement = document.activeElement;
+
+      // Ignore if modifier keys are pressed (e.g., Ctrl, Cmd)
+      if (event.metaKey || event.ctrlKey) {
+        return;
+      }
+
+      // Ignore if the user is already focused on an input, textarea, or select field,
+      // or if a modal/dialog is active.
+      if (
+        activeElement &&
+        (activeElement.tagName === 'INPUT' ||
+         activeElement.tagName === 'TEXTAREA' ||
+         activeElement.tagName === 'SELECT' ||
+         activeElement.getAttribute('role') === 'dialog')
+      ) {
+        return;
+      }
+      
+      // Ignore if the image viewer modal is open
+      if (expandedImage) {
+        return;
+      }
+
+      // Filter for printable characters by checking if the key has a single character length.
+      // This excludes special keys like "Enter", "Shift", "Tab", "Escape", etc.
+      if (event.key.length !== 1) {
+        return;
+      }
+      
+      // Prevent the default browser action for the key press
+      event.preventDefault();
+
+      // Determine the correct textarea to target based on whether messages exist
+      const targetRef = hasMessages ? compactInputRef : inputRef;
+      const textarea = targetRef.current;
+
+      if (textarea) {
+        // Immediately focus the determined textarea
+        textarea.focus();
+
+        // Insert the typed character at the current cursor position
+        const currentVal = textarea.value;
+        const selectionStart = textarea.selectionStart;
+        const selectionEnd = textarea.selectionEnd;
+        
+        const newValue = 
+          currentVal.substring(0, selectionStart) + 
+          event.key + 
+          currentVal.substring(selectionEnd);
+        
+        // Update the component state with the new value
+        setInputValue(newValue);
+
+        // Use a timeout to set the cursor position after the state update and re-render,
+        // and to trigger the auto-resize logic.
+        setTimeout(() => {
+          const newCursorPosition = selectionStart + 1;
+          textarea.setSelectionRange(newCursorPosition, newCursorPosition);
+          
+          // Manually trigger the auto-resize logic present in the onChange handler
+          const event = new Event('input', { bubbles: true });
+          textarea.dispatchEvent(event);
+        }, 0);
+      }
+    };
+
+    // Add the global event listener
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Cleanup: remove the event listener when the component unmounts
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [hasMessages, setInputValue, expandedImage, inputRef, compactInputRef]); // Dependencies for the effect
+
   const handleLogout = () => {
     // Clear session data
     sessionStorage.removeItem('ai_chat_session_id')
     logout()
     router.push('/')
   }
+
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    setSelectedImageFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   // Helper function to check if URL is base64
   const isBase64Image = (url: string | undefined): boolean => {
@@ -317,6 +409,9 @@ export default function Chat() {
     // Clear image immediately after sending
     setSelectedImage(null)
     setSelectedImageFile(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
     setIsLoading(true)
 
     try {
@@ -395,6 +490,11 @@ export default function Chat() {
         setSelectedImageFile(file)
       }
       reader.readAsDataURL(file)
+    }
+
+    // Reset the file input value to allow re-uploading the same file.
+    if (e.target) {
+      e.target.value = "";
     }
   }
 
@@ -582,10 +682,7 @@ export default function Chat() {
                     <div className="mb-4 relative inline-block">
                       <img src={selectedImage} alt="Selected" className="h-20 rounded-lg" width={80} height={80} />
                       <button
-                        onClick={() => {
-                          setSelectedImage(null)
-                          setSelectedImageFile(null)
-                        }}
+                        onClick={handleRemoveImage}
                         className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
                       >
                         <X size={16} />
@@ -674,6 +771,17 @@ export default function Chat() {
 
                     {/* Voice Recording Button */}
                     <div className="flex items-center gap-4">
+                      {isRecording && (
+                        <button 
+                          onClick={cancelRecording}
+                          className="hover:scale-105 transition-transform cursor-pointer"
+                          title="Cancel Recording"
+                        >
+                          <div className="w-12 h-12 bg-gray-400 rounded-full flex items-center justify-center">
+                            <X size={24} className="text-white" />
+                          </div>
+                        </button>
+                      )}
                       <button 
                         onClick={toggleRecording}
                         disabled={isLoading || isCreatingSession}
@@ -697,17 +805,6 @@ export default function Chat() {
                           </svg>
                         )}
                       </button>
-                      {isRecording && (
-                        <button 
-                          onClick={cancelRecording}
-                          className="hover:scale-105 transition-transform cursor-pointer"
-                          title="Cancel Recording"
-                        >
-                          <div className="w-12 h-12 bg-gray-400 rounded-full flex items-center justify-center">
-                            <X size={24} className="text-white" />
-                          </div>
-                        </button>
-                      )}
                     </div>
                   </div>
                   
@@ -903,10 +1000,7 @@ export default function Chat() {
                       <div className="mb-2 relative inline-block">
                         <img src={selectedImage} alt="Selected" className="h-16 rounded-lg" width={64} height={64} />
                         <button
-                          onClick={() => {
-                            setSelectedImage(null)
-                            setSelectedImageFile(null)
-                          }}
+                          onClick={handleRemoveImage}
                           className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"
                         >
                           <X size={12} />
@@ -996,6 +1090,17 @@ export default function Chat() {
 
                       {/* Voice Recording Button */}
                       <div className="flex items-center gap-4">
+                        {isRecording && (
+                          <button 
+                            onClick={cancelRecording}
+                            className="hover:scale-105 transition-transform cursor-pointer"
+                            title="Cancel Recording"
+                          >
+                            <div className="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center">
+                              <X size={16} className="text-white" />
+                            </div>
+                          </button>
+                        )}
                         <button 
                           onClick={toggleRecording}
                           disabled={isLoading || isCreatingSession}
@@ -1019,17 +1124,6 @@ export default function Chat() {
                             </svg>
                           )}
                         </button>
-                        {isRecording && (
-                          <button 
-                            onClick={cancelRecording}
-                            className="hover:scale-105 transition-transform cursor-pointer"
-                            title="Cancel Recording"
-                          >
-                            <div className="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center">
-                              <X size={16} className="text-white" />
-                            </div>
-                          </button>
-                        )}
                       </div>
                     </div>
                   </div>

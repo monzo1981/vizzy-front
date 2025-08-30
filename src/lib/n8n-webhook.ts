@@ -45,7 +45,7 @@ export class N8NWebhook {
   private firstName: string = '';
   private lastName: string = '';
 
-  constructor(webhookUrl: string = 'http://localhost:5678/webhook/0d87fbae-5950-418e-b41b-874cccee5252', userId?: string, userEmail?: string) {
+  constructor(webhookUrl: string = 'http://localhost:5678/webhook-test/0d87fbae-5950-418e-b41b-874cccee5252', userId?: string, userEmail?: string) {
     this.webhookUrl = webhookUrl;
     // Always get name fields from localStorage if available
     const user = localStorage.getItem('user');
