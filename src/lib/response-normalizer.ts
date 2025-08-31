@@ -1,4 +1,4 @@
-// lib/response-normalizer.ts - Updated with Arabic text handling
+// lib/response-normalizer.ts - Updated with URL preservation logic
 
 interface NormalizedResponse {
   text: string;
@@ -71,7 +71,7 @@ export class ResponseNormalizer {
     // Handle direct string responses
     if (typeof this.jsonResponse === 'string') {
       console.log("🔤 Direct string response detected");
-      const [urlInText, , remainingText] = this._extractUrlFromText(this.jsonResponse);
+      const [urlInText, remainingText] = this._extractUrlFromText(this.jsonResponse, true); // Keep URL in text
       const cleanedText = ResponseTextCleaner.improveDisplayText(remainingText || this.jsonResponse);
       return { 
         text: cleanedText, 
@@ -89,8 +89,9 @@ export class ResponseNormalizer {
       // Process first item in array
       const firstItem = this.jsonResponse[0];
       if (typeof firstItem === 'string') {
-        const cleanedText = ResponseTextCleaner.improveDisplayText(firstItem);
-        return { text: cleanedText, mediaUrl: undefined };
+        const [urlInText, remainingText] = this._extractUrlFromText(firstItem, true); // Keep URL in text
+        const cleanedText = ResponseTextCleaner.improveDisplayText(remainingText || firstItem);
+        return { text: cleanedText, mediaUrl: urlInText };
       } else if (typeof firstItem === 'object' && firstItem !== null) {
         return this._processObjectResponse(firstItem as { [key: string]: JsonValue });
       }
@@ -114,10 +115,26 @@ export class ResponseNormalizer {
   private _processObjectResponse(obj: { [key: string]: JsonValue }): NormalizedResponse {
     let text: string | undefined;
     let mediaUrl: string | undefined;
+    let isUrlFromSeparateField = false; // Track if URL came from separate field
 
     console.log("🔎 Processing object with keys:", Object.keys(obj));
 
-    // First, try to find direct matches for text and media
+    // First, try to find direct matches for media URLs in separate fields
+    for (const key of Object.keys(obj)) {
+      const lowerKey = key.toLowerCase();
+      const value = obj[key];
+
+      // Check for media URL in separate fields
+      if (!mediaUrl && ResponseNormalizer.URL_KEYWORDS.some(k => lowerKey.includes(k))) {
+        if (typeof value === 'string' && value.startsWith('http')) {
+          mediaUrl = value;
+          isUrlFromSeparateField = true; // Mark as coming from separate field
+          console.log(`✅ Found mediaUrl in separate field '${key}':`, mediaUrl);
+        }
+      }
+    }
+
+    // Then, find text content
     for (const key of Object.keys(obj)) {
       const lowerKey = key.toLowerCase();
       const value = obj[key];
@@ -130,14 +147,6 @@ export class ResponseNormalizer {
         } else if (value !== null && value !== undefined) {
           text = String(value);
           console.log(`✅ Converted non-string text for key '${key}'`);
-        }
-      }
-
-      // Check for media URL
-      if (!mediaUrl && ResponseNormalizer.URL_KEYWORDS.some(k => lowerKey.includes(k))) {
-        if (typeof value === 'string' && value.startsWith('http')) {
-          mediaUrl = value;
-          console.log(`✅ Found mediaUrl for key '${key}':`, mediaUrl);
         }
       }
     }
@@ -154,19 +163,19 @@ export class ResponseNormalizer {
       }
     }
 
-    // Check if text contains embedded URL
-    if (text && !mediaUrl) {
-      const [urlInText, , remainingText] = this._extractUrlFromText(text);
+    // Check if text contains embedded URL (only if we don't have URL from separate field)
+    if (text && !isUrlFromSeparateField) {
+      const [urlInText, remainingText] = this._extractUrlFromText(text, true); // Keep URL in text
       if (urlInText) {
         mediaUrl = urlInText;
-        text = remainingText.trim();
-        console.log("✅ Extracted URL from text content");
+        text = remainingText; // Use the text with URL preserved
+        console.log("✅ Extracted embedded URL from text content, keeping in text");
       }
     }
 
     // Clean up text with Arabic/English improvements
     if (text) {
-      text = ResponseTextCleaner.improveDisplayText(this._cleanText(text));
+      text = ResponseTextCleaner.improveDisplayText(this._cleanText(text, isUrlFromSeparateField));
     }
 
     // Provide fallback text if none found
@@ -189,9 +198,15 @@ export class ResponseNormalizer {
     return result;
   }
 
-  private _extractUrlFromText(text: string): [string | undefined, string | undefined, string] {
+  /**
+   * Extract URL from text with option to preserve it in the text
+   * @param text - The text to search for URLs
+   * @param preserveInText - Whether to keep the URL in the returned text
+   * @returns [extractedUrl, processedText]
+   */
+  private _extractUrlFromText(text: string, preserveInText: boolean = false): [string | undefined, string] {
     if (!text || typeof text !== 'string') {
-      return [undefined, undefined, text || ""];
+      return [undefined, text || ""];
     }
 
     // Multiple patterns to match various URL formats
@@ -208,36 +223,45 @@ export class ResponseNormalizer {
           // Clean URL by removing common trailing characters
           url = this._cleanUrl(url);
           console.log("🔗 URL extracted:", url);
-          const mediaType = this._getMediaType(url);
-          const remainingText = text.replace(match[0], "").trim();
-          return [url, mediaType, remainingText];
+          
+          if (preserveInText) {
+            // Keep URL in text, just clean up the original text
+            const cleanedText = text.trim();
+            return [url, cleanedText];
+          } else {
+            // Remove URL from text (original behavior)
+            const remainingText = text.replace(match[0], "").trim();
+            return [url, remainingText];
+          }
         }
       }
     }
 
-    return [undefined, undefined, text];
+    return [undefined, text];
   }
 
-  private _cleanText(text: string): string {
+  private _cleanText(text: string, hasUrlFromSeparateField: boolean = false): string {
     if (!text || typeof text !== 'string') return "";
     
     // Remove extra whitespace and newlines
     let cleaned = text.replace(/\n\s*\n/g, '\n').trim();
     
-    // Remove common prefixes if they're alone
-    const prefixesToRemove = [
-      'Design image URL:',
-      'Image URL:',
-      'Video link:',
-      'URL:',
-      'Response:',
-      'Output:'
-    ];
-    
-    for (const prefix of prefixesToRemove) {
-      if (cleaned.startsWith(prefix) && cleaned.length === prefix.length) {
-        cleaned = "";
-        break;
+    // Only remove URL-related prefixes if URL came from separate field
+    if (hasUrlFromSeparateField) {
+      const prefixesToRemove = [
+        'Design image URL:',
+        'Image URL:',
+        'Video link:',
+        'URL:',
+        'Response:',
+        'Output:'
+      ];
+      
+      for (const prefix of prefixesToRemove) {
+        if (cleaned.startsWith(prefix) && cleaned.length === prefix.length) {
+          cleaned = "";
+          break;
+        }
       }
     }
     
