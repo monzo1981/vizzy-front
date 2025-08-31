@@ -188,7 +188,7 @@ export default function Chat() {
     // Initialize N8N webhook with user info (only if not already initialized)
     if (!n8nWebhook.current) {
       n8nWebhook.current = new N8NWebhook(
-        process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://monzology.app.n8n.cloud/webhook/2fe03fcd-7ff3-4a55-9d38-064722b844ab',
+        process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'http://localhost:5678/webhook/0d87fbae-5950-418e-b41b-874cccee5252',
         user?.id,
         user?.email
       )
@@ -888,15 +888,18 @@ export default function Chat() {
                                       }}
                                     />
                                   ) : (
-                                    <Image 
-                                      src={message.visual} 
+                                    <img 
+                                      // FIX: Add a unique key to the image to force React to re-render when the URL changes.
+                                      key={message.visual}
+                                      // FIX: Use the image proxy to bypass CORS issues. Append a timestamp to prevent caching.
+                                      src={`/api/image-proxy?imageUrl=${encodeURIComponent(message.visual)}&t=${new Date().getTime()}`}
                                       alt="Generated visual content" 
                                       className="rounded-lg max-w-full max-h-full object-contain"
-                                      width={320}
-                                      height={280}
+                                      style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }}
+                                      // No longer need crossOrigin as the request is to our own server
                                       onError={(e) => {
-                                        console.error('Image failed to load:', message.visual);
-                                        (e.target as HTMLImageElement).style.display = 'none';
+                                        console.error('Image failed to load via proxy:', message.visual);
+                                        (e.currentTarget as HTMLImageElement).style.display = 'none';
                                       }}
                                     />
                                   )}
@@ -1163,12 +1166,11 @@ export default function Chat() {
                     onClick={(e) => e.stopPropagation()}
                   />
                 ) : (
-                  <Image 
-                    src={expandedImage} 
+                  <img 
+                    // FIX: Use the image proxy to bypass CORS issues.
+                    src={`/api/image-proxy?imageUrl=${encodeURIComponent(expandedImage)}`}
                     alt="Expanded view" 
                     className="max-w-full max-h-[90vh] rounded-lg object-contain"
-                    width={1200}
-                    height={900}
                     onClick={(e) => e.stopPropagation()}
                   />
                 )}
