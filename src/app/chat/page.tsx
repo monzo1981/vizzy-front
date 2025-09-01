@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, memo } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, LogOut, MicOff, X, Mic, Wifi, WifiOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -29,6 +29,38 @@ interface Message {
   isVoice?: boolean;
   serviceType?: string;
 }
+
+const StableImage = memo(({ src, alt, className, style, onClick }: { src: string, alt: string, className: string, style: React.CSSProperties, onClick?: (e: React.MouseEvent<HTMLImageElement>) => void }) => {
+    const [imageError, setImageError] = useState(false);
+    const [imageSrc, setImageSrc] = useState('');
+
+    useEffect(() => {
+        if (src) {
+            const urlWithoutTimestamp = src.includes('/api/image-proxy') ? src.split('&t=')[0] : src;
+            if (urlWithoutTimestamp !== imageSrc) {
+                setImageSrc(urlWithoutTimestamp);
+                setImageError(false);
+            }
+        }
+    }, [src, imageSrc]);
+
+    if (imageError || !imageSrc) {
+        return null;
+    }
+
+    return (
+        <img
+            src={imageSrc}
+            alt={alt}
+            className={className}
+            style={style}
+            onClick={onClick}
+            onError={() => setImageError(true)}
+            loading="lazy"
+        />
+    );
+});
+StableImage.displayName = 'StableImage';
 
 export default function Chat() {
   const router = useRouter()
@@ -188,7 +220,7 @@ export default function Chat() {
     // Initialize N8N webhook with user info (only if not already initialized)
     if (!n8nWebhook.current) {
       n8nWebhook.current = new N8NWebhook(
-        process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'http://localhost:5678/webhook/0d87fbae-5950-418e-b41b-874cccee5252',
+        process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://braa355.app.n8n.cloud/webhook/b3e142a5-4664-4dcc-83c3-6ffd76054ebe',
         user?.id,
         user?.email
       )
@@ -501,9 +533,9 @@ export default function Chat() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mediaRecorder = new MediaRecorder(stream, { 
-        mimeType: 'audio/webm' 
-      })
+      // Use a more compatible mimeType if available, falling back to webm
+      const mimeType = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm'
+      const mediaRecorder = new MediaRecorder(stream, { mimeType })
       
       audioChunksRef.current = []
       
@@ -514,12 +546,14 @@ export default function Chat() {
       }
       
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType })
         if (audioBlob.size > 0) {
           const reader = new FileReader()
           
           reader.onloadend = async () => {
-            const base64Audio = reader.result as string
+            const base64AudioWithPrefix = reader.result as string
+            // Remove the data URL prefix (e.g., "data:audio/mp4;base64,")
+            const base64Audio = base64AudioWithPrefix.split(',')[1]
             
             // Create session if needed
             let currentSessionId = sessionId
@@ -888,19 +922,11 @@ export default function Chat() {
                                       }}
                                     />
                                   ) : (
-                                    <img 
-                                      // FIX: Add a unique key to the image to force React to re-render when the URL changes.
-                                      key={message.visual}
-                                      // FIX: Use the image proxy to bypass CORS issues. Append a timestamp to prevent caching.
-                                      src={`/api/image-proxy?imageUrl=${encodeURIComponent(message.visual)}&t=${new Date().getTime()}`}
-                                      alt="Generated visual content" 
+                                    <StableImage
+                                      src={`/api/image-proxy?imageUrl=${encodeURIComponent(message.visual)}`}
+                                      alt="Generated visual content"
                                       className="rounded-lg max-w-full max-h-full object-contain"
                                       style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }}
-                                      // No longer need crossOrigin as the request is to our own server
-                                      onError={(e) => {
-                                        console.error('Image failed to load via proxy:', message.visual);
-                                        (e.currentTarget as HTMLImageElement).style.display = 'none';
-                                      }}
                                     />
                                   )}
                                 </div>
@@ -1166,13 +1192,11 @@ export default function Chat() {
                     onClick={(e) => e.stopPropagation()}
                   />
                 ) : (
-                  <img 
-                    // FIX: Use the image proxy to bypass CORS issues.
-                    src={`/api/image-proxy?imageUrl=${encodeURIComponent(expandedImage)}`}
-                    alt="Expanded view" 
-                    className="max-w-full max-h-[90vh] rounded-lg object-contain"
-                    onClick={(e) => e.stopPropagation()}
-                  />
+                  <StableImage
+                        src={`/api/image-proxy?imageUrl=${encodeURIComponent(expandedImage)}`}
+                        alt="Expanded view"
+                        className="max-w-full max-h-[90vh] rounded-lg object-contain"
+                        onClick={(e) => e.stopPropagation()} style={{}} />
                 )}
               </div>
             </div>

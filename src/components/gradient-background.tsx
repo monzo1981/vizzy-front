@@ -24,7 +24,36 @@ export function GradientBackground({
   // Light mode gradient (original implementation)
   return (
     <div className="min-h-screen w-full relative overflow-hidden">
-      {/* Base gradient background */}
+      {/* CSS Animations */}
+      <style>
+        {`
+          @keyframes floatSlow {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(80px, -60px) scale(1.2); }
+            50% { transform: translate(-60px, 80px) scale(0.8); }
+            75% { transform: translate(100px, 30px) scale(1.1); }
+          }
+          
+          @keyframes floatMedium {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(-100px, 50px) scale(1.3); }
+            66% { transform: translate(120px, -80px) scale(0.7); }
+          }
+          
+          @keyframes floatFast {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(60px, -120px) scale(1.4); }
+          }
+          
+          @keyframes centerFloat {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            33% { transform: translate(-50%, -50%) scale(1.5) translate(80px, -60px); }
+            66% { transform: translate(-50%, -50%) scale(0.6) translate(-40px, 90px); }
+          }
+        `}
+      </style>
+
+      {/* Base gradient background - ثابت */}
       <div 
         className="absolute inset-0"
         style={{
@@ -58,6 +87,7 @@ export function GradientBackground({
               )
             `,
             filter: 'blur(60px)',
+            animation: 'floatSlow 6s ease-in-out infinite'
           }}
         />
         
@@ -74,6 +104,7 @@ export function GradientBackground({
               )
             `,
             filter: 'blur(60px)',
+            animation: 'floatMedium 4s ease-in-out infinite reverse'
           }}
         />
         
@@ -90,12 +121,13 @@ export function GradientBackground({
               )
             `,
             filter: 'blur(30px)',
+            animation: 'floatFast 3s ease-in-out infinite'
           }}
         />
         
         {/* Center floating blob for more depth */}
         <div 
-          className="absolute w-[400px] h-[300px] top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-full opacity-40"
+          className="absolute w-[400px] h-[300px] top-1/2 left-1/2 rounded-full opacity-40"
           style={{
             background: `
               radial-gradient(
@@ -106,11 +138,12 @@ export function GradientBackground({
               )
             `,
             filter: 'blur(35px)',
+            animation: 'centerFloat 7s ease-in-out infinite'
           }}
         />
       </div>
       
-      {/* Subtle noise texture overlay */}
+      {/* Subtle noise texture overlay - ثابت */}
       <div 
         className="absolute inset-0 opacity-20"
         style={{
