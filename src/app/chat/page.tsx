@@ -1,5 +1,7 @@
 "use client"
 
+export const dynamic = 'force-dynamic'  // Add this line
+
 import { useState, useRef, useEffect, memo, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Plus, LogOut, MicOff, X, Mic } from "lucide-react"
@@ -16,7 +18,6 @@ import { TextDirectionHandler } from "@/lib/text-direction-handler"
 import { supabase, type ChatMessage, type ChatMessageDB } from "@/lib/supabase-client"
 import { RealtimeChannel } from "@supabase/supabase-js"
 
-export const dynamic = 'force-dynamic'  // Add this line
 
 // API Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
