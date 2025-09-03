@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useRef, useEffect, memo } from "react"
-import { useRouter } from "next/navigation"
-import { Plus, LogOut, MicOff, X, Mic, Wifi, WifiOff } from "lucide-react"
+import { useState, useRef, useEffect, memo, useCallback } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Plus, LogOut, MicOff, X, Mic } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar } from "@/components/ui/avatar"
 import { GradientBackground } from "../../components/gradient-background"
@@ -10,25 +10,14 @@ import { Sidebar, useSidebar } from "../../components/sidebar"
 import Image from "next/image"
 import { isAuthenticated, getUser, logout, type User } from "@/lib/auth"
 import { N8NWebhook } from "@/lib/n8n-webhook"
-import { N8NWebSocketClient, type N8NUpdate } from "@/lib/n8n-websocket"
 import { ResponseNormalizer } from "@/lib/response-normalizer"
 import { isVideoUrl, getVideoMimeType } from "@/lib/videoUtils"
 import { TextDirectionHandler } from "@/lib/text-direction-handler"
+import { supabase, type ChatMessage, type ChatMessageDB } from "@/lib/supabase-client"
+import { RealtimeChannel } from "@supabase/supabase-js"
 
 // API Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
-
-// Message interface
-interface Message {
-  id: string;
-  content: string;
-  sender: 'user' | 'assistant' | 'system';
-  timestamp: Date;
-  visual?: string;
-  isProcessing?: boolean;
-  isVoice?: boolean;
-  serviceType?: string;
-}
 
 const StableImage = memo(({ src, alt, className, style, onClick }: { src: string, alt: string, className: string, style: React.CSSProperties, onClick?: (e: React.MouseEvent<HTMLImageElement>) => void }) => {
     const [imageError, setImageError] = useState(false);
@@ -64,10 +53,11 @@ StableImage.displayName = 'StableImage';
 
 export default function Chat() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { isOpen, toggle } = useSidebar()
   
   // State Management
-  const [messages, setMessages] = useState<Message[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputValue, setInputValue] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
@@ -75,12 +65,17 @@ export default function Chat() {
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null)
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
-  const [wsConnected, setWsConnected] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
   
   // AI Chat Session State
   const [sessionId, setSessionId] = useState<string | undefined>(undefined)
   const [isCreatingSession, setIsCreatingSession] = useState(false)
+  const [isSubscribed, setIsSubscribed] = useState(false)
+  
+  // Track processed message IDs to prevent duplicates
+  const processedMessageIds = useRef<Set<string>>(new Set())
+  const lastProcessedCount = useRef<number>(0)
+  const channelRef = useRef<RealtimeChannel | null>(null)
   
   // Refs
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -93,8 +88,6 @@ export default function Chat() {
   
   // N8N instances
   const n8nWebhook = useRef<N8NWebhook | null>(null)
-  const wsClient = useRef<N8NWebSocketClient | null>(null)
-  const processedMessages = useRef<Set<string>>(new Set())
 
   // Function to create AI chat session
   const createAIChatSession = async (initialMessage?: string): Promise<string | undefined> => {
@@ -119,12 +112,10 @@ export default function Chat() {
       })
       
       if (!response.ok) {
-        // Log the response body for debugging
         try {
           const errorData = await response.json()
           console.error('Failed to create session:', response.status, errorData)
           
-          // Handle specific error cases
           if (response.status === 403) {
             console.error('Permission denied. User might not be a client or token expired.')
           }
@@ -150,11 +141,98 @@ export default function Chat() {
     }
   }
 
+  // Polling function for first message (fallback)
+  const pollForFirstMessage = useCallback(async (sessionId: string, userMessageId: string) => {
+    let retries = 0;
+    const maxRetries = 10;
+    const interval = 1000; // 1 second
+
+    const poll = async () => {
+      if (retries >= maxRetries) {
+        console.log('⏱️ Polling timeout reached');
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('core_aichatsession')
+          .select('chat_messages')
+          .eq('id', sessionId)
+          .single();
+
+        if (error) {
+          console.error('❌ Error polling for message:', error);
+          retries++;
+          setTimeout(poll, interval);
+          return;
+        }
+
+        const allMessages = data?.chat_messages || [];
+        
+        // Look for new assistant messages after our user message
+        const newAssistantMessages = allMessages.filter((msg: ChatMessageDB, index: number) => {
+          // Generate a unique ID for this message
+          const messageId = `${sessionId}-${index}-${msg.timestamp}`;
+          
+          return msg.role === 'assistant' && 
+                 !processedMessageIds.current.has(messageId) &&
+                 index >= lastProcessedCount.current;
+        });
+
+        if (newAssistantMessages.length > 0) {
+          console.log(`✅ Found ${newAssistantMessages.length} new assistant messages via polling`);
+          
+          // Process new messages
+          const normalizedMessages: ChatMessage[] = newAssistantMessages.map((msg: ChatMessageDB, idx: number) => {
+            const messageIndex = allMessages.indexOf(msg);
+            const messageId = `${sessionId}-${messageIndex}-${msg.timestamp}`;
+            processedMessageIds.current.add(messageId);
+            
+            const normalizer = new ResponseNormalizer(msg.content);
+            const { text, mediaUrl } = normalizer.normalize();
+            
+            return {
+              id: `poll-${Date.now()}-${idx}`,
+              content: text || msg.content,
+              sender: 'assistant' as const,
+              timestamp: new Date(msg.timestamp),
+              visual: mediaUrl || msg.visual,
+              serviceType: msg.service_type,
+              isProcessing: false,
+              isVoice: false
+            };
+          });
+          
+          setMessages(prev => [...prev, ...normalizedMessages]);
+          lastProcessedCount.current = allMessages.length;
+          setIsLoading(false);
+        } else {
+          retries++;
+          setTimeout(poll, interval);
+        }
+      } catch (error) {
+        console.error('❌ Polling error:', error);
+        retries++;
+        setTimeout(poll, interval);
+      }
+    };
+
+    // Start polling
+    poll();
+  }, []);
+
   // Check for existing session on mount
   useEffect(() => {
     const checkExistingSession = () => {
-      // Only check sessionStorage - don't fetch from backend
-      // This ensures new login = new session, but refresh keeps same session
+      const urlSessionId = searchParams.get('id')
+      if (urlSessionId) {
+        console.log('🔗 Using session ID from URL:', urlSessionId)
+        setSessionId(urlSessionId)
+        sessionStorage.setItem('ai_chat_session_id', urlSessionId)
+        return
+      }
+      
       const storedSessionId = sessionStorage.getItem('ai_chat_session_id')
       if (storedSessionId) {
         console.log('📌 Found existing session in storage:', storedSessionId)
@@ -165,7 +243,7 @@ export default function Chat() {
     if (currentUser) {
       checkExistingSession()
     }
-  }, [currentUser])
+  }, [currentUser, searchParams])
 
   // Load dark mode preference from localStorage
   useEffect(() => {
@@ -207,96 +285,223 @@ export default function Chat() {
   }, [messages.length])
 
   useEffect(() => {
-    // Check if user is authenticated
     if (!isAuthenticated()) {
       router.push('/')
       return
     }
 
-    // Get user info
     const user = getUser()
     setCurrentUser(user)
     
-    // Initialize N8N webhook with user info (only if not already initialized)
     if (!n8nWebhook.current) {
       n8nWebhook.current = new N8NWebhook(
-        process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://braa355.app.n8n.cloud/webhook/b3e142a5-4664-4dcc-83c3-6ffd76054ebe',
+        process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://monzology.app.n8n.cloud/webhook/2fe03fcd-7ff3-4a55-9d38-064722b844ab',
         user?.id,
         user?.email
       )
     }
-    
-    // Initialize WebSocket client for N8N updates (only if not already initialized)
-    if (!wsClient.current) {
-      wsClient.current = new N8NWebSocketClient(
-        // Message handler for N8N updates
-        (update: N8NUpdate) => {
-          console.log('📨 N8N Update via WebSocket:', update);
-          const { data } = update;
-          // Handle different message types from N8N
-          if (data.status === 'processing') {
-            setMessages(prev => [...prev, {
-              id: `n8n-${Date.now()}-${Math.random()}`,
-              content: data.message || '🔄 Processing your request...',
-              sender: 'system' as const,
-              timestamp: new Date(),
-              isProcessing: true,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              visual: ("visual_url" in data ? (data as any).visual_url : undefined) || data.visual || data.data?.url
-            }]);
-          } 
-          else if (data.status === 'completed') {
-            setMessages(prev => [...prev, {
-              id: `n8n-complete-${Date.now()}-${Math.random()}`,
-              content: data.message || '✅ Task completed successfully!',
-              sender: 'system' as const,
-              timestamp: new Date(),
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              visual: ("visual_url" in data ? (data as any).visual_url : undefined) || data.visual || data.data?.url,
-              serviceType: data.data?.service_type
-            }]);
-            setIsLoading(false);
-          }
-          else if (data.status === 'error') {
-            setMessages(prev => [...prev, {
-              id: `n8n-error-${Date.now()}-${Math.random()}`,
-              content: data.message || '❌ An error occurred. Please try again.',
-              sender: 'system' as const,
-              timestamp: new Date(),
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              visual: ("visual_url" in data ? (data as any).visual_url : undefined) || data.visual || data.data?.url
-            }]);
-            setIsLoading(false);
-          }
-          else if (data.message) {
-            setMessages(prev => [...prev, {
-              id: `n8n-msg-${Date.now()}-${Math.random()}`,
-              content: typeof data.message === 'string' ? data.message : '',
-              sender: 'system' as const,
-              timestamp: new Date(),
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              visual: ("visual_url" in data ? (data as any).visual_url : undefined) || data.visual || data.data?.url
-            }]);
-          }
-        },
-        // Connection status handler
-        (connected: boolean) => {
-          setWsConnected(connected);
-          console.log(`🔌 WebSocket ${connected ? 'connected ✅' : 'disconnected ❌'}`);
-        }
-      );
-      wsClient.current.connect();
-    }
-    // Cleanup on unmount
-    return () => {
-      wsClient.current?.disconnect();
-    };
   }, [router]);
+
+  // Initialize session and load existing messages
+  useEffect(() => {
+    if (!sessionId) return;
+    
+    console.log('🔄 Initializing session:', sessionId);
+    
+    const loadExistingMessages = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('core_aichatsession')
+          .select('chat_messages')
+          .eq('id', sessionId)
+          .single();
+        
+        if (error) {
+          console.error('❌ Error fetching session:', error);
+          lastProcessedCount.current = 0;
+          return;
+        }
+        
+        const existingMessages = data?.chat_messages || [];
+        console.log(`📊 Session has ${existingMessages.length} existing messages`);
+        
+        // Clear processed IDs for new session
+        processedMessageIds.current.clear();
+        
+        // Load existing messages and mark them as processed
+        if (existingMessages.length > 0) {
+          const uiMessages: ChatMessage[] = existingMessages.map((msg: ChatMessageDB, index: number) => {
+            // Mark this message as processed
+            const messageId = `${sessionId}-${index}-${msg.timestamp}`;
+            processedMessageIds.current.add(messageId);
+            
+            const normalizer = new ResponseNormalizer(msg.content);
+            const { text, mediaUrl } = normalizer.normalize();
+            
+            return {
+              id: `existing-${index}-${Date.now()}`,
+              content: text || msg.content,
+              sender: msg.role === 'user' ? 'user' : 'assistant',
+              timestamp: new Date(msg.timestamp),
+              visual: mediaUrl || msg.visual,
+              serviceType: msg.service_type,
+              isProcessing: false,
+              isVoice: false
+            };
+          });
+          
+          console.log(`📥 Loading ${uiMessages.length} existing messages into UI`);
+          setMessages(uiMessages);
+        }
+        
+        // Update processed count
+        lastProcessedCount.current = existingMessages.length;
+        console.log(`🔢 Set processed count to: ${lastProcessedCount.current}`);
+        
+      } catch (error) {
+        console.error('❌ Error initializing session:', error);
+        lastProcessedCount.current = 0;
+      }
+    };
+    
+    loadExistingMessages();
+  }, [sessionId]);
+
+  // Supabase Realtime subscription - FIXED VERSION
+  useEffect(() => {
+    if (!sessionId) {
+      console.log('⏸️ No session ID, skipping Supabase subscription');
+      return;
+    }
+
+    // Clean up any existing channel
+    if (channelRef.current) {
+      console.log('🧹 Cleaning up existing channel before creating new one');
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
+    console.log('📌 Setting up Supabase Realtime for session:', sessionId);
+    
+    const channel = supabase
+      .channel(`chat-session-${sessionId}-${Date.now()}`) // Unique channel name
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'core_aichatsession',
+          filter: `id=eq.${sessionId}`,
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          console.log('🔨 Supabase Update Received');
+          
+          if (!payload || !payload.new) {
+            console.error('❌ Invalid payload structure');
+            return;
+          }
+          
+          if (!('chat_messages' in payload.new)) {
+            console.error('❌ chat_messages not found in payload');
+            return;
+          }
+          
+          const allMessages = payload.new.chat_messages as ChatMessageDB[];
+          console.log(`📊 Total messages in DB: ${allMessages.length}, Processed: ${lastProcessedCount.current}`);
+          
+          // Only process new messages
+          if (allMessages.length > lastProcessedCount.current) {
+            const newMessages = allMessages.slice(lastProcessedCount.current);
+            console.log(`✨ Processing ${newMessages.length} new messages`);
+            
+            // Filter and process only assistant messages that we haven't seen
+            const assistantMessages = newMessages.filter((msg: ChatMessageDB, localIndex: number) => {
+              const globalIndex = lastProcessedCount.current + localIndex;
+              const messageId = `${sessionId}-${globalIndex}-${msg.timestamp}`;
+              
+              // Check if we've already processed this message
+              if (processedMessageIds.current.has(messageId)) {
+                console.log(`⏭️ Skipping already processed message: ${messageId}`);
+                return false;
+              }
+              
+              return msg.role === 'assistant';
+            });
+            
+            console.log(`🤖 Found ${assistantMessages.length} new assistant messages to add`);
+            
+            if (assistantMessages.length > 0) {
+              const normalizedMessages: ChatMessage[] = assistantMessages.map((msg: ChatMessageDB, localIndex: number) => {
+                // Calculate the global index for this message
+                const messagePosition = allMessages.indexOf(msg);
+                const messageId = `${sessionId}-${messagePosition}-${msg.timestamp}`;
+                
+                // Mark as processed
+                processedMessageIds.current.add(messageId);
+                console.log(`✅ Processing message ID: ${messageId}`);
+                
+                const normalizer = new ResponseNormalizer(msg.content);
+                const { text, mediaUrl } = normalizer.normalize();
+                
+                return {
+                  id: `rt-${Date.now()}-${localIndex}`,
+                  content: text || msg.content,
+                  sender: 'assistant' as const,
+                  timestamp: new Date(msg.timestamp),
+                  visual: mediaUrl || msg.visual,
+                  serviceType: msg.service_type,
+                  isProcessing: false,
+                  isVoice: false
+                };
+              });
+              
+              console.log('➕ Adding new messages to UI');
+              setMessages(prev => [...prev, ...normalizedMessages]);
+              setIsLoading(false);
+            }
+            
+            // Update the processed count
+            lastProcessedCount.current = allMessages.length;
+            console.log(`🔢 Updated processed count to: ${lastProcessedCount.current}`);
+          } else {
+            console.log('ℹ️ No new messages to process');
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Supabase subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Successfully subscribed to Supabase Realtime');
+          setIsSubscribed(true);
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Supabase channel error');
+          setIsSubscribed(false);
+        } else if (status === 'TIMED_OUT') {
+          console.error('⏱️ Supabase subscription timed out');
+          setIsSubscribed(false);
+        } else if (status === 'CLOSED') {
+          console.log('🔒 Supabase channel closed');
+          setIsSubscribed(false);
+        }
+      });
+    
+    channelRef.current = channel;
+    
+    // Cleanup subscription
+    return () => {
+      console.log('🧹 Cleaning up Supabase subscription');
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+      setIsSubscribed(false);
+    };
+  }, [sessionId]);
 
   const hasMessages = messages.length > 0
 
   useEffect(() => {
-    // Auto-focus on the correct input field
     if (hasMessages) {
       compactInputRef.current?.focus()
     } else {
@@ -308,13 +513,10 @@ export default function Chat() {
     const handleKeyDown = (event: KeyboardEvent) => {
       const activeElement = document.activeElement;
 
-      // Ignore if modifier keys are pressed (e.g., Ctrl, Cmd)
       if (event.metaKey || event.ctrlKey) {
         return;
       }
 
-      // Ignore if the user is already focused on an input, textarea, or select field,
-      // or if a modal/dialog is active.
       if (
         activeElement &&
         (activeElement.tagName === 'INPUT' ||
@@ -325,29 +527,22 @@ export default function Chat() {
         return;
       }
       
-      // Ignore if the image viewer modal is open
       if (expandedImage) {
         return;
       }
 
-      // Filter for printable characters by checking if the key has a single character length.
-      // This excludes special keys like "Enter", "Shift", "Tab", "Escape", etc.
       if (event.key.length !== 1) {
         return;
       }
       
-      // Prevent the default browser action for the key press
       event.preventDefault();
 
-      // Determine the correct textarea to target based on whether messages exist
       const targetRef = hasMessages ? compactInputRef : inputRef;
       const textarea = targetRef.current;
 
       if (textarea) {
-        // Immediately focus the determined textarea
         textarea.focus();
 
-        // Insert the typed character at the current cursor position
         const currentVal = textarea.value;
         const selectionStart = textarea.selectionStart;
         const selectionEnd = textarea.selectionEnd;
@@ -357,33 +552,26 @@ export default function Chat() {
           event.key + 
           currentVal.substring(selectionEnd);
         
-        // Update the component state with the new value
         setInputValue(newValue);
 
-        // Use a timeout to set the cursor position after the state update and re-render,
-        // and to trigger the auto-resize logic.
         setTimeout(() => {
           const newCursorPosition = selectionStart + 1;
           textarea.setSelectionRange(newCursorPosition, newCursorPosition);
           
-          // Manually trigger the auto-resize logic present in the onChange handler
           const event = new Event('input', { bubbles: true });
           textarea.dispatchEvent(event);
         }, 0);
       }
     };
 
-    // Add the global event listener
     document.addEventListener('keydown', handleKeyDown);
 
-    // Cleanup: remove the event listener when the component unmounts
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [hasMessages, setInputValue, expandedImage, inputRef, compactInputRef]); // Dependencies for the effect
+  }, [hasMessages, setInputValue, expandedImage, inputRef, compactInputRef]);
 
   const handleLogout = () => {
-    // Clear session data
     sessionStorage.removeItem('ai_chat_session_id')
     logout()
     router.push('/')
@@ -397,10 +585,21 @@ export default function Chat() {
     }
   };
 
-  // Helper function to check if URL is base64
   const isBase64Image = (url: string | undefined): boolean => {
     if (!url) return false
     return url.startsWith('data:image')
+  }
+
+  // Helper function to convert messages to chat history format
+  const messagesToChatHistory = (messages: ChatMessage[]) => {
+    return messages.map(msg => ({
+      role: msg.sender === 'user' ? 'user' as const : 
+            msg.sender === 'assistant' ? 'assistant' as const : 
+            'system' as const,
+      content: msg.content,
+      timestamp: msg.timestamp.toISOString(),
+      visual: msg.visual
+    }));
   }
 
   const handleSend = async (message?: string) => {
@@ -410,14 +609,14 @@ export default function Chat() {
     if (!messageToSend && !selectedImage) return
     if (!n8nWebhook.current) return
 
-    // Create session on first message if not exists
     let currentSessionId = sessionId
-    if (!currentSessionId && !isCreatingSession) {
+    const isFirstMessage = !currentSessionId;
+    
+    if (isFirstMessage && !isCreatingSession) {
       console.log('🚀 Creating new AI chat session for first message...')
       currentSessionId = await createAIChatSession(messageToSend)
       if (!currentSessionId) {
         console.error('Failed to create AI chat session')
-        // Show error to user
         setMessages(prev => [...prev, {
           id: `error-${Date.now()}`,
           content: 'Failed to start chat session. Please try again.',
@@ -426,11 +625,12 @@ export default function Chat() {
         }])
         return
       }
+      // Wait a bit for subscription to be ready
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    // Add user message immediately WITH IMAGE if exists
-    const userMessage: Message = {
-      id: `msg-${Date.now()}`,
+    const userMessage: ChatMessage = {
+      id: `user-${Date.now()}`,
       content: messageToSend || (selectedImage ? 'Sent an image' : ''),
       sender: 'user',
       timestamp: new Date(),
@@ -438,7 +638,6 @@ export default function Chat() {
     }
     setMessages(prev => [...prev, userMessage])
     setInputValue("")
-    // Clear image immediately after sending
     setSelectedImage(null)
     setSelectedImageFile(null)
     if (fileInputRef.current) {
@@ -447,56 +646,34 @@ export default function Chat() {
     setIsLoading(true)
 
     try {
-      let response;
+      const chatHistory = messagesToChatHistory(messages);
       
       if (selectedImage && selectedImageFile) {
-        // Convert image to base64 and send with optional text
         const reader = new FileReader()
         const base64 = await new Promise<string>((resolve) => {
           reader.onloadend = () => resolve(reader.result as string)
           reader.readAsDataURL(selectedImageFile)
         })
-        response = await n8nWebhook.current.sendImageMessage(base64, messageToSend, currentSessionId)
+        await n8nWebhook.current.sendImageMessage(base64, messageToSend, currentSessionId, chatHistory)
       } else {
-        // Send text only with session ID
-        response = await n8nWebhook.current.sendMessage(messageToSend, currentSessionId)
+        await n8nWebhook.current.sendMessage(messageToSend, currentSessionId, chatHistory)
       }
-
-      console.log("📥 N8N Direct Response:", response);
-
-      const normalizer = new ResponseNormalizer(response);
-      const { text, mediaUrl } = normalizer.normalize();
-
-      if (text || mediaUrl) {
-          const assistantMessage: Message = {
-              id: `msg-${Date.now()}`,
-              content: text || "Content generated successfully",
-              sender: 'assistant',
-              timestamp: new Date(),
-              visual: mediaUrl
-          };
-          setMessages(prev => [...prev, assistantMessage]);
-      } else {
-          // Handle cases where nothing is extracted
-          console.error("ResponseNormalizer failed to extract content from response:", response);
-          const fallbackMessage: Message = {
-              id: `msg-${Date.now()}`,
-              content: "I received your request and I'm processing it.",
-              sender: 'assistant',
-              timestamp: new Date(),
-          };
-          setMessages(prev => [...prev, fallbackMessage]);
+      console.log("✅ Message sent to N8N successfully");
+      
+      // For first message or if subscription is not ready, use polling
+      if (isFirstMessage || !isSubscribed) {
+        console.log("📊 Using polling for first message or unsubscribed state");
+        pollForFirstMessage(currentSessionId!, userMessage.id);
       }
     } catch (error) {
-      console.error('Error:', error)
-      const errorMessage: Message = {
-        id: `msg-${Date.now()}`,
+      console.error('Error sending message to N8N:', error)
+      const errorMessage: ChatMessage = {
+        id: `error-${Date.now()}`,
         content: 'Sorry, something went wrong. Please try again.',
         sender: 'assistant',
         timestamp: new Date()
       }
       setMessages(prev => [...prev, errorMessage])
-    } finally {
       setIsLoading(false)
     }
   }
@@ -504,13 +681,11 @@ export default function Chat() {
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      // Validate file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         alert("Image size must be less than 10MB")
         return
       }
       
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         alert("Please select an image file")
         return
@@ -524,7 +699,6 @@ export default function Chat() {
       reader.readAsDataURL(file)
     }
 
-    // Reset the file input value to allow re-uploading the same file.
     if (e.target) {
       e.target.value = "";
     }
@@ -533,7 +707,6 @@ export default function Chat() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      // Use a more compatible mimeType if available, falling back to webm
       const mimeType = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm'
       const mediaRecorder = new MediaRecorder(stream, { mimeType })
       
@@ -552,22 +725,23 @@ export default function Chat() {
           
           reader.onloadend = async () => {
             const base64AudioWithPrefix = reader.result as string
-            // Remove the data URL prefix (e.g., "data:audio/mp4;base64,")
             const base64Audio = base64AudioWithPrefix.split(',')[1]
             
-            // Create session if needed
             let currentSessionId = sessionId
-            if (!currentSessionId && !isCreatingSession) {
+            const isFirstMessage = !currentSessionId;
+            
+            if (isFirstMessage && !isCreatingSession) {
               currentSessionId = await createAIChatSession('Voice message')
               if (!currentSessionId) {
                 console.error('Failed to create AI chat session for voice')
                 return
               }
+              // Wait for subscription
+              await new Promise(resolve => setTimeout(resolve, 500));
             }
             
-            // Add voice indicator message for user
-            const voiceMessage: Message = {
-              id: `msg-voice-${Date.now()}`,
+            const voiceMessage: ChatMessage = {
+              id: `voice-${Date.now()}`,
               content: '🎤 Voice message',
               sender: 'user',
               timestamp: new Date(),
@@ -575,41 +749,29 @@ export default function Chat() {
             }
             setMessages(prev => [...prev, voiceMessage])
             
-            // Add loading state
             setIsLoading(true)
             
             try {
               if (n8nWebhook.current) {
-                const response = await n8nWebhook.current.sendVoiceMessage(base64Audio, currentSessionId)
+                const chatHistory = messagesToChatHistory(messages);
+                await n8nWebhook.current.sendVoiceMessage(base64Audio, currentSessionId, chatHistory)
+                console.log("🎤 Voice message sent to N8N successfully");
                 
-                console.log("🎤 Voice response:", response);
-                
-                // Process the AI response separately
-                const normalizer = new ResponseNormalizer(response);
-                const { text, mediaUrl } = normalizer.normalize();
-                
-                if (text || mediaUrl) {
-                  // Add AI response as a separate assistant message
-                  const assistantMessage: Message = {
-                    id: `msg-${Date.now()}`,
-                    content: text || "I received your voice message",
-                    sender: 'assistant',
-                    timestamp: new Date(),
-                    visual: mediaUrl
-                  }
-                  setMessages(prev => [...prev, assistantMessage])
+                // Use polling for first message
+                if (isFirstMessage || !isSubscribed) {
+                  console.log("📊 Using polling for voice message");
+                  pollForFirstMessage(currentSessionId!, voiceMessage.id);
                 }
               }
             } catch (error) {
               console.error('Error processing voice:', error)
-              const errorMessage: Message = {
-                id: `msg-${Date.now()}`,
+              const errorMessage: ChatMessage = {
+                id: `error-${Date.now()}`,
                 content: 'Failed to process voice message. Please try again.',
                 sender: 'assistant',
                 timestamp: new Date()
               }
               setMessages(prev => [...prev, errorMessage])
-            } finally {
               setIsLoading(false)
             }
           }
@@ -617,7 +779,6 @@ export default function Chat() {
           reader.readAsDataURL(audioBlob)
         }
         
-        // Stop all tracks
         stream.getTracks().forEach(track => track.stop())
       }
       
@@ -639,10 +800,8 @@ export default function Chat() {
 
   const cancelRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
-      // Detach the onstop handler to prevent sending the recording
       mediaRecorderRef.current.onstop = () => { 
         console.log("Recording cancelled.");
-        // Stop the stream tracks
         mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
       };
       mediaRecorderRef.current.stop();
@@ -678,7 +837,6 @@ export default function Chat() {
                   width={300}
                   height={200}
                 />
-
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -906,8 +1064,8 @@ export default function Chat() {
                                       style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }}
                                       crossOrigin="anonymous"
                                     >
-                                      <source src={message.visual} type={getVideoMimeType(message.visual)} />
-                                      <source src={message.visual} type="video/mp4" />
+                                      <source src={`/api/video-proxy?videoUrl=${encodeURIComponent(message.visual)}`} type={getVideoMimeType(message.visual)} />
+                                      <source src={`/api/video-proxy?videoUrl=${encodeURIComponent(message.visual)}`} type="video/mp4" />
                                       Your browser does not support the video tag.
                                     </video>
                                   ) : isBase64Image(message.visual) ? (
@@ -1181,7 +1339,7 @@ export default function Chat() {
                     className="max-w-full max-h-[90vh] rounded-lg"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <source src={expandedImage} type={getVideoMimeType(expandedImage)} />
+                    <source src={`/api/video-proxy?videoUrl=${encodeURIComponent(expandedImage)}`} type={getVideoMimeType(expandedImage)} />
                     Your browser does not support the video tag.
                   </video>
                 ) : isBase64Image(expandedImage) ? (

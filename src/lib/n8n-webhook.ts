@@ -21,6 +21,13 @@ interface N8NRequest {
   company_name?: string;
   company_website_url?: string;
   logo_url?: string;
+  // Chat history
+  chat_history?: Array<{
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+    timestamp?: string;
+    visual?: string;
+  }>;
 }
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
@@ -58,7 +65,7 @@ export class N8NWebhook {
   private companyProfile: CompanyProfile | null = null;
   private profileFetched: boolean = false;
 
-  constructor(webhookUrl: string = 'https://braa355.app.n8n.cloud/webhook/b3e142a5-4664-4dcc-83c3-6ffd76054ebe', userId?: string, userEmail?: string) {
+  constructor(webhookUrl: string = 'https://monzology.app.n8n.cloud/webhook/2fe03fcd-7ff3-4a55-9d38-064722b844ab', userId?: string, userEmail?: string) {
     this.webhookUrl = webhookUrl;
     // Always get name fields from localStorage if available
     const user = localStorage.getItem('user');
@@ -174,7 +181,16 @@ export class N8NWebhook {
     }
   }
 
-  async sendMessage(message: string, sessionId?: string): Promise<N8NResponse> {
+  async sendMessage(
+    message: string, 
+    sessionId?: string, 
+    chatHistory?: Array<{
+      role: 'user' | 'assistant' | 'system';
+      content: string;
+      timestamp?: string;
+      visual?: string;
+    }>
+  ): Promise<N8NResponse> {
     try {
       console.log('Sending message to N8N:', message);
 
@@ -206,6 +222,8 @@ export class N8NWebhook {
           company_name: this.companyProfile?.company_name || null,
           company_website_url: this.companyProfile?.company_website_url || null,
           logo_url: this.companyProfile?.logo_url || null,
+          // Add chat history
+          chat_history: chatHistory || [],
         } as N8NRequest),
       });
 
@@ -224,7 +242,16 @@ export class N8NWebhook {
     }
   }
 
-  async sendVoiceMessage(audioData: string, sessionId?: string): Promise<N8NResponse> {
+  async sendVoiceMessage(
+    audioData: string, 
+    sessionId?: string, 
+    chatHistory?: Array<{
+      role: 'user' | 'assistant' | 'system';
+      content: string;
+      timestamp?: string;
+      visual?: string;
+    }>
+  ): Promise<N8NResponse> {
     try {
       console.log('Sending voice message to N8N');
 
@@ -255,6 +282,8 @@ export class N8NWebhook {
           company_name: this.companyProfile?.company_name || null,
           company_website_url: this.companyProfile?.company_website_url || null,
           logo_url: this.companyProfile?.logo_url || null,
+          // Add chat history
+          chat_history: chatHistory || [],
         } as N8NRequest),
       });
 
@@ -273,7 +302,17 @@ export class N8NWebhook {
     }
   }
 
-  async sendImageMessage(imageData: string, text?: string, sessionId?: string): Promise<N8NResponse> {
+  async sendImageMessage(
+    imageData: string, 
+    text?: string, 
+    sessionId?: string, 
+    chatHistory?: Array<{
+      role: 'user' | 'assistant' | 'system';
+      content: string;
+      timestamp?: string;
+      visual?: string;
+    }>
+  ): Promise<N8NResponse> {
     try {
       console.log('Sending image message to N8N with text:', text);
 
@@ -305,6 +344,8 @@ export class N8NWebhook {
           company_name: this.companyProfile?.company_name || null,
           company_website_url: this.companyProfile?.company_website_url || null,
           logo_url: this.companyProfile?.logo_url || null,
+          // Add chat history
+          chat_history: chatHistory || [],
         } as N8NRequest),
       });
 

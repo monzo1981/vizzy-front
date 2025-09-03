@@ -1,4 +1,4 @@
-// lib/response-normalizer.ts - Updated with URL preservation logic
+// lib/response-normalizer.ts - Fixed version with proper URL extraction
 
 interface NormalizedResponse {
   text: string;
@@ -60,7 +60,22 @@ export class ResponseNormalizer {
   }
 
   public normalize(): NormalizedResponse {
-    console.log("🔍 Starting normalization with response:", JSON.stringify(this.jsonResponse, null, 2));
+    // Better logging for debugging
+    let logText = "";
+    if (typeof this.jsonResponse === 'string') {
+      logText = this.jsonResponse.substring(0, 300);
+      // Log if we can see a URL in the raw text
+      if (this.jsonResponse.includes('http')) {
+        const urlMatch = this.jsonResponse.match(/(https?:\/\/\S+)/);
+        if (urlMatch) {
+          console.log("🔍 Raw URL found in response:", urlMatch[0]);
+        }
+      }
+    } else {
+      logText = JSON.stringify(this.jsonResponse, null, 2);
+    }
+    
+    console.log("🔍 Starting normalization with response:", logText);
     
     // Handle null/undefined responses
     if (this.jsonResponse === null || this.jsonResponse === undefined) {
@@ -71,12 +86,31 @@ export class ResponseNormalizer {
     // Handle direct string responses
     if (typeof this.jsonResponse === 'string') {
       console.log("🔤 Direct string response detected");
-      const [urlInText, remainingText] = this._extractUrlFromText(this.jsonResponse, true); // Keep URL in text
-      const cleanedText = ResponseTextCleaner.improveDisplayText(remainingText || this.jsonResponse);
-      return { 
+      
+      // Clean the string first to handle escaped characters
+      const cleanedResponse = this.jsonResponse.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
+      
+      // Log the full text if it contains a URL for debugging
+      if (cleanedResponse.includes('http')) {
+        const urlIndex = cleanedResponse.indexOf('http');
+        console.log("📍 URL found at index", urlIndex);
+        console.log("📝 Text around URL:", cleanedResponse.substring(Math.max(0, urlIndex - 20), Math.min(cleanedResponse.length, urlIndex + 150)));
+      }
+      
+      const [urlInText, remainingText] = this._extractUrlFromText(cleanedResponse, true); // Keep URL in text
+      const cleanedText = ResponseTextCleaner.improveDisplayText(remainingText || cleanedResponse);
+      
+      const result = { 
         text: cleanedText, 
         mediaUrl: urlInText 
       };
+      
+      console.log("📦 Final normalized result:", {
+        text: result.text.substring(0, 100) + "...",
+        mediaUrl: result.mediaUrl
+      });
+      
+      return result;
     }
 
     // Handle array responses (N8N often returns arrays)
@@ -89,8 +123,9 @@ export class ResponseNormalizer {
       // Process first item in array
       const firstItem = this.jsonResponse[0];
       if (typeof firstItem === 'string') {
-        const [urlInText, remainingText] = this._extractUrlFromText(firstItem, true); // Keep URL in text
-        const cleanedText = ResponseTextCleaner.improveDisplayText(remainingText || firstItem);
+        const cleanedItem = firstItem.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
+        const [urlInText, remainingText] = this._extractUrlFromText(cleanedItem, true); // Keep URL in text
+        const cleanedText = ResponseTextCleaner.improveDisplayText(remainingText || cleanedItem);
         return { text: cleanedText, mediaUrl: urlInText };
       } else if (typeof firstItem === 'object' && firstItem !== null) {
         return this._processObjectResponse(firstItem as { [key: string]: JsonValue });
@@ -127,7 +162,7 @@ export class ResponseNormalizer {
       // Check for media URL in separate fields
       if (!mediaUrl && ResponseNormalizer.URL_KEYWORDS.some(k => lowerKey.includes(k))) {
         if (typeof value === 'string' && value.startsWith('http')) {
-          mediaUrl = value;
+          mediaUrl = this._cleanUrl(value);
           isUrlFromSeparateField = true; // Mark as coming from separate field
           console.log(`✅ Found mediaUrl in separate field '${key}':`, mediaUrl);
         }
@@ -209,34 +244,46 @@ export class ResponseNormalizer {
       return [undefined, text || ""];
     }
 
-    // Multiple patterns to match various URL formats
+    // Improved patterns to match URLs and stop at newlines or problematic characters
     const urlPatterns = [
-      /(?:(Design image URL|Image URL|Video link|URL):\s*\n*)?(https?:\/\/[^\s'"<>\n\)\]]+)/gi,
-      /(https?:\/\/[^\s'"<>\n\)\]]+)/gi
+      // Pattern that captures URLs with optional prefix and stops at newlines
+      /(?:(Design image URL|Image URL|Video link|URL):\s*\n*)?(https?:\/\/[^\s'"<>\n\r\)\]]+(?:\.[^\s'"<>\n\r\)\]]+)*)/gi,
+      // Fallback pattern for standalone URLs
+      /(https?:\/\/[^\s'"<>\n\r\)\]]+(?:\.[^\s'"<>\n\r\)\]]+)*)/gi
     ];
 
     for (const pattern of urlPatterns) {
+      pattern.lastIndex = 0; // Reset regex state
       const matches = text.matchAll(pattern);
+      
       for (const match of matches) {
+        console.log("🎯 Regex match found:", match[0]);
         let url = match[2] || match[1] || match[0];
+        console.log("🔗 Extracted URL candidate:", url);
+        
         if (url && url.startsWith('http')) {
-          // Clean URL by removing common trailing characters
+          // Clean URL thoroughly
           url = this._cleanUrl(url);
-          console.log("🔗 URL extracted:", url);
           
-          if (preserveInText) {
-            // Keep URL in text, just clean up the original text
-            const cleanedText = text.trim();
-            return [url, cleanedText];
-          } else {
-            // Remove URL from text (original behavior)
-            const remainingText = text.replace(match[0], "").trim();
-            return [url, remainingText];
+          // Validate URL is still valid after cleaning
+          if (url && url.startsWith('http') && !url.includes('\\n') && !url.includes('\\r')) {
+            console.log("✅ Valid URL extracted:", url);
+            
+            if (preserveInText) {
+              // Keep URL in text, just clean up the original text
+              const cleanedText = text.trim();
+              return [url, cleanedText];
+            } else {
+              // Remove URL from text (original behavior)
+              const remainingText = text.replace(match[0], "").trim();
+              return [url, remainingText];
+            }
           }
         }
       }
     }
 
+    console.log("⚠️ No valid URL found in text");
     return [undefined, text];
   }
 
@@ -280,7 +327,7 @@ export class ResponseNormalizer {
     }
     
     // Check for known media services
-    const mediaServices = ['cloudinary', 'supabase', 'imgur', 'youtube', 'vimeo'];
+    const mediaServices = ['cloudinary', 'supabase', 'imgur', 'youtube', 'vimeo', 'vizzystorage'];
     return mediaServices.some(service => lowerUrl.includes(service));
   }
 
@@ -307,12 +354,31 @@ export class ResponseNormalizer {
   private _cleanUrl(url: string): string {
     if (!url) return url;
     
-    // Remove common trailing characters that might accidentally get included
-    const trailingCharsToRemove = /[)\]\}>\s.,;!]+$/;
-    let cleanedUrl = url.replace(trailingCharsToRemove, '');
+    // First, handle escaped newlines by replacing them with actual newlines
+    let cleanedUrl = url.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
     
-    // Also remove any markdown link syntax at the end
-    cleanedUrl = cleanedUrl.replace(/\)$/, '');
+    // Then split at actual newline characters
+    cleanedUrl = cleanedUrl.split('\n')[0];
+    cleanedUrl = cleanedUrl.split('\r')[0];
+    
+    // Remove any text after common sentence endings (but be careful)
+    // Only if followed by capital letter or "If", "Want", etc.
+    cleanedUrl = cleanedUrl.replace(/\s+(If|Want|Need|Let|Just|Click)\s.*/i, '');
+    
+    // Remove common trailing punctuation that's definitely not part of URL
+    // But preserve dots, hyphens, and other URL-valid characters
+    cleanedUrl = cleanedUrl.replace(/[\s\)\]\}>,;!]+$/, '');
+    
+    // Remove any trailing backslashes that aren't part of the URL
+    cleanedUrl = cleanedUrl.replace(/\\+$/, '');
+    
+    // Final trim
+    cleanedUrl = cleanedUrl.trim();
+    
+    // Only log if actually changed
+    if (url !== cleanedUrl) {
+      console.log("🧹 URL cleaned from:", url, "to:", cleanedUrl);
+    }
     
     return cleanedUrl;
   }

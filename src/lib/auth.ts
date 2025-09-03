@@ -279,6 +279,9 @@ export const logout = () => {
   localStorage.removeItem('refresh_token');
   localStorage.removeItem('user');
   
+  // Clear company profile cache
+  localStorage.removeItem('company_profile');
+  
   console.log('[Auth] User logged out');
 };
 
