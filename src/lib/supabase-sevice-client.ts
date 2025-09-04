@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 // Use service role key for testing (not for production!)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 // This would need to be the service role key from Django backend
-const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_KEY!
 
 if (!supabaseUrl || !supabaseServiceKey) {
   throw new Error('Supabase URL and service key are required.')

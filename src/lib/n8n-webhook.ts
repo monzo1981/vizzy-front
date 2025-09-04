@@ -1,7 +1,7 @@
 // lib/n8n-webhook.ts
 // Direct communication with N8N webhook - no backend needed
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 interface N8NRequest {
   message?: string;
@@ -65,7 +65,7 @@ export class N8NWebhook {
   private companyProfile: CompanyProfile | null = null;
   private profileFetched: boolean = false;
 
-  constructor(webhookUrl: string = 'https://monzology.app.n8n.cloud/webhook/2fe03fcd-7ff3-4a55-9d38-064722b844ab', userId?: string, userEmail?: string) {
+  constructor(webhookUrl: string = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL!, userId?: string, userEmail?: string) {
     this.webhookUrl = webhookUrl;
     // Always get name fields from localStorage if available
     const user = localStorage.getItem('user');
@@ -205,7 +205,7 @@ export class N8NWebhook {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
           '_method': 'POST',
-          'key': 'RdMguPBDn8_a60TKTsTh06HnLIJ3To3TY0u_rCWggEU'
+          'key': process.env.NEXT_PUBLIC_N8N_WEBHOOK_KEY!
         },
         body: JSON.stringify({
           message: message,
@@ -265,7 +265,7 @@ export class N8NWebhook {
         headers: {
           'Content-Type': 'application/json',
           '_method': 'POST',
-          'key': 'RdMguPBDn8_a60TKTsTh06HnLIJ3To3TY0u_rCWggEU'
+          'key': process.env.NEXT_PUBLIC_N8N_WEBHOOK_KEY!
         },
         body: JSON.stringify({
           audio_data: audioData,
@@ -326,7 +326,7 @@ export class N8NWebhook {
         headers: {
           'Content-Type': 'application/json',
           '_method': 'POST',
-          'key': 'RdMguPBDn8_a60TKTsTh06HnLIJ3To3TY0u_rCWggEU'
+          'key': process.env.NEXT_PUBLIC_N8N_WEBHOOK_KEY!
         },
         body: JSON.stringify({
           message: text,
