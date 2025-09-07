@@ -65,7 +65,7 @@ export default function Chat() {
   const [isLoading, setIsLoading] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
-  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null)
+  
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [isDarkMode, setIsDarkMode] = useState(false)
@@ -582,7 +582,6 @@ export default function Chat() {
 
   const handleRemoveImage = () => {
     setSelectedImage(null);
-    setSelectedImageFile(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -642,7 +641,6 @@ export default function Chat() {
     setMessages(prev => [...prev, userMessage])
     setInputValue("")
     setSelectedImage(null)
-    setSelectedImageFile(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -651,13 +649,8 @@ export default function Chat() {
     try {
       const chatHistory = messagesToChatHistory(messages);
       
-      if (selectedImage && selectedImageFile) {
-        const reader = new FileReader()
-        const base64 = await new Promise<string>((resolve) => {
-          reader.onloadend = () => resolve(reader.result as string)
-          reader.readAsDataURL(selectedImageFile)
-        })
-        await n8nWebhook.current.sendImageMessage(base64, messageToSend, currentSessionId, chatHistory)
+      if (selectedImage) {
+        await n8nWebhook.current.sendImageMessage(selectedImage, messageToSend, currentSessionId, chatHistory);
       } else {
         await n8nWebhook.current.sendMessage(messageToSend, currentSessionId, chatHistory)
       }
@@ -681,31 +674,63 @@ export default function Chat() {
     }
   }
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+  const handleImageUpload = async (file: File): Promise<string | null> => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      console.error('No auth token found');
+      return null;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/upload/image/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Failed to upload image:', response.status, errorData);
+        return null;
+      }
+
+      const data = await response.json();
+      return data.public_url;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      return null;
+    }
+  };
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        alert("Image size must be less than 10MB")
-        return
+        alert("Image size must be less than 10MB");
+        return;
       }
-      
+
       if (!file.type.startsWith('image/')) {
-        alert("Please select an image file")
-        return
+        alert("Please select an image file");
+        return;
       }
-      
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setSelectedImage(reader.result as string)
-        setSelectedImageFile(file)
+
+      const publicUrl = await handleImageUpload(file);
+
+      if (publicUrl) {
+        setSelectedImage(publicUrl);
       }
-      reader.readAsDataURL(file)
     }
 
     if (e.target) {
       e.target.value = "";
     }
-  }
+  };
 
   const startRecording = async () => {
     try {
