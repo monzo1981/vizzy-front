@@ -37,6 +37,7 @@ import { GradientBackground } from "@/components/gradient-background"
 export default function ProfilePage() {
   const [sidebarExpanded, setSidebarExpanded] = useState(false)
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [companyProfile, setCompanyProfile] = useState<any | null>(null)
   const [isDarkMode, setIsDarkMode] = useState(false)
   const router = useRouter()
@@ -295,7 +296,7 @@ export default function ProfilePage() {
                           </div>
                           <div>
                             <p className="text-sm text-gray-500 mb-1">Phone</p>
-                            <p className="font-medium">{currentUser ? currentUser.phone : '+20 108888 0023'}</p>
+                            {/* <p className="font-medium">{currentUser ? currentUser.phone : '+20 108888 0023'}</p> */}
                           </div>
                           <div>
                             <p className="text-sm text-gray-500 mb-1">Company Name</p>
