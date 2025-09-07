@@ -12,6 +12,9 @@ export interface User {
   user_type: string;
   first_name: string;
   last_name: string;
+  email_verified: boolean;
+  phone_number?: string | null;
+  profile_picture_url?: string | null;
 }
 
 interface LoginResponse {
@@ -292,6 +295,12 @@ export const getAccessToken = (): string | null => {
 export const getUser = (): User | null => {
   const user = localStorage.getItem('user');
   return user ? JSON.parse(user) : null;
+};
+
+export const updateUser = (updatedUser: User): void => {
+  localStorage.setItem('user', JSON.stringify(updatedUser));
+  // Clean up any old userData key for consistency
+  localStorage.removeItem('userData');
 };
 
 export const isAuthenticated = (): boolean => {

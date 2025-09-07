@@ -101,7 +101,8 @@ export class N8NWebhook {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/client-profile/`, {
+      // Updated endpoint path to match the new backend URL
+      const response = await fetch(`${API_BASE_URL}/client/profile/`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -110,6 +111,8 @@ export class N8NWebhook {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Profile API response:', data);
+        
         if (data.success && data.data) {
           this.companyProfile = {
             company_name: data.data.company_name || null,
@@ -121,7 +124,18 @@ export class N8NWebhook {
           localStorage.setItem('company_profile', JSON.stringify(this.companyProfile));
           this.profileFetched = true;
           console.log('Company profile fetched and cached:', this.companyProfile);
+        } else {
+          console.log('No profile data found or empty response');
+          // Set empty profile if no data found
+          this.companyProfile = {
+            company_name: null,
+            company_website_url: null,
+            logo_url: null,
+          };
+          this.profileFetched = true;
         }
+      } else {
+        console.error('Failed to fetch profile:', response.status, response.statusText);
       }
     } catch (error) {
       console.error('Error fetching company profile:', error);
@@ -458,5 +472,12 @@ export class N8NWebhook {
   // Method to get current company profile
   getCompanyProfile(): CompanyProfile | null {
     return this.companyProfile;
+  }
+
+  // Method to manually update the company profile cache
+  updateCompanyProfileCache(profile: CompanyProfile): void {
+    this.companyProfile = profile;
+    this.profileFetched = true;
+    localStorage.setItem('company_profile', JSON.stringify(profile));
   }
 }

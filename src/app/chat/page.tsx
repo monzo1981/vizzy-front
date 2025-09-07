@@ -877,7 +877,17 @@ export default function Chat() {
                 <LogOut size={16} />
                 Logout
               </Button>
-              <Avatar fallback={currentUser ? `${currentUser.first_name.charAt(0)}${currentUser.last_name.charAt(0)}`.toUpperCase() : ''} alt="User" size="md" />
+              <div 
+                className="cursor-pointer transition-transform hover:scale-105"
+                onClick={() => router.push('/profile')}
+              >
+                <Avatar 
+                  src={currentUser?.profile_picture_url || undefined}
+                  fallback={currentUser && currentUser.first_name && currentUser.last_name ? `${currentUser.first_name.charAt(0)}${currentUser.last_name.charAt(0)}`.toUpperCase() : 'U'} 
+                  alt="User" 
+                  size="md" 
+                />
+              </div>
             </div>
           </header>
 

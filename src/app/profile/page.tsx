@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input"
 import { isAuthenticated, getUser, type User as AuthUser } from "@/lib/auth"
 import { N8NWebhook } from "@/lib/n8n-webhook"
 import { GradientBackground } from "@/components/gradient-background"
+import { ProfileEditModal } from "@/components/profile-edit-modal"
 
 export default function ProfilePage() {
   const [sidebarExpanded, setSidebarExpanded] = useState(false)
@@ -40,6 +41,7 @@ export default function ProfilePage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [companyProfile, setCompanyProfile] = useState<any | null>(null)
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -96,7 +98,8 @@ export default function ProfilePage() {
           <div className="flex items-center gap-4">
             <Bell className="w-6 h-6 text-orange-500" />
             <Avatar 
-              fallback={currentUser ? `${currentUser.first_name.charAt(0)}${currentUser.last_name.charAt(0)}`.toUpperCase() : ''} 
+              src={currentUser?.profile_picture_url || undefined}
+              fallback={currentUser && currentUser.first_name && currentUser.last_name ? `${currentUser.first_name.charAt(0)}${currentUser.last_name.charAt(0)}`.toUpperCase() : 'U'} 
               alt="User" 
               size="md" 
             />
@@ -254,7 +257,8 @@ export default function ProfilePage() {
                     <CardContent className="p-6">
                       <div className="flex items-start gap-4 mb-6">
                         <Avatar 
-                          fallback={currentUser ? `${currentUser.first_name.charAt(0)}${currentUser.last_name.charAt(0)}`.toUpperCase() : ''} 
+                          src={currentUser?.profile_picture_url || undefined}
+                          fallback={currentUser && currentUser.first_name && currentUser.last_name ? `${currentUser.first_name.charAt(0)}${currentUser.last_name.charAt(0)}`.toUpperCase() : 'U'} 
                           alt="User" 
                           size="xl" 
                         />
@@ -277,7 +281,12 @@ export default function ProfilePage() {
                       <div className="bg-white/70 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="font-semibold text-gray-900">Personal info</h3>
-                          <Button variant="outline" size="sm" className="gap-2 bg-transparent hover:bg-white">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="gap-2 bg-transparent hover:bg-white"
+                            onClick={() => setIsProfileModalOpen(true)}
+                          >
                             <Edit className="w-3 h-3" />
                             Edit
                           </Button>
@@ -296,7 +305,7 @@ export default function ProfilePage() {
                           </div>
                           <div>
                             <p className="text-sm text-gray-500 mb-1">Phone</p>
-                            {/* <p className="font-medium">{currentUser ? currentUser.phone : '+20 108888 0023'}</p> */}
+                            <p className="font-medium">{currentUser?.phone_number || 'Not available'}</p>
                           </div>
                           <div>
                             <p className="text-sm text-gray-500 mb-1">Company Name</p>
@@ -555,6 +564,23 @@ export default function ProfilePage() {
           </div>
         </main>
       </div>
+      
+      {/* Profile Edit Modal */}
+      <ProfileEditModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        currentUser={currentUser}
+        onUserUpdate={(updatedUser) => {
+          setCurrentUser(updatedUser)
+          // Company profile will be updated by the Modal itself via localStorage
+          // Just refresh our local state from updated localStorage
+          const webhook = new N8NWebhook()
+          const updatedCompanyProfile = webhook.getCompanyProfile()
+          if (updatedCompanyProfile) {
+            setCompanyProfile(updatedCompanyProfile)
+          }
+        }}
+      />
     </GradientBackground>
   )
 }
