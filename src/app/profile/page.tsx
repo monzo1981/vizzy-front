@@ -31,11 +31,13 @@ import { Avatar } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { isAuthenticated, getUser, type User as AuthUser } from "@/lib/auth"
+import { N8NWebhook } from "@/lib/n8n-webhook"
 import { GradientBackground } from "@/components/gradient-background"
 
 export default function ProfilePage() {
   const [sidebarExpanded, setSidebarExpanded] = useState(false)
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null)
+  const [companyProfile, setCompanyProfile] = useState<any | null>(null)
   const [isDarkMode, setIsDarkMode] = useState(false)
   const router = useRouter()
 
@@ -52,6 +54,16 @@ export default function ProfilePage() {
     } else {
       const user = getUser()
       setCurrentUser(user)
+
+      const webhook = new N8NWebhook()
+      const profile = webhook.getCompanyProfile()
+      if (profile) {
+        setCompanyProfile(profile)
+      } else {
+        webhook.refreshCompanyProfile().then(() => {
+          setCompanyProfile(webhook.getCompanyProfile())
+        })
+      }
     }
   }, [router])
 
@@ -283,19 +295,28 @@ export default function ProfilePage() {
                           </div>
                           <div>
                             <p className="text-sm text-gray-500 mb-1">Phone</p>
-                            <p className="font-medium">+20 108888 0023</p>
+                            <p className="font-medium">{currentUser ? currentUser.phone : '+20 108888 0023'}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-500 mb-1">Job title</p>
-                            <p className="font-medium">Spy manager</p>
+                            <p className="text-sm text-gray-500 mb-1">Company Name</p>
+                            <p className="font-medium">{companyProfile ? companyProfile.company_name : 'Not available'}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-500 mb-1">Job title</p>
-                            <p className="font-medium">Spy manager</p>
+                            <p className="text-sm text-gray-500 mb-1">Company Website</p>
+                            <p className="font-medium">{companyProfile ? companyProfile.company_website_url : 'Not available'}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-500 mb-1">Job title</p>
-                            <p className="font-medium">Spy manager</p>
+                            <p className="text-sm text-gray-500 mb-1">Company Logo</p>
+                            {companyProfile && companyProfile.logo_url ? (
+                              <Image 
+                                src={companyProfile.logo_url}
+                                alt="Company Logo"
+                                width={40}
+                                height={40}
+                              />
+                            ) : (
+                              <p className="font-medium">Not available</p>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -305,17 +326,20 @@ export default function ProfilePage() {
                   {/* Recent Work and My Links Row */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                     {/* Recent Work Card */}
-                    <Card className="bg-gradient-to-br from-sky-400 to-blue-500 border-0 text-white">
+                    <Card className="bg-[#7FCAFE] border-0 text-white">
                       <CardContent className="p-6">
-                        <h3 className="text-2xl font-bold mb-4">Recent work</h3>
-                        <div className="relative">
-                          <div className="flex gap-2 mb-4">
-                            {/* Placeholder for work samples */}
-                            <div className="w-20 h-30 bg-white/20 rounded-lg"></div>
-                            <div className="w-20 h-30 bg-white/20 rounded-lg"></div>
-                            <div className="w-20 h-30 bg-white/20 rounded-lg"></div>
+                        <h3 className="font-bold mb-4" style={{ fontWeight: 700, fontSize: 64, fontFamily: 'Inter', textAlign: 'center' }}>Recent work</h3>
+                        <div className="flex flex-col h-full min-h-[220px]">
+                          <div className="flex-1 flex items-center justify-center">
+                            <Image
+                              src="/recent-work.png"
+                              alt="Recent Work"
+                              width={400}
+                              height={220}
+                              className="rounded-lg object-cover w-full max-w-[400px] h-[180px]"
+                            />
                           </div>
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between mt-6">
                             <div className="flex gap-1">
                               <div className="w-8 h-1 bg-white rounded-full"></div>
                               <div className="w-8 h-1 bg-red-500 rounded-full"></div>
@@ -324,7 +348,7 @@ export default function ProfilePage() {
                             <Button
                               variant="secondary"
                               size="sm"
-                              className="bg-white/20 hover:bg-white/30 text-white border-0"
+                              className="bg-white text-black border-2 border-black font-bold shadow-md hover:bg-gray-100 hover:text-black"
                             >
                               See Full
                             </Button>
@@ -336,9 +360,9 @@ export default function ProfilePage() {
                     {/* Right Column Cards */}
                     <div className="space-y-4">
                       {/* My Links Card */}
-                      <Card className="bg-gradient-to-br from-blue-600 to-purple-600 border-0 text-white">
+                      <Card className="bg-[#4248FF] border-0 text-white">
                         <CardContent className="p-6">
-                          <h3 className="text-2xl font-bold mb-2">My Links</h3>
+                          <h3 className="font-bold mb-2" style={{ fontWeight: 700, fontSize: 50, textAlign: 'center' }}>My Links</h3>
                           <p className="text-sm text-white/80 mb-4">
                             This links to your accounts will be used as reference for tone of voice and visual direction, to
                             influence future generated visuals if needed.
@@ -365,8 +389,14 @@ export default function ProfilePage() {
                         <CardContent className="p-6">
                           <div className="flex items-center justify-between">
                             <div>
-                              <h3 className="text-xl font-bold">Invite</h3>
-                              <h3 className="text-xl font-bold">& WIN !!</h3>
+                              <h3 
+                                className="font-bold" 
+                                style={{ fontWeight: 700, fontSize: 45, lineHeight: '100%', letterSpacing: 0 }}
+                              >Invite</h3>
+                              <h3 
+                                className="font-bold" 
+                                style={{ fontWeight: 700, fontSize: 45, lineHeight: '100%', letterSpacing: 0 }}
+                              >& WIN !!</h3>
                             </div>
                             <div className="flex items-center gap-2">
                               <Button
@@ -376,9 +406,6 @@ export default function ProfilePage() {
                               >
                                 Know More
                               </Button>
-                              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                                <Users className="w-5 h-5 text-orange-500" />
-                              </div>
                             </div>
                           </div>
                         </CardContent>
