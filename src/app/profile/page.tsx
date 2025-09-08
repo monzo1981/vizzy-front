@@ -15,13 +15,9 @@ import {
   Users,
   LogOut,
   Trash2,
-  Globe,
-  Facebook,
-  Instagram,
-  Linkedin,
+  
   Menu,
   ChevronLeft,
-  ChevronRight,
   Activity,
   Puzzle,
 } from "lucide-react"
@@ -69,6 +65,67 @@ export default function ProfilePage() {
       }
     }
   }, [router])
+
+  // Handle logo upload
+  const handleLogoUpload = async (file: File) => {
+    try {
+      const token = localStorage.getItem('access_token')
+      if (!token) {
+        alert('Please login again')
+        return
+      }
+
+      const formData = new FormData()
+      formData.append('logo', file)
+      
+      // إرسال company_name و company_website_url إذا كانوا موجودين
+      if (companyProfile?.company_name) {
+        formData.append('company_name', companyProfile.company_name)
+      } else {
+        // إذا لم يكن موجود، استخدم قيمة افتراضية
+        formData.append('company_name', 'Default Company')
+      }
+      
+      if (companyProfile?.company_website_url) {
+        formData.append('company_website_url', companyProfile.company_website_url)
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/client/profile/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      })
+
+      if (response.ok) {
+        const responseData = await response.json()
+        const updatedCompanyData = responseData.data || responseData
+        
+        // Update localStorage and N8NWebhook cache efficiently
+        const updatedProfile = {
+          company_name: updatedCompanyData.company_name || companyProfile?.company_name || null,
+          company_website_url: updatedCompanyData.company_website_url || companyProfile?.company_website_url || null,
+          logo_url: updatedCompanyData.logo_url || null,
+        }
+        
+        const webhook = new N8NWebhook()
+        webhook.updateCompanyProfileCache(updatedProfile)
+        
+        // Update local state
+        setCompanyProfile(updatedProfile)
+        
+        alert('Logo updated successfully!')
+      } else {
+        const errorData = await response.text()
+        console.error('API Error:', response.status, errorData)
+        alert('Failed to update logo')
+      }
+    } catch (error) {
+      console.error('Error updating logo:', error)
+      alert('Error updating logo')
+    }
+  }
 
   return (
     <GradientBackground isDarkMode={isDarkMode}>
@@ -253,21 +310,46 @@ export default function ProfilePage() {
                 {/* Left Column - Profile Info */}
                 <div className="lg:col-span-2">
                   {/* Profile Card */}
-                  <Card className="bg-gradient-to-br from-blue-100 to-cyan-100 border-0">
+                  <Card className="border-0" style={{ 
+                    background: 'linear-gradient(100.74deg, rgba(127, 202, 254, 0.5) -2.34%, rgba(255, 255, 255, 0.5) 25.59%, rgba(255, 228, 224, 0.5) 63.57%, rgba(255, 255, 255, 0.5) 106.88%)',
+                    borderRadius: '36px'
+                  }}>
                     <CardContent className="p-6">
                       <div className="flex items-start gap-4 mb-6">
-                        <Avatar 
-                          src={currentUser?.profile_picture_url || undefined}
-                          fallback={currentUser && currentUser.first_name && currentUser.last_name ? `${currentUser.first_name.charAt(0)}${currentUser.last_name.charAt(0)}`.toUpperCase() : 'U'} 
-                          alt="User" 
-                          size="xl" 
-                        />
+                        <div 
+                          className="rounded-full overflow-hidden flex-shrink-0"
+                          style={{ 
+                            width: '126px', 
+                            height: '126px'
+                          }}
+                        >
+                          <Avatar 
+                            src={currentUser?.profile_picture_url || undefined}
+                            fallback={currentUser && currentUser.first_name && currentUser.last_name ? `${currentUser.first_name.charAt(0)}${currentUser.last_name.charAt(0)}`.toUpperCase() : 'U'} 
+                            alt="User" 
+                            className="w-full h-full"
+                          />
+                        </div>
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h2 className="text-2xl font-bold text-gray-900">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h2 style={{
+                              fontWeight: 700,
+                              fontSize: '40px',
+                              color: '#4248FF'
+                            }}>
                               {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Mohsen'}
                             </h2>
-                            <Badge className="bg-gradient-to-r from-pink-500 to-red-500 text-white border-0">
+                            <Badge 
+                              className="text-white border-0"
+                              style={{
+                                background: 'linear-gradient(90deg, #FF4A19 0%, #4248FF 100%)',
+                                borderRadius: '18px',
+                                fontWeight: 900,
+                                fontStyle: 'italic',
+                                fontSize: '20px',
+                                padding: '6px 16px'
+                              }}
+                            >
                               Pro
                             </Badge>
                           </div>
@@ -278,55 +360,116 @@ export default function ProfilePage() {
                       </div>
 
                       {/* Personal Info Section */}
-                      <div className="bg-white/70 rounded-lg p-4">
+                      <div 
+                        style={{
+                          background: '#FFFFFF4A',
+                          borderRadius: '36px',
+                          padding: '1rem'
+                        }}
+                      >
                         <div className="flex items-center justify-between mb-4">
-                          <h3 className="font-semibold text-gray-900">Personal info</h3>
+                          <h3 style={{
+                            fontWeight: 600,
+                            fontSize: '20px',
+                            color: '#11002E'
+                          }}>Personal info</h3>
                           <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="gap-2 bg-transparent hover:bg-white"
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                            style={{
+                              border: '1px solid rgba(66, 72, 255, 0.5)',
+                              borderRadius: '40px',
+                              background: 'none',
+                              fontWeight: 600
+                            }}
                             onClick={() => setIsProfileModalOpen(true)}
                           >
-                            <Edit className="w-3 h-3" />
-                            Edit
+                            <Edit className="w-3 h-3" style={{ color: '#78758E' }} />
+                            <span style={{ color: '#000' }}>Edit</span>
                           </Button>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
-                            <p className="text-sm text-gray-500 mb-1">Name</p>
-                            <p className="font-medium">
+                            <p style={{
+                              color: '#4248FF',
+                              fontWeight: 500,
+                              fontSize: '16px',
+                              marginBottom: '4px'
+                            }}>Name</p>
+                            <p style={{
+                              color: '#78758E',
+                              fontWeight: 500,
+                              fontSize: '16px'
+                            }}>
                               {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Mohsen Momtaz'}
                             </p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-500 mb-1">Email</p>
-                            <p className="font-medium">{currentUser ? currentUser.email : 'mohsn@egyspy.gov'}</p>
+                            <p style={{
+                              color: '#4248FF',
+                              fontWeight: 500,
+                              fontSize: '16px',
+                              marginBottom: '4px'
+                            }}>Email</p>
+                            <p style={{
+                              color: '#78758E',
+                              fontWeight: 500,
+                              fontSize: '16px'
+                            }}>{currentUser ? currentUser.email : 'mohsn@egyspy.gov'}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-500 mb-1">Phone</p>
-                            <p className="font-medium">{currentUser?.phone_number || 'Not available'}</p>
+                            <p style={{
+                              color: '#4248FF',
+                              fontWeight: 500,
+                              fontSize: '16px',
+                              marginBottom: '4px'
+                            }}>Phone</p>
+                            <p style={{
+                              color: '#78758E',
+                              fontWeight: 500,
+                              fontSize: '16px'
+                            }}>{currentUser?.phone_number || 'Not available'}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-500 mb-1">Company Name</p>
-                            <p className="font-medium">{companyProfile ? companyProfile.company_name : 'Not available'}</p>
+                            <p style={{
+                              color: '#4248FF',
+                              fontWeight: 500,
+                              fontSize: '16px',
+                              marginBottom: '4px'
+                            }}>Company Name</p>
+                            <p style={{
+                              color: '#78758E',
+                              fontWeight: 500,
+                              fontSize: '16px'
+                            }}>{companyProfile ? companyProfile.company_name : 'Not available'}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-500 mb-1">Company Website</p>
-                            <p className="font-medium">{companyProfile ? companyProfile.company_website_url : 'Not available'}</p>
+                            <p style={{
+                              color: '#4248FF',
+                              fontWeight: 500,
+                              fontSize: '16px',
+                              marginBottom: '4px'
+                            }}>Company Website</p>
+                            <p style={{
+                              color: '#78758E',
+                              fontWeight: 500,
+                              fontSize: '16px'
+                            }}>{companyProfile ? companyProfile.company_website_url : 'Not available'}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-500 mb-1">Company Logo</p>
-                            {companyProfile && companyProfile.logo_url ? (
-                              <Image 
-                                src={companyProfile.logo_url}
-                                alt="Company Logo"
-                                width={40}
-                                height={40}
-                              />
-                            ) : (
-                              <p className="font-medium">Not available</p>
-                            )}
+                            <p style={{
+                              color: '#4248FF',
+                              fontWeight: 500,
+                              fontSize: '16px',
+                              marginBottom: '4px'
+                            }}>Job Title</p>
+                            <p style={{
+                              color: '#78758E',
+                              fontWeight: 500,
+                              fontSize: '16px'
+                            }}>Software Engineer</p>
                           </div>
                         </div>
                       </div>
@@ -336,7 +479,13 @@ export default function ProfilePage() {
                   {/* Recent Work and My Links Row */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                     {/* Recent Work Card */}
-                    <Card className="bg-[#7FCAFE] border-0 text-white">
+                    <Card 
+                      className="border-0 text-white"
+                      style={{
+                        background: '#7FCAFE',
+                        borderRadius: '36px',
+                      }}
+                    >
                       <CardContent className="p-6">
                         <h3 className="font-bold mb-4" style={{ fontWeight: 700, fontSize: 64, fontFamily: 'Inter', textAlign: 'center' }}>Recent work</h3>
                         <div className="flex flex-col h-full min-h-[220px]">
@@ -349,19 +498,35 @@ export default function ProfilePage() {
                               className="rounded-lg object-cover w-full max-w-[400px] h-[180px]"
                             />
                           </div>
-                          <div className="flex items-center justify-between mt-6">
-                            <div className="flex gap-1">
-                              <div className="w-8 h-1 bg-white rounded-full"></div>
-                              <div className="w-8 h-1 bg-red-500 rounded-full"></div>
-                              <div className="w-8 h-1 bg-white/50 rounded-full"></div>
+                          {/* Navigation Bars */}
+                          <div className="flex flex-col gap-2 mt-6">
+                            <div className="flex justify-center w-full gap-2">
+                              {/* 5 bars, center one orange, others blue, all width = 20% */}
+                              <div style={{ width: '20%', height: '8px', background: '#D3E6FC', borderRadius: '8px', opacity: 1 }}></div>
+                              <div style={{ width: '20%', height: '8px', background: '#D3E6FC', borderRadius: '8px', opacity: 1 }}></div>
+                              <div style={{ width: '20%', height: '10px', background: '#FF4A19', borderRadius: '8px', opacity: 1 }}></div>
+                              <div style={{ width: '20%', height: '8px', background: '#D3E6FC', borderRadius: '8px', opacity: 1 }}></div>
+                              <div style={{ width: '20%', height: '8px', background: '#D3E6FC', borderRadius: '8px', opacity: 1 }}></div>
                             </div>
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              className="bg-white text-black border-2 border-black font-bold shadow-md hover:bg-gray-100 hover:text-black"
-                            >
-                              See Full
-                            </Button>
+                            <div className="flex justify-end w-full mt-2">
+                              <Button
+                                type="button"
+                                className="shadow-md font-bold"
+                                style={{
+                                  background: 'white',
+                                  color: '#000',
+                                  borderRadius: '50px',
+                                  border: 'none',
+                                  fontWeight: 700,
+                                  fontSize: '16px',
+                                  padding: '12px 40px',
+                                  marginRight: 0,
+                                  fontFamily: 'inherit',
+                                }}
+                              >
+                                See Full
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </CardContent>
@@ -370,52 +535,123 @@ export default function ProfilePage() {
                     {/* Right Column Cards */}
                     <div className="space-y-4">
                       {/* My Links Card */}
-                      <Card className="bg-[#4248FF] border-0 text-white">
+                      <Card 
+                        className="border-0 text-white"
+                        style={{
+                          background: '#4248FF',
+                          borderRadius: '36px',
+                        }}
+                      >
                         <CardContent className="p-6">
-                          <h3 className="font-bold mb-2" style={{ fontWeight: 700, fontSize: 50, textAlign: 'center' }}>My Links</h3>
-                          <p className="text-sm text-white/80 mb-4">
-                            This links to your accounts will be used as reference for tone of voice and visual direction, to
-                            influence future generated visuals if needed.
+                          <h3 
+                            style={{
+                              fontFamily: 'Inter',
+                              fontWeight: 700,
+                              fontSize: '50px',
+                              textAlign: 'center',
+                              marginBottom: '12px',
+                            }}
+                          >My Links</h3>
+                          <p 
+                            style={{
+                              fontWeight: 400,
+                              fontStyle: 'italic',
+                              fontSize: '12px',
+                              textAlign: 'center',
+                              marginBottom: '24px',
+                              color: 'white',
+                              opacity: 0.8,
+                            }}
+                          >
+                            This links to your accounts will be used as reference for tone of voice and visual direction, to influence future generated visuals if needed.
                           </p>
-                          <div className="flex gap-3">
-                            <Button size="icon" variant="secondary" className="bg-white/20 hover:bg-white/30 border-0">
-                              <Globe className="w-4 h-4 text-white" />
-                            </Button>
-                            <Button size="icon" variant="secondary" className="bg-white/20 hover:bg-white/30 border-0">
-                              <Facebook className="w-4 h-4 text-white" />
-                            </Button>
-                            <Button size="icon" variant="secondary" className="bg-white/20 hover:bg-white/30 border-0">
-                              <Instagram className="w-4 h-4 text-white" />
-                            </Button>
-                            <Button size="icon" variant="secondary" className="bg-white/20 hover:bg-white/30 border-0">
-                              <Linkedin className="w-4 h-4 text-white" />
-                            </Button>
+                          <div className="flex gap-4 justify-center">
+                            <Image src="/web.svg" alt="Website" width={40} height={40} />
+                            <Image src="/facebook.svg" alt="Facebook" width={40} height={40} />
+                            <Image src="/instagram.svg" alt="Instagram" width={40} height={40} />
+                            <Image src="/linkedin.svg" alt="LinkedIn" width={40} height={40} />
                           </div>
                         </CardContent>
                       </Card>
 
-                      {/* Invite & Win Card */}
-                      <Card className="bg-gradient-to-r from-orange-500 to-red-500 border-0 text-white">
+                      {/* Your Logo Card */}
+                      <Card 
+                        className="border-0 text-white"
+                        style={{
+                          background: '#FF4A19',
+                          borderRadius: '36px',
+                        }}
+                      >
                         <CardContent className="p-6">
                           <div className="flex items-center justify-between">
                             <div>
-                              <h3 
-                                className="font-bold" 
-                                style={{ fontWeight: 700, fontSize: 45, lineHeight: '100%', letterSpacing: 0 }}
-                              >Invite</h3>
-                              <h3 
-                                className="font-bold" 
-                                style={{ fontWeight: 700, fontSize: 45, lineHeight: '100%', letterSpacing: 0 }}
-                              >& WIN !!</h3>
+                              <h3
+                                style={{
+                                  fontFamily: 'Inter',
+                                  fontWeight: 700,
+                                  fontSize: '45px',
+                                  lineHeight: '100%',
+                                  letterSpacing: 0,
+                                  marginBottom: 0,
+                                }}
+                              >Your</h3>
+                              <h3
+                                style={{
+                                  fontFamily: 'Inter',
+                                  fontWeight: 700,
+                                  fontSize: '45px',
+                                  lineHeight: '100%',
+                                  letterSpacing: 0,
+                                }}
+                              >Logo !</h3>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-col items-center gap-2">
+                              {/* Logo Display/Upload Area */}
+                              <div className="w-16 h-16 bg-white/20 rounded-lg flex items-center justify-center">
+                                {companyProfile && companyProfile.logo_url ? (
+                                  <Image 
+                                    src={companyProfile.logo_url}
+                                    alt="Company Logo"
+                                    width={64}
+                                    height={64}
+                                    className="w-full h-full object-cover rounded-lg"
+                                  />
+                                ) : (
+                                  <Image 
+                                    src="/logo-upload.svg"
+                                    alt="Upload Logo"
+                                    width={32}
+                                    height={32}
+                                    className="opacity-80"
+                                  />
+                                )}
+                              </div>
                               <Button
-                                variant="secondary"
-                                size="sm"
-                                className="bg-white text-orange-500 hover:bg-gray-100 border-0"
+                                type="button"
+                                className="flex items-center justify-center border-0"
+                                style={{
+                                  background: '#FFEB77',
+                                  borderRadius: '50px',
+                                  color: '#4248FF',
+                                  fontWeight: 700,
+                                  fontSize: '16px',
+                                  padding: '12px 32px',
+                                  marginTop: '4px',
+                                }}
+                                onClick={() => document.getElementById('logo-upload-input')?.click()}
                               >
-                                Know More
+                                Upload
                               </Button>
+                              <input
+                                id="logo-upload-input"
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0]
+                                  if (file) handleLogoUpload(file)
+                                }}
+                              />
                             </div>
                           </div>
                         </CardContent>
@@ -427,45 +663,92 @@ export default function ProfilePage() {
                 {/* Right Column - Credits and Assets */}
                 <div className="space-y-6">
                   {/* Credits Card */}
-                  <Card className="bg-gradient-to-br from-yellow-200 to-yellow-300 border-0">
-                    <CardContent className="p-6">
-                      <h3 className="text-2xl font-bold text-purple-600 mb-4">Credits</h3>
-                      <div className="relative w-32 h-32 mx-auto mb-4">
-                        <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 36 36">
-                          <path
-                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  <Card 
+                    className="border-0" 
+                    style={{ 
+                      background: 'linear-gradient(143.41deg, #FFEB77 -4.53%, #FFE4E0 103.15%)', 
+                      borderRadius: '36px' 
+                    }}
+                  >
+                    <CardContent className="p-8">
+                      <h3
+                        style={{
+                          background: 'linear-gradient(94.41deg, #4248FF -4.88%, #FF4A19 119.67%)',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          fontWeight: 700,
+                          fontSize: '64px',
+                          textAlign: 'center',
+                          marginBottom: '32px',
+                        }}
+                      >
+                        Credits
+                      </h3>
+                      <div className="relative mx-auto mb-6" style={{ width: 220, height: 220 }}>
+                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 220 220">
+                          <circle
+                            cx="110" cy="110" r="100"
                             fill="none"
-                            stroke="#e5e7eb"
-                            strokeWidth="2"
+                            stroke="#FF4A19"
+                            strokeWidth="18"
                           />
-                          <path
-                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          <circle
+                            cx="110" cy="110" r="100"
                             fill="none"
-                            stroke="#3b82f6"
-                            strokeWidth="2"
-                            strokeDasharray="75, 100"
+                            stroke="#7FCAFE"
+                            strokeWidth="18"
+                            strokeDasharray={`${0.75 * 2 * Math.PI * 100},${2 * Math.PI * 100}`}
+                            strokeDashoffset={0}
+                            style={{ transition: 'stroke-dasharray 0.5s' }}
                           />
                         </svg>
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-3xl font-bold text-blue-600">75%</span>
+                          <span style={{ color: '#4248FF', fontWeight: 900, fontSize: '50px' }}>75%</span>
                         </div>
                       </div>
-                      <div className="text-center mb-4">
-                        <p className="text-sm text-gray-600">
-                          You have <span className="font-bold">2,500</span> credits remaining
+                      <div className="text-center mb-6">
+                        <p style={{ color: '#11002E', fontWeight: 400, fontSize: '16px' }}>
+                          You have <span style={{ fontWeight: 700 }}>2,500</span> credits remaining
                         </p>
-                        <p className="text-sm text-gray-600">Upgrade now to unlock more generations</p>
+                        <p style={{ color: '#11002E', fontWeight: 400, fontSize: '16px' }}>Upgrade now to unlock more generations</p>
                       </div>
-                      <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                      <Button 
+                        className="w-full"
+                        style={{
+                          background: '#4248FF',
+                          color: 'white',
+                          fontWeight: 900,
+                          fontSize: '28px',
+                          borderRadius: '18px',
+                          paddingTop: '28px',
+                          paddingBottom: '28px',
+                        }}
+                      >
                         Upgrade Now
                       </Button>
                     </CardContent>
                   </Card>
 
                   {/* Assets Card */}
-                  <Card className="border-0 bg-white">
+                  <Card 
+                    className="border-0"
+                    style={{
+                      background: 'linear-gradient(208.72deg, #D3E6FC -5%, #FFFFFF 46.16%, #D3E6FC 109.84%)',
+                      borderRadius: '36px',
+                    }}
+                  >
                     <CardHeader>
-                      <h3 className="text-xl font-bold text-gray-900">Assets</h3>
+                      <h3
+                        style={{
+                          fontWeight: 700,
+                          fontSize: '40px',
+                          textAlign: 'center',
+                          color: '#4248FF',
+                          marginBottom: 0,
+                        }}
+                      >
+                        Assets
+                      </h3>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       {/* Asset Item 1 */}
@@ -570,10 +853,9 @@ export default function ProfilePage() {
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
         currentUser={currentUser}
-        onUserUpdate={(updatedUser) => {
+        onUserUpdate={(updatedUser: AuthUser) => {
           setCurrentUser(updatedUser)
-          // Company profile will be updated by the Modal itself via localStorage
-          // Just refresh our local state from updated localStorage
+          // Refresh company profile data after any modal updates
           const webhook = new N8NWebhook()
           const updatedCompanyProfile = webhook.getCompanyProfile()
           if (updatedCompanyProfile) {
