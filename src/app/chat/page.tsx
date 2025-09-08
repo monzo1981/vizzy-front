@@ -54,6 +54,116 @@ const StableImage = memo(({ src, alt, className, style, onClick }: { src: string
 });
 StableImage.displayName = 'StableImage';
 
+const TypewriterPlaceholder = ({ fontSize }: { fontSize: string }) => {
+  const sentences = [
+    'افكارك الكروكي …. هحولها لتصميمات تجنن',
+    'Bees can fly up to 5 miles just to find food.',
+    'Old posts reborn like new… just send me the image',
+    'اعرف منافسينك بيعملو ايه وانت مكانك',
+    'تحب تصميم معايدة؟ رمضان على الابواب',
+    'ايوة …. انا بس اللي بعرف اكتب عربي صح على الصور!',
+    'Here is a bio that sounds cooler than your old one',
+    'C’mon, I’m not CHEAP!!!!! I’m budget friendly',
+    'افكار بودكاست ايها علاقة بيك و مسلية فعلا',
+    'Voiceover scripts that sound human, not robotic',
+    'متهيألي المقاس اللي قولتة مش مضبوط! الصح ١:١',
+    'Captions that make people stop scrolling',
+    'عايز صور لمنتجك تستعملها على الموقع؟ سيبها عليا؟',
+    'Ads that don’t feel like ads, that punch',
+    'بص التصميم حلو… بس لو تحب اقدر احسنة اكتر',
+    'Just say it and I will turn this design into a world-class video',
+    'The buzzing sound comes from bees beating their wings 200 times per second.',
+    'Of course I can write mails and send them to whoever',
+    'خلينا نضيف الحجاب للتصميم، يدي إحساس مصري أكتر. تحب نبدأ؟',
+    'Need Logo animation to use in your branding?',
+    'Hold my coffee while I create that game-changing visual',
+    'مبروك المشروع الجديد … تحب نبتدي بالموقع؟',
+    'A whole month’s content plan… done !',
+    'All of your social posts in a snap',
+    'Show me the design you like and I’ll show you what I can do',
+    'Content for LinkedIn? What about a free image from VIZZY!',
+    'اتفضل خطة تسويقية كاملة، تحب نبتدي بالتصميمات؟',
+    'Ok, upload your  your logo and let’s make it yours all the way!',
+    'Actually, I’ll finish both directions for you before you call the client',
+    'Endless UGC actors talking about your brand',
+    'Campaign ideas that don’t feel recycled',
+    'Did you try VIBE marketing? I guess it’s time',
+    'Yeah sure, I can generate 10 new ideas for this post and let’s pick the best we like',
+    'Product descriptions people read and believe',
+    'البادجات كدة غلط…. تسمحلي اعيد توزيعها؟',
+    'Even if it’s a minor edit—let’s do it together',
+    'Emails your audience actually want to open',
+    'عايز تعمل فيديو لمنتجك؟ صوره وابعتهولي',
+    'Show me the design you like and I’ll show you what I can do',
+    'No need to hire a copywriter… we are not in 2024 anymore!',
+    'Yeah I know all of the latest trends, let me pick what suits our brand',
+    'لو مش عايز تكتب ابعت فويس وانا حفهم قصدك',
+  ];
+
+  const [sentenceIndex, setSentenceIndex] = useState(0);
+  const [displayedText, setDisplayedText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const typingSpeed = 30; // Faster typing
+    const deletingSpeed = 30; // Faster deleting
+
+    const handleTyping = () => {
+      const i = sentenceIndex % sentences.length;
+      const fullText = sentences[i];
+
+      setDisplayedText(
+        isDeleting
+          ? fullText.substring(0, displayedText.length - 1)
+          : fullText.substring(0, displayedText.length + 1)
+      );
+
+      if (!isDeleting && displayedText === fullText) {
+        // Pause before deleting
+        setTimeout(() => setIsDeleting(true), 1500); // 1.5 second pause
+      } else if (isDeleting && displayedText === '') {
+        setIsDeleting(false);
+        let nextIndex;
+        do {
+            nextIndex = Math.floor(Math.random() * sentences.length);
+        } while (nextIndex === sentenceIndex);
+        setSentenceIndex(nextIndex);
+      }
+    };
+
+    const timer = setTimeout(
+      handleTyping,
+      isDeleting ? deletingSpeed : typingSpeed
+    );
+
+    return () => clearTimeout(timer);
+  }, [displayedText, isDeleting, sentenceIndex]);
+
+  const currentSentence = sentences[sentenceIndex];
+  const isArabic = /[\u0600-\u06FF]/.test(currentSentence);
+
+  const style: React.CSSProperties = {
+    color: '#C3BFE6',
+    fontSize: fontSize,
+    fontWeight: '200',
+    paddingTop: '0px',
+    textAlign: isArabic ? 'right' : 'left',
+    direction: isArabic ? 'rtl' : 'ltr',
+    width: '100%',
+    ...(isArabic ? { fontFamily: 'Noto Sans Arabic' } : {}),
+  };
+
+  return (
+    <div
+      className="absolute inset-0 pointer-events-none flex items-start"
+    >
+      <div style={style}>
+        {displayedText}
+      </div>
+    </div>
+  );
+};
+
 export default function Chat() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -69,6 +179,7 @@ export default function Chat() {
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   
   // AI Chat Session State
   const [sessionId, setSessionId] = useState<string | undefined>(undefined)
@@ -843,14 +954,48 @@ export default function Chat() {
   return (
     <div className={isDarkMode ? 'dark' : ''}>
       <GradientBackground opacity={hasMessages ? 0.6 : 1} isDarkMode={isDarkMode}>
-        {/* Sidebar */}
-        <Sidebar isOpen={isOpen} onToggle={toggle} isDarkMode={isDarkMode} onDarkModeToggle={toggleDarkMode} />
+        {/* Desktop Sidebar */}
+        <div className="hidden lg:block">
+          <Sidebar isOpen={isOpen} onToggle={toggle} isDarkMode={isDarkMode} onDarkModeToggle={toggleDarkMode} />
+        </div>
+
+        {/* Mobile Sidebar Overlay */}
+        {isMobileSidebarOpen && (
+          <div className="lg:hidden fixed inset-0 z-50">
+            <Sidebar 
+              isOpen={true} 
+              onToggle={() => setIsMobileSidebarOpen(false)} 
+              isDarkMode={isDarkMode} 
+              onDarkModeToggle={toggleDarkMode} 
+              isMobile={true}
+            />
+          </div>
+        )}
 
         {/* Main Content */}
         <div className={`h-screen flex flex-col transition-all duration-300 ${isOpen ? 'lg:ml-20' : 'lg:ml-20'}`}>
           {/* Header - Fixed */}
           <header className="flex-shrink-0 flex items-center justify-between px-6 py-4">
-            <div className="w-8" />
+            {/* Mobile Menu Button */}
+            <div className="lg:hidden">
+              <button
+                onClick={() => setIsMobileSidebarOpen(true)}
+                className={`p-2 rounded-lg transition-colors ${
+                  isDarkMode 
+                    ? 'hover:bg-gray-800 text-white' 
+                    : 'hover:bg-gray-100 text-gray-600'
+                }`}
+              >
+                <Image 
+                  src="/side-bar.svg" 
+                  alt="Menu" 
+                  width={24}
+                  height={24}
+                />
+              </button>
+            </div>
+            <div className="hidden lg:block w-8" />
+            
             <div className="flex justify-center mb-2">
               <div className="relative">
                 <Image 
@@ -858,6 +1003,7 @@ export default function Chat() {
                   alt="Vizzy Logo" 
                   width={300}
                   height={200}
+                  className="w-48 h-auto lg:w-[300px]"
                 />
               </div>
             </div>
@@ -874,13 +1020,13 @@ export default function Chat() {
           {!hasMessages ? (
             // Initial State - Welcome Screen
             <main className="flex-1 flex flex-col items-center justify-center px-6 pb-8">
-              <h1 className={`text-[57px] font-medium text-center leading-none mb-16 ${isDarkMode ? 'text-white' : 'text-[#11002E]'}`}>
+              <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-[57px] font-medium text-center leading-none mb-8 sm:mb-12 lg:mb-16 ${isDarkMode ? 'text-white' : 'text-[#11002E]'}`}>
                 {"What's on the agenda today?"}
               </h1>
 
               {/* Search Input */}
-              <div className="w-full max-w-3xl sm:max-w-4xl mb-10">
-                <div className={`relative backdrop-blur-xl rounded-[50px] border px-8 py-6 ${
+              <div className="w-full max-w-xl sm:max-w-2xl md:max-w-3xl lg:max-w-4xl mb-6 sm:mb-8 lg:mb-10">
+                <div className={`relative backdrop-blur-xl rounded-[30px] sm:rounded-[40px] lg:rounded-[50px] border px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 ${
                   isDarkMode 
                     ? 'bg-[#181819] border-white/30' 
                     : 'bg-white/60 border-white/30'
@@ -900,23 +1046,10 @@ export default function Chat() {
                   )}
                   
                   {/* Input Field Container with Custom Placeholder */}
-                  <div className="relative w-full mb-8">
+                  <div className="relative w-full mb-4 sm:mb-6 lg:mb-8">
                     {/* Custom Gradient Placeholder */}
                     {!inputValue && (
-                      <div 
-                        className="absolute inset-0 pointer-events-none flex items-start"
-                        style={{ 
-                          background: 'linear-gradient(to right, #4248FF, #C3BFE6)',
-                          backgroundClip: 'text',
-                          WebkitBackgroundClip: 'text',
-                          color: 'transparent',
-                          fontSize: '40px',
-                          fontWeight: '100',
-                          paddingTop: '0px'
-                        }}
-                      >
-                        Ask me anything
-                      </div>
+                      <TypewriterPlaceholder fontSize="clamp(18px, 4vw, 32px)" />
                     )}
                     
                     <textarea
@@ -936,12 +1069,12 @@ export default function Chat() {
                         }
                       }}
                       placeholder=""
-                      className={`w-full text-[40px] font-thin border-none bg-transparent px-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto relative z-10 ${
+                      className={`w-full text-lg sm:text-xl md:text-2xl lg:text-[40px] font-thin border-none bg-transparent px-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto relative z-10 ${
                         isDarkMode ? 'text-white' : 'text-black'
                       }`}
                       rows={1}
                       style={{ 
-                        minHeight: '40px', 
+                        minHeight: '32px', 
                         maxHeight: '120px'
                       }}
                     />
@@ -959,8 +1092,8 @@ export default function Chat() {
                         className="hidden"
                       />
                       <Plus 
-                        size={32} 
-                        className={`cursor-pointer hover:opacity-80 transition-opacity ${
+                        size={24} 
+                        className={`sm:w-6 sm:h-6 lg:w-8 lg:h-8 cursor-pointer hover:opacity-80 transition-opacity ${
                           isDarkMode ? 'text-white' : 'text-[#4248FF]'
                         }`}
                         onClick={() => fileInputRef.current?.click()}
@@ -971,8 +1104,9 @@ export default function Chat() {
                         <Image 
                           src="/tool-icon.svg" 
                           alt="Tool Icon" 
-                          width={32} 
-                          height={32} 
+                          width={24} 
+                          height={24} 
+                          className="w-6 h-6 lg:w-8 lg:h-8"
                           style={{ filter: isDarkMode ? 'brightness(0) invert(1)' : 'none' }}
                         />
                       </div>
@@ -986,8 +1120,8 @@ export default function Chat() {
                           className="hover:scale-105 transition-transform cursor-pointer"
                           title="Cancel Recording"
                         >
-                          <div className="w-12 h-12 bg-gray-400 rounded-full flex items-center justify-center">
-                            <X size={24} className="text-white" />
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-400 rounded-full flex items-center justify-center">
+                            <X size={20} className="sm:w-6 sm:h-6 text-white" />
                           </div>
                         </button>
                       )}
@@ -998,11 +1132,11 @@ export default function Chat() {
                         title={isRecording ? "Stop Recording" : "Start Recording"}
                       >
                         {isRecording ? (
-                          <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center">
-                            <MicOff size={24} className="text-white" />
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500 rounded-full flex items-center justify-center">
+                            <MicOff size={20} className="sm:w-6 sm:h-6 text-white" />
                           </div>
                         ) : (
-                          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 58 53" fill="none">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" className="sm:w-12 sm:h-12" viewBox="0 0 58 53" fill="none">
                             <g clipPath="url(#clip0_489_1814)">
                               <path fillRule="evenodd" clipRule="evenodd" d="M37.8361 1.58398C39.0162 1.58398 39.9729 2.54065 39.9729 3.72074V49.3048C39.9729 50.4848 39.0162 51.4415 37.8361 51.4415C36.6561 51.4415 35.6994 50.4848 35.6994 49.3048V3.72074C35.6994 2.54065 36.6561 1.58398 37.8361 1.58398ZM29.2891 10.131C30.4692 10.131 31.4259 11.0877 31.4259 12.2677V40.7578C31.4259 41.9378 30.4692 42.8945 29.2891 42.8945C28.109 42.8945 27.1523 41.9378 27.1523 40.7578V12.2677C27.1523 11.0877 28.109 10.131 29.2891 10.131ZM12.1951 12.98C13.3752 12.98 14.3318 13.9367 14.3318 15.1167V37.9088C14.3318 39.0888 13.3752 40.0455 12.1951 40.0455C11.015 40.0455 10.0583 39.0888 10.0583 37.9088V15.1167C10.0583 13.9367 11.015 12.98 12.1951 12.98ZM46.3831 15.829C47.5632 15.829 48.5199 16.7857 48.5199 17.9658V35.0598C48.5199 36.2398 47.5632 37.1965 46.3831 37.1965C45.2031 37.1965 44.2464 36.2398 44.2464 35.0598V17.9658C44.2464 16.7857 45.2031 15.829 46.3831 15.829ZM20.7421 18.678C21.9222 18.678 22.8788 19.6347 22.8788 20.8148V32.2108C22.8788 33.3908 21.9222 34.3475 20.7421 34.3475C19.562 34.3475 18.6053 33.3908 18.6053 32.2108V20.8148C18.6053 19.6347 19.562 18.678 20.7421 18.678ZM3.64807 21.527C4.82816 21.527 5.78483 22.4837 5.78483 23.6638V29.3618C5.78483 30.5418 4.82816 31.4985 3.64807 31.4985C2.46799 31.4985 1.51132 30.5418 1.51132 29.3618V23.6638C1.51132 22.4837 2.46799 21.527 3.64807 21.527ZM54.9301 21.527C56.1102 21.527 57.0669 22.4837 57.0669 23.6638V29.3618C57.0669 30.5418 56.1102 31.4985 54.9301 31.4985C53.7501 31.4985 52.7934 30.5418 52.7934 29.3618V23.6638C52.7934 22.4837 53.7501 21.527 54.9301 21.527Z" fill={isDarkMode ? "#FFFFFF" : "#4248FF"}/>
                             </g>

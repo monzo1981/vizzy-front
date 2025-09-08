@@ -16,6 +16,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [btnBg, setBtnBg] = useState('linear-gradient(92.09deg, #7FCBFD -17.23%, #4248FF 107.78%)');
 
   useEffect(() => {
     // If user is already authenticated, redirect to chat
@@ -51,12 +52,45 @@ const Login = () => {
       {/* Desktop Layout */}
       <div className="hidden lg:flex min-h-screen">
         {/* Left side - Text */}
-        <div className="flex-[2] flex items-center justify-start relative z-10 pl-12 md:pl-16 lg:pl-24 xl:pl-32 2xl:pl-40">
-          <div className="w-full">
-            <h1 className="text-4xl md:text-6xl lg:text-7xl xl:text-8xl font-black text-white leading-tight" style={{ fontSize: 'clamp(2rem, 8vw, 5rem)' }}>
-              Login and gets <br />
-              all your solutions
-            </h1>
+        <div className="flex-[2] flex items-center justify-center relative z-10">
+          <div className="w-full max-w-4xl flex flex-col items-center justify-center text-center">
+            {/* Arabic text at top */}
+            <div className="mb-12 w-full flex justify-center">
+              <p
+                dir="rtl"
+                className="text-white leading-relaxed"
+                style={{
+                  fontFamily: 'Noto Sans Arabic',
+                  fontSize: '60px',
+                  fontWeight: 700,
+                  lineHeight: '1.3',
+                  textShadow: '0px 4px 55px #000000',
+                  margin: 0,
+                  textAlign: 'right'
+                }}
+              >
+                أنا <span style={{ color: '#7FCAFE', fontFamily: 'inter', fontWeight: 900 }}>VIZZY</span> أول مساعد شخصي<br />
+                للتسويق بالذكــاء الاصطـناعي
+              </p>
+            </div>
+            {/* Main English text */}
+            <div className="w-full flex justify-center">
+              <h1
+                className="text-white leading-tight"
+                style={{
+                  fontSize: '64px',
+                  lineHeight: '1.1',
+                  letterSpacing: '-0.02em',
+                  fontWeight: 700,
+                  margin: 0,
+                  textShadow: '0px 0px 30px #000000',
+                  textAlign: 'left'
+                }}
+              >
+                <span style={{ color: '#FF4A19', fontWeight: 900 }}>Join Now</span> & lets elevate<br />
+                your brand together
+              </h1>
+            </div>
           </div>
         </div>
 
@@ -127,10 +161,12 @@ const Login = () => {
 
               {error && <p className="text-red-500 text-center mb-4">The email or password is incorrect</p>}
 
-              <Button 
+              <Button
                 type="submit"
                 className="cursor-pointer w-full h-14 text-white rounded-full font-medium text-base"
-                style={{ background: 'linear-gradient(92.09deg, #7FCBFD -17.23%, #4248FF 107.78%)' }}
+                style={{ background: btnBg, transition: 'background 0.3s' }}
+                onMouseEnter={() => setBtnBg('linear-gradient(92.09deg, #6ec5ffff -17.23%, #3138ffff 107.78%)')}
+                onMouseLeave={() => setBtnBg('linear-gradient(92.09deg, #7FCBFD -17.23%, #4248FF 107.78%)')}
               >
                 Sign In
               </Button>
@@ -208,29 +244,30 @@ const Login = () => {
         {/* Bottom - Login Form */}
         <div className="flex-1 flex items-center justify-center p-8 pt-0">
           <Card 
-            className="border-0 flex flex-col justify-center"
+            className="border-0 flex flex-col justify-center overflow-hidden"
             style={{
               width: 'clamp(280px, 90vw, 400px)',
-              height: 'clamp(450px, 60vh, 600px)',
+              height: 'clamp(520px, 70vh, 650px)',
               opacity: 1,
               borderRadius: 'clamp(32px, 8vw, 88px)',
               background: 'linear-gradient(92.9deg, rgba(211, 230, 252, 1) -14.33%, rgba(127, 202, 254, 1) 111.43%)',
-              padding: 'clamp(16px, 4vw, 24px)'
+              padding: 'clamp(20px, 5vw, 32px)'
             }}
           >
             <div className="text-center">
                 {/* Logo */}
-                <div className="flex justify-center mb-2">
+                <div className="flex justify-center mb-4">
                     <div className="relative">
                         <Image 
                         src="/vizzy-logo.svg" 
                         alt="Vizzy Logo" 
                         width={150}
                         height={150}
+                        className="max-w-full h-auto"
                         />
                     </div>
                 </div>
-              <p className="mb-6" style={{ fontWeight: 500, fontSize: 'clamp(16px, 4vw, 20px)', color: '#4248FF' }}>Your Personal Agency!</p>
+              <p className="mb-6" style={{ fontWeight: 500, fontSize: 'clamp(14px, 3.5vw, 18px)', color: '#4248FF' }}>Your Personal Agency!</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">

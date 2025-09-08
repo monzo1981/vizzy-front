@@ -8,11 +8,12 @@ interface SidebarProps {
   onToggle: () => void
   isDarkMode?: boolean
   onDarkModeToggle?: () => void
+  isMobile?: boolean
 }
 
-export function Sidebar({ onToggle, isDarkMode = false, onDarkModeToggle }: SidebarProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
-  const [isPinned, setIsPinned] = useState(false)
+export function Sidebar({ onToggle, isDarkMode = false, onDarkModeToggle, isMobile = false }: SidebarProps) {
+  const [isExpanded, setIsExpanded] = useState(isMobile)
+  const [isPinned, setIsPinned] = useState(isMobile)
 
   const handleToggle = () => {
     setIsPinned(!isPinned)
@@ -46,26 +47,34 @@ export function Sidebar({ onToggle, isDarkMode = false, onDarkModeToggle }: Side
   return (
     <>
       {/* Overlay */}
-      {isExpanded && (
+      {isExpanded && !isMobile && (
         <div 
           className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setIsExpanded(false)}
+        />
+      )}
+      
+      {/* Mobile Overlay */}
+      {isMobile && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40"
+          onClick={onToggle}
         />
       )}
 
       {/* Sidebar */}
       <div className={`
         fixed left-0 top-0 h-full backdrop-blur-xl border-r z-50 transition-all duration-300 ease-in-out
-        ${isExpanded ? 'w-72' : 'w-20'}
+        ${isMobile ? 'w-72' : (isExpanded ? 'w-72' : 'w-20')}
         ${isDarkMode 
           ? 'bg-[#0E0E10] border-white/20' 
           : 'bg-white/40 border-white/20'}
       `}
-      onMouseEnter={() => !isPinned && setIsExpanded(true)}
-      onMouseLeave={() => !isPinned && setIsExpanded(false)}
+      onMouseEnter={() => !isPinned && !isMobile && setIsExpanded(true)}
+      onMouseLeave={() => !isPinned && !isMobile && setIsExpanded(false)}
       >
         <div className="flex flex-col h-full overflow-hidden">
-          {isExpanded ? (
+          {(isExpanded || isMobile) ? (
             // Expanded Content
             <div className="flex flex-col h-full">
               {/* Header */}

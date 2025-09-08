@@ -647,7 +647,7 @@ export default function ProfilePage() {
                                 style={{
                                   fontFamily: 'Inter',
                                   fontWeight: 700,
-                                  fontSize: '34px',
+                                  fontSize: '36px',
                                   lineHeight: '100%',
                                   letterSpacing: 0,
                                   marginBottom: 0,

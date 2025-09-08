@@ -16,7 +16,22 @@ interface AvatarDropdownProps {
 export function AvatarDropdown({ currentUser, isDarkMode = false, onUserUpdate, className }: AvatarDropdownProps) {
   const router = useRouter()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isLargeScreen, setIsLargeScreen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Screen size detection
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsLargeScreen(window.innerWidth >= 1024); // lg breakpoint
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+
+    return () => {
+      window.removeEventListener('resize', checkScreenSize);
+    };
+  }, []);
 
   // Click outside listener for dropdown
   useEffect(() => {
@@ -59,8 +74,8 @@ export function AvatarDropdown({ currentUser, isDarkMode = false, onUserUpdate, 
           src={currentUser?.profile_picture_url || undefined}
           fallback={currentUser && currentUser.first_name && currentUser.last_name ? `${currentUser.first_name.charAt(0)}${currentUser.last_name.charAt(0)}`.toUpperCase() : 'U'} 
           alt="User" 
-          size={60}
-          className="sm:w-12 sm:h-12"
+          size={isLargeScreen ? 60 : 48}
+          className={isLargeScreen ? "w-[60px] h-[60px]" : "w-12 h-12"}
         />
       </div>
       

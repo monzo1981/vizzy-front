@@ -6,7 +6,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 interface N8NRequest {
   message?: string;
   audio_data?: string;
-  image_data?: string;
+  image_url?: string;
   user_id: string;
   user_email?: string;
   first_name?: string;
@@ -350,7 +350,7 @@ export class N8NWebhook {
         },
         body: JSON.stringify({
           message: text,
-          image_data: imageData,
+          image_url: imageData,
           user_id: this.userId,
           session_id: sessionId,
           user_email: this.userEmail,
