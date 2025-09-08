@@ -142,7 +142,7 @@ export class N8NWebhook {
     }
   }
 
-  private async getUserLimits(): Promise<Partial<UserLimits> | null> {
+  public async getUserLimits(): Promise<Partial<UserLimits> | null> {
     if (!this.userId || this.userId === 'anonymous') {
         console.log('No user ID, skipping limits fetch.');
         return null;
@@ -185,7 +185,13 @@ export class N8NWebhook {
             remaining_images: limitsData.remaining_images ?? null,
             remaining_videos: limitsData.remaining_videos ?? null,
             is_first_time_user: limitsData.is_first_time_user ?? false,
+            // Include max values if present in backend response
+            ...(limitsData.max_images !== undefined && { max_images: limitsData.max_images }),
+            ...(limitsData.max_videos !== undefined && { max_videos: limitsData.max_videos }),
         };
+        
+        // Save limits to localStorage for UI display
+        localStorage.setItem('user_limits', JSON.stringify(limits));
         
         console.log('Successfully extracted user limits:', limits);
         return limits;

@@ -34,11 +34,65 @@ import { ProfileEditModal } from "@/components/profile-edit-modal"
 export default function ProfilePage() {
   const [sidebarExpanded, setSidebarExpanded] = useState(false)
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [companyProfile, setCompanyProfile] = useState<any | null>(null)
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
-  const router = useRouter()
+  // UserLimits type is extended in n8n-webhook.ts to include max_images, max_videos
+  const [progressPercent, setProgressPercent] = useState<number>(0);
+  const [remainingCredits, setRemainingCredits] = useState<number | string>('-');
+  const router = useRouter();
+  // Fetch user limits and calculate progress
+  useEffect(() => {
+    async function fetchLimits() {
+      console.log('Starting to fetch user limits...');
+      const webhook = new N8NWebhook();
+      // Call getUserLimits method properly
+      const limits = await webhook.getUserLimits();
+      console.log('Received limits:', limits);
+      
+      if (limits) {
+        // Use type assertion to access possible backend fields
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const l: any = limits;
+        const maxImages = Number.isFinite(l.max_images) ? l.max_images : 0;
+        const maxVideos = Number.isFinite(l.max_videos) ? l.max_videos : 0;
+        const remImages = Number.isFinite(l.remaining_images) ? l.remaining_images : 0;
+        const remVideos = Number.isFinite(l.remaining_videos) ? l.remaining_videos : 0;
+        
+        console.log('Parsed values:', { maxImages, maxVideos, remImages, remVideos });
+        
+        const total = maxImages + maxVideos;
+        const remaining = remImages + remVideos;
+        let percent = 0;
+        if (total > 0) {
+          // Progress based on remaining (100% = full limits, 0% = no limits left)
+          percent = Math.round((remaining / total) * 100);
+        }
+        
+        // Update remaining credits display
+        setRemainingCredits(remaining);
+        
+        console.log('Calculated progress:', { total, remaining, percent });
+        
+        // Animate from 0 to percent
+        let current = 0;
+        const step = percent > 0 ? Math.max(1, Math.round(percent / 20)) : 1;
+        const interval = setInterval(() => {
+          current += step;
+          if (current >= percent) {
+            setProgressPercent(percent);
+            clearInterval(interval);
+          } else {
+            setProgressPercent(current);
+          }
+        }, 20);
+      } else {
+        console.error('Failed to get user limits');
+      }
+    }
+    fetchLimits();
+  }, []);
 
   useEffect(() => {
     const savedDarkMode = localStorage.getItem('darkMode')
@@ -134,7 +188,11 @@ export default function ProfilePage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-8">
             {/* Logo - NO TOGGLE HERE */}
-            <div className="flex items-center gap-2 ml-16"> {/* ml-16 to account for sidebar */}
+            <div 
+              className="flex items-center gap-2 ml-16 cursor-pointer" 
+              onClick={() => router.push('/chat')}
+              title="Go to Chat"
+            >
               <Image 
                 src={"/vizzy-logo.svg"} 
                 alt="Vizzy Logo" 
@@ -425,7 +483,7 @@ export default function ProfilePage() {
                               fontWeight: 500,
                               fontSize: '16px',
                               marginBottom: '4px'
-                            }}>Phone</p>
+                            }}>Mobile</p>
                             <p style={{
                               color: '#78758E',
                               fontWeight: 500,
@@ -690,25 +748,25 @@ export default function ProfilePage() {
                             cx="110" cy="110" r="100"
                             fill="none"
                             stroke="#FF4A19"
-                            strokeWidth="18"
+                            strokeWidth="12"
                           />
                           <circle
                             cx="110" cy="110" r="100"
                             fill="none"
                             stroke="#7FCAFE"
                             strokeWidth="18"
-                            strokeDasharray={`${0.75 * 2 * Math.PI * 100},${2 * Math.PI * 100}`}
+                            strokeDasharray={`${(progressPercent / 100) * 2 * Math.PI * 100},${2 * Math.PI * 100}`}
                             strokeDashoffset={0}
                             style={{ transition: 'stroke-dasharray 0.5s' }}
                           />
                         </svg>
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <span style={{ color: '#4248FF', fontWeight: 900, fontSize: '50px' }}>75%</span>
+                          <span style={{ color: '#4248FF', fontWeight: 900, fontSize: '50px' }}>{progressPercent}%</span>
                         </div>
                       </div>
                       <div className="text-center mb-6">
                         <p style={{ color: '#11002E', fontWeight: 400, fontSize: '16px' }}>
-                          You have <span style={{ fontWeight: 700 }}>2,500</span> credits remaining
+                          You have <span style={{ fontWeight: 700 }}>{remainingCredits}</span> credits remaining
                         </p>
                         <p style={{ color: '#11002E', fontWeight: 400, fontSize: '16px' }}>Upgrade now to unlock more generations</p>
                       </div>
