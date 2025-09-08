@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Menu, Search, Edit2, Settings } from "lucide-react"
+import { Search } from "lucide-react"
 
 interface SidebarProps {
   isOpen: boolean
@@ -12,13 +12,11 @@ interface SidebarProps {
 
 export function Sidebar({ onToggle, isDarkMode = false, onDarkModeToggle }: SidebarProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [isPinned, setIsPinned] = useState(false)
 
   const handleToggle = () => {
-    if (!isExpanded) {
-      setIsExpanded(true)
-    } else {
-      setIsExpanded(false)
-    }
+    setIsPinned(!isPinned)
+    setIsExpanded(!isPinned)
     onToggle()
   }
 
@@ -62,11 +60,14 @@ export function Sidebar({ onToggle, isDarkMode = false, onDarkModeToggle }: Side
         ${isDarkMode 
           ? 'bg-[#0E0E10] border-white/20' 
           : 'bg-white/40 border-white/20'}
-      `}>
-        <div className="flex flex-col h-full">
+      `}
+      onMouseEnter={() => !isPinned && setIsExpanded(true)}
+      onMouseLeave={() => !isPinned && setIsExpanded(false)}
+      >
+        <div className="flex flex-col h-full overflow-hidden">
           {isExpanded ? (
             // Expanded Content
-            <>
+            <div className="flex flex-col h-full">
               {/* Header */}
               <div className="px-4 pt-10 pb-4">
                 {/* Dark Mode Toggle Icon - Above Menu */}
@@ -104,7 +105,14 @@ export function Sidebar({ onToggle, isDarkMode = false, onDarkModeToggle }: Side
                       }`}
                       aria-label="Toggle menu"
                     >
-                      <Menu size={24} />
+                      <img 
+                        src="/side-bar.svg" 
+                        alt="Toggle Sidebar" 
+                        className="w-6 h-6" 
+                        style={{
+                          filter: isDarkMode ? 'brightness(0) invert(1)' : 'none'
+                        }}
+                      />
                     </button>
                   </div>
                   
@@ -128,8 +136,19 @@ export function Sidebar({ onToggle, isDarkMode = false, onDarkModeToggle }: Side
                     ? 'hover:bg-white/10 text-white' 
                     : 'hover:bg-white/40 text-gray-700'
                 }`}>
-                  <Edit2 size={18} />
-                  <span className="text-sm font-medium">New Chat</span>
+                  <img 
+                    src="/edit.svg" 
+                    alt="Edit" 
+                    className="w-6 h-6" 
+                    style={{
+                      filter: isDarkMode ? 'brightness(0) invert(1)' : 'none'
+                    }}
+                  />
+                  <span
+                    className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-[#11002E]'}`}
+                  >
+                    New Chat
+                  </span>
                 </button>
 
                 {/* Divider */}
@@ -168,22 +187,8 @@ export function Sidebar({ onToggle, isDarkMode = false, onDarkModeToggle }: Side
                     ))}
                   </div>
                 </div>
-
-                {/* Settings Button */}
-                <div className={`pt-4 pb-4 border-t ${isDarkMode ? 'border-white/30' : 'border-white/30'}`}>
-                  <button className={`flex items-center gap-3 px-3 py-2.5 transition-colors rounded-lg w-full ${
-                    isDarkMode 
-                      ? 'hover:bg-white/10 text-white' 
-                      : 'hover:bg-white/40 text-gray-700'
-                  }`}>
-                    <div className={isDarkMode ? 'invert' : ''}>
-                      <img src="/settings.svg" alt="Settings" className="w-5 h-5" />
-                    </div>
-                    <span className="text-sm font-medium">Settings & help</span>
-                  </button>
-                </div>
               </div>
-            </>
+            </div>
           ) : (
             // Collapsed Content
             <div className="flex flex-col items-center h-full pt-10 pb-4 px-2">
@@ -216,7 +221,14 @@ export function Sidebar({ onToggle, isDarkMode = false, onDarkModeToggle }: Side
                 }`}
                 aria-label="Toggle menu"
               >
-                <Menu size={24} />
+                <img 
+                  src="/side-bar.svg" 
+                  alt="Toggle Sidebar" 
+                  className="w-6 h-6" 
+                  style={{
+                    filter: isDarkMode ? 'brightness(0) invert(1)' : 'none'
+                  }}
+                />
               </button>
 
               {/* New Chat Icon */}
@@ -228,25 +240,18 @@ export function Sidebar({ onToggle, isDarkMode = false, onDarkModeToggle }: Side
                 }`}
                 aria-label="New chat"
               >
-                <Edit2 size={20} />
+                <img 
+                  src="/edit.svg" 
+                  alt="Edit" 
+                  className="w-6 h-6" 
+                  style={{
+                    filter: isDarkMode ? 'brightness(0) invert(1)' : 'none'
+                  }}
+                />
               </button>
 
               {/* Spacer */}
               <div className="flex-1" />
-
-              {/* Settings Icon */}
-              <button 
-                className={`p-2 transition-colors rounded-lg ${
-                  isDarkMode 
-                    ? 'hover:bg-white/10 text-white' 
-                    : 'hover:bg-white/40 text-gray-700'
-                }`}
-                aria-label="Settings"
-              >
-                <div className={isDarkMode ? 'invert' : ''}>
-                  <img src="/settings.svg" alt="Settings" className="w-5 h-5" />
-                </div>
-              </button>
             </div>
           )}
         </div>

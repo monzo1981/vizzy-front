@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Avatar } from "@/components/ui/avatar"
+import { AvatarDropdown } from "@/components/ui/avatar-dropdown"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { isAuthenticated, getUser, type User as AuthUser } from "@/lib/auth"
@@ -212,18 +213,17 @@ export default function ProfilePage() {
           {/* Right Section */}
           <div className="flex items-center gap-4">
             <Bell className="w-6 h-6 text-orange-500" />
-            <Avatar 
-              src={currentUser?.profile_picture_url || undefined}
-              fallback={currentUser && currentUser.first_name && currentUser.last_name ? `${currentUser.first_name.charAt(0)}${currentUser.last_name.charAt(0)}`.toUpperCase() : 'U'} 
-              alt="User" 
-              size="md" 
+            <AvatarDropdown 
+              currentUser={currentUser}
+              isDarkMode={isDarkMode}
+              onUserUpdate={setCurrentUser}
             />
           </div>
         </div>
       </header>
 
       {/* Layout Container */}
-      <div className="flex pt-[72px]"> {/* Padding top for fixed header */}
+  <div className="flex pt-[92px]"> {/* Padding top for fixed header, increased for larger avatar */}
         
         {/* Sidebar - PURE WHITE, COLLAPSIBLE */}
         <aside
@@ -234,7 +234,7 @@ export default function ProfilePage() {
             overflow-hidden
           `}
         >
-          <div className="flex flex-col h-full">
+          <div className="flex flex-col h-full pt-4">
             {/* Toggle Button - TOP OF SIDEBAR */}
             <div className="p-3 border-b border-gray-200">
               <Button 
@@ -496,7 +496,7 @@ export default function ProfilePage() {
                               fontWeight: 500,
                               fontSize: '16px',
                               marginBottom: '4px'
-                            }}>Company Name</p>
+                            }}>Business name</p>
                             <p style={{
                               color: '#78758E',
                               fontWeight: 500,
@@ -509,7 +509,7 @@ export default function ProfilePage() {
                               fontWeight: 500,
                               fontSize: '16px',
                               marginBottom: '4px'
-                            }}>Company Website</p>
+                            }}>Website</p>
                             <p style={{
                               color: '#78758E',
                               fontWeight: 500,
@@ -641,52 +641,32 @@ export default function ProfilePage() {
                         }}
                       >
                         <CardContent className="p-6">
-                          <div className="flex items-center justify-between">
-                            <div>
+                          <div className="flex flex-row items-center gap-6">
+                            <div className="flex flex-col gap-2 flex-1">
                               <h3
                                 style={{
                                   fontFamily: 'Inter',
                                   fontWeight: 700,
-                                  fontSize: '45px',
+                                  fontSize: '34px',
                                   lineHeight: '100%',
                                   letterSpacing: 0,
                                   marginBottom: 0,
+                                  textAlign: 'left',
                                 }}
                               >Your</h3>
                               <h3
                                 style={{
                                   fontFamily: 'Inter',
                                   fontWeight: 700,
-                                  fontSize: '45px',
+                                  fontSize: '34px', 
                                   lineHeight: '100%',
                                   letterSpacing: 0,
+                                  textAlign: 'left',
                                 }}
                               >Logo !</h3>
-                            </div>
-                            <div className="flex flex-col items-center gap-2">
-                              {/* Logo Display/Upload Area */}
-                              <div className="w-16 h-16 bg-white/20 rounded-lg flex items-center justify-center">
-                                {companyProfile && companyProfile.logo_url ? (
-                                  <Image 
-                                    src={companyProfile.logo_url}
-                                    alt="Company Logo"
-                                    width={64}
-                                    height={64}
-                                    className="w-full h-full object-cover rounded-lg"
-                                  />
-                                ) : (
-                                  <Image 
-                                    src="/logo-upload.svg"
-                                    alt="Upload Logo"
-                                    width={32}
-                                    height={32}
-                                    className="opacity-80"
-                                  />
-                                )}
-                              </div>
                               <Button
                                 type="button"
-                                className="flex items-center justify-center border-0"
+                                className="flex items-center justify-center border-0 mt-4"
                                 style={{
                                   background: '#FFEB77',
                                   borderRadius: '50px',
@@ -694,7 +674,7 @@ export default function ProfilePage() {
                                   fontWeight: 700,
                                   fontSize: '16px',
                                   padding: '12px 32px',
-                                  marginTop: '4px',
+                                  width: 'fit-content',
                                 }}
                                 onClick={() => document.getElementById('logo-upload-input')?.click()}
                               >
@@ -710,6 +690,25 @@ export default function ProfilePage() {
                                   if (file) handleLogoUpload(file)
                                 }}
                               />
+                            </div>
+                            <div className="flex items-center justify-center w-32 h-32 bg-white/20 rounded-lg">
+                              {companyProfile && companyProfile.logo_url ? (
+                                <Image 
+                                  src={companyProfile.logo_url}
+                                  alt="Company Logo"
+                                  width={128}
+                                  height={128}
+                                  className="w-full h-full object-cover rounded-lg"
+                                />
+                              ) : (
+                                <Image 
+                                  src="/logo-upload.svg"
+                                  alt="Upload Logo"
+                                  width={72}
+                                  height={72}
+                                  className="opacity-80"
+                                />
+                              )}
                             </div>
                           </div>
                         </CardContent>

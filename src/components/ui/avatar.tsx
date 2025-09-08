@@ -8,7 +8,7 @@ interface AvatarProps {
   src?: string
   alt?: string
   fallback?: string
-  size?: 'sm' | 'md' | 'lg' | 'xl'
+  size?: 'sm' | 'md' | 'lg' | 'xl' | number
   className?: string
 }
 
@@ -55,13 +55,16 @@ export function Avatar({
 
   const showImage = src && !imageError
 
+  // Support custom pixel size
+  const customSize = typeof size === 'number' ? { width: size, height: size, minWidth: size, minHeight: size } : undefined;
   return (
     <div
       className={cn(
         "relative flex-shrink-0 p-[2px] border-2 border-[#FF4A19] rounded-full bg-white",
-        sizeClasses[size],
+        typeof size === 'string' ? sizeClasses[size] : '',
         className
       )}
+      style={customSize}
     >
       {showImage ? (
         <div className="relative w-full h-full overflow-hidden rounded-full">
@@ -78,7 +81,7 @@ export function Avatar({
         <div 
           className={cn(
             "w-full h-full flex items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 font-semibold select-none",
-            textSizes[size]
+            typeof size === 'string' ? textSizes[size] : 'text-base'
           )}
           role="img"
           aria-label={alt || "Avatar"}

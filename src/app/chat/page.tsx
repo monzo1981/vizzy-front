@@ -4,13 +4,13 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useRef, useEffect, memo, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Plus, LogOut, MicOff, X, Mic } from "lucide-react"
+import { Plus, MicOff, X, Mic } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Avatar } from "@/components/ui/avatar"
+import { AvatarDropdown } from "@/components/ui/avatar-dropdown"
 import { GradientBackground } from "../../components/gradient-background"
 import { Sidebar, useSidebar } from "../../components/sidebar"
 import Image from "next/image"
-import { isAuthenticated, getUser, logout, type User } from "@/lib/auth"
+import { isAuthenticated, getUser, type User } from "@/lib/auth"
 import { N8NWebhook } from "@/lib/n8n-webhook"
 import { ResponseNormalizer } from "@/lib/response-normalizer"
 import { isVideoUrl, getVideoMimeType } from "@/lib/videoUtils"
@@ -574,12 +574,6 @@ export default function Chat() {
     };
   }, [hasMessages, setInputValue, expandedImage, inputRef, compactInputRef]);
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('ai_chat_session_id')
-    logout()
-    router.push('/')
-  }
-
   const handleRemoveImage = () => {
     setSelectedImage(null);
     if (fileInputRef.current) {
@@ -855,7 +849,7 @@ export default function Chat() {
         {/* Main Content */}
         <div className={`h-screen flex flex-col transition-all duration-300 ${isOpen ? 'lg:ml-20' : 'lg:ml-20'}`}>
           {/* Header - Fixed */}
-          <header className="flex-shrink-0 flex items-center justify-between px-10 py-4">
+          <header className="flex-shrink-0 flex items-center justify-between px-6 py-4">
             <div className="w-8" />
             <div className="flex justify-center mb-2">
               <div className="relative">
@@ -868,26 +862,11 @@ export default function Chat() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <Button
-                onClick={handleLogout}
-                variant="ghost"
-                size="sm"
-                className={`flex items-center gap-2 ${isDarkMode ? 'text-gray-400 hover:text-red-400' : 'text-gray-600 hover:text-red-600'}`}
-              >
-                <LogOut size={16} />
-                Logout
-              </Button>
-              <div 
-                className="cursor-pointer transition-transform hover:scale-105"
-                onClick={() => router.push('/profile')}
-              >
-                <Avatar 
-                  src={currentUser?.profile_picture_url || undefined}
-                  fallback={currentUser && currentUser.first_name && currentUser.last_name ? `${currentUser.first_name.charAt(0)}${currentUser.last_name.charAt(0)}`.toUpperCase() : 'U'} 
-                  alt="User" 
-                  size="md" 
-                />
-              </div>
+              {/* Avatar Dropdown */}
+              <AvatarDropdown 
+                currentUser={currentUser}
+                isDarkMode={isDarkMode}
+              />
             </div>
           </header>
 
