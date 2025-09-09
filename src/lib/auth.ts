@@ -364,5 +364,43 @@ export const refreshToken = async (): Promise<boolean> => {
   }
 };
 
+// Google OAuth login function
+export const googleLogin = async (googleToken: string): Promise<LoginResponse> => {
+  try {
+    console.log('[GoogleLogin] Sending token to backend:', googleToken.substring(0, 50) + '...');
+    console.log('[GoogleLogin] API URL:', `${API_BASE_URL}/auth/google/`);
+    
+    const response = await fetch(`${API_BASE_URL}/auth/google/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ token: googleToken }),
+    });
+
+    console.log('[GoogleLogin] Response status:', response.status);
+    const data = await response.json();
+    console.log('[GoogleLogin] Response data:', data);
+
+    if (response.ok && data.success) {
+      // Store tokens in localStorage
+      localStorage.setItem('access_token', data.data.tokens.access);
+      localStorage.setItem('refresh_token', data.data.tokens.refresh);
+      localStorage.setItem('user', JSON.stringify(data.data.user));
+      
+      // Start automatic refresh cycle
+      tokenRefreshManager.scheduleRefresh(data.data.tokens.access);
+      
+      return { success: true, data: data.data };
+    } else {
+      console.error('[GoogleLogin] Backend returned error:', data);
+      return { success: false, error: data.message || 'Google login failed' };
+    }
+  } catch (error) {
+    console.error('[GoogleLogin] Network error:', error);
+    return { success: false, error: 'Network error' };
+  }
+};
+
 // Export the manager for debugging purposes
 export const getTokenRefreshManager = () => tokenRefreshManager;

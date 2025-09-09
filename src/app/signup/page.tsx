@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import Image from 'next/image';
-import { register, isAuthenticated } from '@/lib/auth';
+import { register, isAuthenticated, User } from '@/lib/auth';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
 
 const SignUp = () => {
   const router = useRouter();
@@ -193,11 +194,32 @@ const SignUp = () => {
               </Button>
             </form>
 
-            <div className="mt-4">
               <p className="text-center mb-6 max-w-[300px] mx-auto" style={{ fontWeight: 400, fontSize: '15px', color: '#6B7280' }}>
                 By continuing, you agree to our Terms and acknowledge our{' '} {/* Corrected escaped space */} 
                 <Link href="/" className="hover:underline" style={{ color: '#4248FF' }}>Privacy Policy</Link>
               </p>
+
+              {/* Divider */}
+              <div className="flex items-center my-6">
+                <div className="flex-1 border-t border-gray-300"></div>
+                <span className="px-4 text-gray-500 text-sm">OR</span>
+                <div className="flex-1 border-t border-gray-300"></div>
+              </div>
+
+              <div className="mt-4">
+              {/* Google Sign-Up */}
+              <div className="mb-6">
+                <GoogleSignInButton
+                  text="continue_with"
+                  onSuccess={(user: User) => {
+                    console.log('Google sign-up successful:', user);
+                  }}
+                  onError={(error: string) => {
+                    setError(error);
+                  }}
+                  className="w-full"
+                />
+              </div>
 
               <p className="text-sm text-center mt-6" style={{ fontWeight: 400, color: '#6B7280' }}>
                 Already have an account?{' '}
@@ -329,6 +351,27 @@ const SignUp = () => {
             </form>
 
             <div className="mt-4">
+              {/* Google Sign-Up */}
+              <div className="mb-4">
+                <GoogleSignInButton
+                  text="sign_up_with"
+                  onSuccess={(user: User) => {
+                    console.log('Google sign-up successful:', user);
+                  }}
+                  onError={(error: string) => {
+                    setError(error);
+                  }}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Divider */}
+              <div className="flex items-center my-4">
+                <div className="flex-1 border-t border-gray-300"></div>
+                <span className="px-4 text-gray-500 text-sm">OR</span>
+                <div className="flex-1 border-t border-gray-300"></div>
+              </div>
+
               <p className="text-center mb-4 max-w-[300px] mx-auto" style={{ fontWeight: 400, fontSize: '15px', color: '#6B7280' }}>
                 By continuing, you agree to our Terms and acknowledge our{' '}
                 <Link href="/" className="hover:underline" style={{ color: '#4248FF' }}>Privacy Policy</Link>
