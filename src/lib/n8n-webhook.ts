@@ -4,7 +4,7 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 interface N8NRequest {
-  message?: string;
+  current_user_message?: string;
   audio_data?: string;
   image_url?: string;
   user_id: string;
@@ -22,7 +22,7 @@ interface N8NRequest {
   company_website_url?: string;
   logo_url?: string;
   // Chat history
-  chat_history?: Array<{
+  previous_context?: Array<{
     role: 'user' | 'assistant' | 'system';
     content: string;
     timestamp?: string;
@@ -202,7 +202,7 @@ export class N8NWebhook {
   }
 
   async sendMessage(
-    message: string, 
+    current_user_message: string, 
     sessionId?: string, 
     chatHistory?: Array<{
       role: 'user' | 'assistant' | 'system';
@@ -212,7 +212,7 @@ export class N8NWebhook {
     }>
   ): Promise<N8NResponse> {
     try {
-      console.log('Sending message to N8N:', message);
+      console.log('Sending message to N8N:', current_user_message);
 
       // Fetch company profile if not already fetched
       await this.fetchCompanyProfile();
@@ -228,7 +228,7 @@ export class N8NWebhook {
           'key': process.env.NEXT_PUBLIC_N8N_WEBHOOK_KEY!
         },
         body: JSON.stringify({
-          message: message,
+          current_user_message: current_user_message,
           user_id: this.userId,
           session_id: sessionId,
           user_email: this.userEmail,
@@ -242,8 +242,9 @@ export class N8NWebhook {
           company_name: this.companyProfile?.company_name || null,
           company_website_url: this.companyProfile?.company_website_url || null,
           logo_url: this.companyProfile?.logo_url || null,
-          // Add chat history
-          chat_history: chatHistory || [],
+          respond_only_to: 'current_user_message',
+          // Add previous context
+          previous_context: chatHistory || [],
         } as N8NRequest),
       });
 
@@ -302,8 +303,9 @@ export class N8NWebhook {
           company_name: this.companyProfile?.company_name || null,
           company_website_url: this.companyProfile?.company_website_url || null,
           logo_url: this.companyProfile?.logo_url || null,
-          // Add chat history
-          chat_history: chatHistory || [],
+          respond_only_to: 'current_user_message',
+          // Add previous context
+          previous_context: chatHistory || [],
         } as N8NRequest),
       });
 
@@ -349,7 +351,7 @@ export class N8NWebhook {
           'key': process.env.NEXT_PUBLIC_N8N_WEBHOOK_KEY!
         },
         body: JSON.stringify({
-          message: text,
+          current_user_message: text,
           image_url: imageData,
           user_id: this.userId,
           session_id: sessionId,
@@ -364,8 +366,9 @@ export class N8NWebhook {
           company_name: this.companyProfile?.company_name || null,
           company_website_url: this.companyProfile?.company_website_url || null,
           logo_url: this.companyProfile?.logo_url || null,
-          // Add chat history
-          chat_history: chatHistory || [],
+          respond_only_to: 'current_user_message',
+          // Add previous context
+          previous_context: chatHistory || [],
         } as N8NRequest),
       });
 

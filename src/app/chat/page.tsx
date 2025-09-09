@@ -55,6 +55,32 @@ const StableImage = memo(({ src, alt, className, style, onClick }: { src: string
 });
 StableImage.displayName = 'StableImage';
 
+// Loading animation component for image upload
+const ImageUploadLoader = ({ isDarkMode }: { isDarkMode: boolean }) => {
+  return (
+    <div 
+      className="h-20 w-20 rounded-lg flex items-center justify-center"
+      style={{
+        background: isDarkMode 
+          ? '#20262D' 
+          : 'linear-gradient(109.03deg, #BEDCFF -35.22%, rgba(255, 255, 255, 0.9) 17.04%, rgba(255, 232, 228, 0.4) 57.59%, #BEDCFF 97.57%)'
+      }}
+    >
+      <div className="relative">
+        <div 
+          className="w-8 h-8 rounded-full border-2 animate-spin"
+          style={{
+            borderColor: 'transparent',
+            borderTopColor: isDarkMode ? '#78758E' : '#7FCAFE',
+            borderRightColor: isDarkMode ? '#FFFFFF' : '#D3E6FC',
+            animationDuration: '1s'
+          }}
+        />
+      </div>
+    </div>
+  );
+};
+
 const TypewriterPlaceholder = ({ fontSize }: { fontSize: string }) => {
   const sentences = [
     'افكارك الكروكي …. هحولها لتصميمات تجنن',
@@ -176,6 +202,7 @@ function ChatContent() {
   const [isLoading, setIsLoading] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [isImageUploading, setIsImageUploading] = useState(false)
   
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
@@ -828,10 +855,23 @@ function ChatContent() {
         return;
       }
 
-      const publicUrl = await handleImageUpload(file);
+      // Start loading animation
+      setIsImageUploading(true);
 
-      if (publicUrl) {
-        setSelectedImage(publicUrl);
+      try {
+        const publicUrl = await handleImageUpload(file);
+
+        if (publicUrl) {
+          setSelectedImage(publicUrl);
+        } else {
+          alert("Failed to upload image. Please try again.");
+        }
+      } catch (error) {
+        console.error('Error uploading image:', error);
+        alert("Failed to upload image. Please try again.");
+      } finally {
+        // Stop loading animation
+        setIsImageUploading(false);
       }
     }
 
@@ -1036,15 +1076,25 @@ function ChatContent() {
                 }`}>
                   
                   {/* Selected Image Preview */}
-                  {selectedImage && (
+                  {(selectedImage || isImageUploading) && (
                     <div className="mb-4 relative inline-block">
-                      <img src={selectedImage} alt="Selected" className="h-20 rounded-lg" width={80} height={80} />
-                      <button
-                        onClick={handleRemoveImage}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
-                      >
-                        <X size={16} />
-                      </button>
+                      {isImageUploading ? (
+                        <ImageUploadLoader isDarkMode={isDarkMode} />
+                      ) : (
+                        <>
+                          <img src={selectedImage!} alt="Selected" className="h-20 rounded-lg" width={80} height={80} />
+                          <button
+                            onClick={handleRemoveImage}
+                            className={`absolute -top-2 -right-2 rounded-full p-1 ${
+                              isDarkMode 
+                                ? 'bg-[#D9D9D9] text-black' 
+                                : 'bg-[#7FCAFE] text-white'
+                            }`}
+                          >
+                            <X size={16} />
+                          </button>
+                        </>
+                      )}
                     </div>
                   )}
                   
@@ -1337,15 +1387,44 @@ function ChatContent() {
                   }`} style={{ borderRadius: '50px' }}>
                     
                     {/* Selected Image Preview */}
-                    {selectedImage && (
+                    {(selectedImage || isImageUploading) && (
                       <div className="mb-2 relative inline-block">
-                        <img src={selectedImage} alt="Selected" className="h-16 rounded-lg" width={64} height={64} />
-                        <button
-                          onClick={handleRemoveImage}
-                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"
-                        >
-                          <X size={12} />
-                        </button>
+                        {isImageUploading ? (
+                          <div 
+                            className="h-16 w-16 rounded-lg flex items-center justify-center"
+                            style={{
+                              background: isDarkMode 
+                                ? '#20262D' 
+                                : 'linear-gradient(109.03deg, #BEDCFF -35.22%, rgba(255, 255, 255, 0.9) 17.04%, rgba(255, 232, 228, 0.4) 57.59%, #BEDCFF 97.57%)'
+                            }}
+                          >
+                            <div className="relative">
+                              <div 
+                                className="w-6 h-6 rounded-full border-2 animate-spin"
+                                style={{
+                                  borderColor: 'transparent',
+                                  borderTopColor: isDarkMode ? '#78758E' : '#7FCAFE',
+                                  borderRightColor: isDarkMode ? '#FFFFFF' : '#D3E6FC',
+                                  animationDuration: '1s'
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <img src={selectedImage!} alt="Selected" className="h-16 rounded-lg" width={64} height={64} />
+                            <button
+                              onClick={handleRemoveImage}
+                              className={`absolute -top-1 -right-1 rounded-full p-0.5 ${
+                                isDarkMode 
+                                  ? 'bg-[#D9D9D9] text-black' 
+                                  : 'bg-[#7FCAFE] text-white'
+                              }`}
+                            >
+                              <X size={12} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                     

@@ -1,4 +1,4 @@
-// lib/response-normalizer.ts - Fixed version with proper URL extraction
+// lib/response-normalizer.ts - Fixed version with proper URL extraction including spaces
 
 interface NormalizedResponse {
   text: string;
@@ -54,6 +54,7 @@ export class ResponseNormalizer {
   private static readonly URL_KEYWORDS = ["url", "image_url", "video_url", "file_url", "visual", "media", "transformed_video_url", "image", "video"];
   private static readonly IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"];
   private static readonly VIDEO_EXTENSIONS = [".mp4", ".mov", ".avi", ".mkv", ".webm"];
+  private static readonly ALL_MEDIA_EXTENSIONS = [...ResponseNormalizer.IMAGE_EXTENSIONS, ...ResponseNormalizer.VIDEO_EXTENSIONS];
 
   constructor(jsonResponse: JsonValue) {
     this.jsonResponse = jsonResponse;
@@ -162,7 +163,7 @@ export class ResponseNormalizer {
       // Check for media URL in separate fields
       if (!mediaUrl && ResponseNormalizer.URL_KEYWORDS.some(k => lowerKey.includes(k))) {
         if (typeof value === 'string' && value.startsWith('http')) {
-          mediaUrl = this._cleanUrl(value);
+          mediaUrl = this._cleanAndEncodeUrl(value);
           isUrlFromSeparateField = true; // Mark as coming from separate field
           console.log(`✅ Found mediaUrl in separate field '${key}':`, mediaUrl);
         }
@@ -234,7 +235,7 @@ export class ResponseNormalizer {
   }
 
   /**
-   * Extract URL from text with option to preserve it in the text
+   * Extract URL from text with improved handling of URLs with spaces
    * @param text - The text to search for URLs
    * @param preserveInText - Whether to keep the URL in the returned text
    * @returns [extractedUrl, processedText]
@@ -244,37 +245,66 @@ export class ResponseNormalizer {
       return [undefined, text || ""];
     }
 
-    // Improved patterns to match URLs and stop at newlines or problematic characters
-    const urlPatterns = [
-      // Pattern that captures URLs with optional prefix and stops at newlines
-      /(?:(Design image URL|Image URL|Video link|URL):\s*\n*)?(https?:\/\/[^\s'"<>\n\r\)\]]+(?:\.[^\s'"<>\n\r\)\]]+)*)/gi,
+    console.log("🔍 Starting URL extraction from text");
+
+    // First, try to find URLs with known media extensions (more reliable)
+    const extensionPattern = this._createExtensionPattern();
+    const extensionMatches = text.match(extensionPattern);
+    
+    if (extensionMatches) {
+      const fullMatch = extensionMatches[0];
+      console.log("🎯 Found URL with media extension:", fullMatch);
+      
+      // Extract the complete URL including any spaces before the extension
+      const urlStart = fullMatch.indexOf('http');
+      if (urlStart !== -1) {
+        let url = fullMatch.substring(urlStart);
+        
+        // Encode spaces and clean the URL
+        url = this._cleanAndEncodeUrl(url);
+        console.log("✅ Extracted and encoded URL:", url);
+        
+        if (preserveInText) {
+          // Keep URL in text but encoded
+          const encodedText = text.replace(fullMatch, fullMatch.substring(0, urlStart) + url);
+          return [url, encodedText];
+        } else {
+          const remainingText = text.replace(fullMatch, "").trim();
+          return [url, remainingText];
+        }
+      }
+    }
+
+    // Fallback: Try standard URL patterns (for URLs without spaces)
+    const standardPatterns = [
+      // Pattern that captures URLs with optional prefix
+      /(?:(Design image URL|Image URL|Video link|URL):\s*\n*)?(https?:\/\/[^\s'"<>\n\r\)\]]+)/gi,
       // Fallback pattern for standalone URLs
-      /(https?:\/\/[^\s'"<>\n\r\)\]]+(?:\.[^\s'"<>\n\r\)\]]+)*)/gi
+      /(https?:\/\/[^\s'"<>\n\r\)\]]+)/gi
     ];
 
-    for (const pattern of urlPatterns) {
+    for (const pattern of standardPatterns) {
       pattern.lastIndex = 0; // Reset regex state
       const matches = text.matchAll(pattern);
       
       for (const match of matches) {
-        console.log("🎯 Regex match found:", match[0]);
+        console.log("🎯 Standard regex match found:", match[0]);
         let url = match[2] || match[1] || match[0];
         console.log("🔗 Extracted URL candidate:", url);
         
         if (url && url.startsWith('http')) {
-          // Clean URL thoroughly
-          url = this._cleanUrl(url);
+          // Clean and encode URL
+          url = this._cleanAndEncodeUrl(url);
           
           // Validate URL is still valid after cleaning
-          if (url && url.startsWith('http') && !url.includes('\\n') && !url.includes('\\r')) {
+          if (url && url.startsWith('http')) {
             console.log("✅ Valid URL extracted:", url);
             
             if (preserveInText) {
-              // Keep URL in text, just clean up the original text
-              const cleanedText = text.trim();
-              return [url, cleanedText];
+              // Replace original URL with encoded version in text
+              const encodedText = text.replace(match[0], match[0].replace(match[2] || match[1] || match[0], url));
+              return [url, encodedText];
             } else {
-              // Remove URL from text (original behavior)
               const remainingText = text.replace(match[0], "").trim();
               return [url, remainingText];
             }
@@ -285,6 +315,93 @@ export class ResponseNormalizer {
 
     console.log("⚠️ No valid URL found in text");
     return [undefined, text];
+  }
+
+  /**
+   * Create a regex pattern to match URLs with media extensions (including spaces)
+   */
+  private _createExtensionPattern(): RegExp {
+    const extensions = ResponseNormalizer.ALL_MEDIA_EXTENSIONS.join('|').replace(/\./g, '\\.');
+    // This pattern captures:
+    // 1. Optional prefix text
+    // 2. The URL starting with http/https
+    // 3. Any characters (including spaces) until we hit a media extension
+    // 4. The media extension itself
+    return new RegExp(
+      `((?:Design image URL|Image URL|Video link|URL):\\s*\\n?)?(https?:\\/\\/[^\\n\\r]+(${extensions}))`,
+      'gi'
+    );
+  }
+
+  /**
+   * Clean and encode URL properly, handling spaces and special characters
+   */
+  private _cleanAndEncodeUrl(url: string): string {
+    if (!url) return url;
+    
+    console.log("🧹 Cleaning URL:", url);
+    
+    // First, handle escaped newlines by replacing them with actual newlines
+    let cleanedUrl = url.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
+    
+    // Split at actual newline characters to get only the URL part
+    cleanedUrl = cleanedUrl.split('\n')[0];
+    cleanedUrl = cleanedUrl.split('\r')[0];
+    
+    // Remove any text after the URL ends (look for common patterns)
+    // But be careful to preserve the file extension
+    const extensionMatch = cleanedUrl.match(/\.(jpg|jpeg|png|gif|webp|svg|mp4|mov|avi|mkv|webm)/i);
+    if (extensionMatch) {
+      const extensionIndex = cleanedUrl.lastIndexOf(extensionMatch[0]);
+      const endIndex = extensionIndex + extensionMatch[0].length;
+      cleanedUrl = cleanedUrl.substring(0, endIndex);
+    }
+    
+    // Now encode spaces and other special characters
+    // Split URL into parts to encode properly
+    try {
+      const urlParts = cleanedUrl.match(/^(https?:\/\/[^\/]+)(\/.*)?$/);
+      if (urlParts) {
+        const domain = urlParts[1];
+        const path = urlParts[2] || '';
+        
+        // Encode spaces in the path part only
+        const encodedPath = path
+          .split('/')
+          .map(segment => {
+            // Encode spaces to %20
+            return segment.replace(/ /g, '%20');
+          })
+          .join('/');
+        
+        cleanedUrl = domain + encodedPath;
+      } else {
+        // Fallback: just encode spaces
+        cleanedUrl = cleanedUrl.replace(/ /g, '%20');
+      }
+    } catch (e) {
+      console.error("Error encoding URL:", e);
+      // Fallback: just encode spaces
+      cleanedUrl = cleanedUrl.replace(/ /g, '%20');
+    }
+    
+    // Remove any trailing punctuation that's definitely not part of URL
+    cleanedUrl = cleanedUrl.replace(/[\)\]\}>,;!]+$/, '');
+    
+    // Remove any trailing backslashes
+    cleanedUrl = cleanedUrl.replace(/\\+$/, '');
+    
+    // Final trim
+    cleanedUrl = cleanedUrl.trim();
+    
+    console.log("✨ URL cleaned and encoded to:", cleanedUrl);
+    
+    return cleanedUrl;
+  }
+
+  private _cleanUrl(url: string): string {
+    // Deprecated - use _cleanAndEncodeUrl instead
+    return this._cleanAndEncodeUrl(url);
   }
 
   private _cleanText(text: string, hasUrlFromSeparateField: boolean = false): string {
@@ -349,37 +466,5 @@ export class ResponseNormalizer {
     }
     
     return undefined;
-  }
-
-  private _cleanUrl(url: string): string {
-    if (!url) return url;
-    
-    // First, handle escaped newlines by replacing them with actual newlines
-    let cleanedUrl = url.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
-    
-    // Then split at actual newline characters
-    cleanedUrl = cleanedUrl.split('\n')[0];
-    cleanedUrl = cleanedUrl.split('\r')[0];
-    
-    // Remove any text after common sentence endings (but be careful)
-    // Only if followed by capital letter or "If", "Want", etc.
-    cleanedUrl = cleanedUrl.replace(/\s+(If|Want|Need|Let|Just|Click)\s.*/i, '');
-    
-    // Remove common trailing punctuation that's definitely not part of URL
-    // But preserve dots, hyphens, and other URL-valid characters
-    cleanedUrl = cleanedUrl.replace(/[\s\)\]\}>,;!]+$/, '');
-    
-    // Remove any trailing backslashes that aren't part of the URL
-    cleanedUrl = cleanedUrl.replace(/\\+$/, '');
-    
-    // Final trim
-    cleanedUrl = cleanedUrl.trim();
-    
-    // Only log if actually changed
-    if (url !== cleanedUrl) {
-      console.log("🧹 URL cleaned from:", url, "to:", cleanedUrl);
-    }
-    
-    return cleanedUrl;
   }
 }
