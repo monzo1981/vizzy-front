@@ -76,12 +76,45 @@ const SignUp = () => {
       {/* Desktop Layout */}
       <div className="hidden lg:flex min-h-screen">
         {/* Left side - Text */}
-        <div className="flex-[2] flex items-center justify-start relative z-10 pl-12 md:pl-16 lg:pl-24 xl:pl-32 2xl:pl-40">
-          <div className="w-full">
-            <h1 className="text-4xl md:text-6xl lg:text-7xl xl:text-8xl font-black text-white leading-tight" style={{ fontSize: 'clamp(2rem, 8vw, 5rem)' }}>
-              Sign up and gets <br />
-              all your solutions
-            </h1>
+        <div className="flex-[2] flex items-center justify-center relative z-10">
+          <div className="w-full max-w-4xl flex flex-col items-center justify-center text-center">
+            {/* Arabic text at top */}
+            <div className="mb-12 w-full flex justify-center">
+              <p
+                dir="rtl"
+                className="text-white leading-relaxed"
+                style={{
+                  fontFamily: 'Noto Sans Arabic',
+                  fontSize: '60px',
+                  fontWeight: 700,
+                  lineHeight: '1.3',
+                  textShadow: '0px 4px 55px #000000',
+                  margin: 0,
+                  textAlign: 'right'
+                }}
+              >
+                أنا <span style={{ color: '#7FCAFE', fontFamily: 'inter', fontWeight: 900 }}>VIZZY</span> أول مساعد شخصي<br />
+                للتسويق بالذكــاء الاصطـناعي
+              </p>
+            </div>
+            {/* Main English text */}
+            <div className="w-full flex justify-center">
+              <h1
+                className="text-white leading-tight"
+                style={{
+                  fontSize: '64px',
+                  lineHeight: '1.1',
+                  letterSpacing: '-0.02em',
+                  fontWeight: 700,
+                  margin: 0,
+                  textShadow: '0px 0px 30px #000000',
+                  textAlign: 'left'
+                }}
+              >
+                <span style={{ color: '#FF4A19', fontWeight: 900 }}>Join Now</span> & lets elevate<br />
+                your brand together
+              </h1>
+            </div>
           </div>
         </div>
 
@@ -194,32 +227,32 @@ const SignUp = () => {
               </Button>
             </form>
 
+            <div className="mt-4">
               <p className="text-center mb-6 max-w-[300px] mx-auto" style={{ fontWeight: 400, fontSize: '15px', color: '#6B7280' }}>
-                By continuing, you agree to our Terms and acknowledge our{' '} {/* Corrected escaped space */} 
+                By continuing, you agree to our Terms and acknowledge our{' '}
                 <Link href="/" className="hover:underline" style={{ color: '#4248FF' }}>Privacy Policy</Link>
               </p>
 
-              {/* Divider */}
-              <div className="flex items-center my-6">
-                <div className="flex-1 border-t border-gray-300"></div>
-                <span className="px-4 text-gray-500 text-sm">OR</span>
-                <div className="flex-1 border-t border-gray-300"></div>
-              </div>
+                {/* Divider */}
+                <div className="flex items-center my-6">
+                  <div className="flex-1 border-t border-gray-300"></div>
+                  <span className="px-4 text-gray-500 text-sm">OR</span>
+                  <div className="flex-1 border-t border-gray-300"></div>
+                </div>
 
-              <div className="mt-4">
-              {/* Google Sign-Up */}
-              <div className="mb-6">
-                <GoogleSignInButton
-                  text="continue_with"
-                  onSuccess={(user: User) => {
-                    console.log('Google sign-up successful:', user);
-                  }}
-                  onError={(error: string) => {
-                    setError(error);
-                  }}
-                  className="w-full"
-                />
-              </div>
+                {/* Google Sign-In */}
+                <div className="mb-6">
+                  <GoogleSignInButton
+                    text="continue_with"
+                    onSuccess={(user: User) => {
+                      console.log('Google sign-in successful:', user);
+                    }}
+                    onError={(error: string) => {
+                      setError(error);
+                    }}
+                    className="w-full"
+                  />
+                </div>
 
               <p className="text-sm text-center mt-6" style={{ fontWeight: 400, color: '#6B7280' }}>
                 Already have an account?{' '}

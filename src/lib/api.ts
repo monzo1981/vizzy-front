@@ -65,7 +65,7 @@ export const fetchWithAuth = async (
   if (!isAuthenticated()) {
     console.log('[API] User not authenticated, redirecting to login');
     logout();
-    window.location.href = '/login';
+    window.location.href = '/';
     throw new Error('User not authenticated');
   }
 
@@ -113,13 +113,13 @@ export const fetchWithAuth = async (
       if (response.status === 401) {
         console.error(`[API] Request ${requestId} still unauthorized after refresh`);
         logout();
-        window.location.href = '/login';
+        window.location.href = '/';
         throw new Error('Authentication failed');
       }
     } catch (refreshError) {
       console.error(`[API] Token refresh failed for request ${requestId}:`, refreshError);
       logout();
-      window.location.href = '/login';
+      window.location.href = '/';
       throw refreshError;
     }
   }
@@ -138,7 +138,7 @@ export const fetchWithAuth = async (
       } catch (error) {
         console.error(`[API] Unable to recover from 403:`, error);
         logout();
-        window.location.href = '/login';
+        window.location.href = '/';
         throw error;
       }
     }
