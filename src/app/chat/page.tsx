@@ -15,6 +15,7 @@ import { N8NWebhook } from "@/lib/n8n-webhook"
 import { ResponseNormalizer } from "@/lib/response-normalizer"
 import { isVideoUrl, getVideoMimeType } from "@/lib/videoUtils"
 import { TextDirectionHandler } from "@/lib/text-direction-handler"
+import { useNotificationSound } from "@/lib/useNotificationSound";
 import { supabase, type ChatMessage, type ChatMessageDB } from "@/lib/supabase-client"
 import { RealtimeChannel } from "@supabase/supabase-js"
 
@@ -202,6 +203,7 @@ function ChatContent() {
   
   // N8N instances
   const n8nWebhook = useRef<N8NWebhook | null>(null)
+  const { playSound } = useNotificationSound("/vizzy-message.mp3");
 
   // Function to create AI chat session
   const createAIChatSession = async (initialMessage?: string): Promise<string | undefined> => {
@@ -572,6 +574,7 @@ function ChatContent() {
               
               console.log('➕ Adding new messages to UI');
               setMessages(prev => [...prev, ...normalizedMessages]);
+              playSound();
               setIsLoading(false);
             }
             
