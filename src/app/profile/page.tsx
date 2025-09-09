@@ -501,7 +501,7 @@ export default function ProfilePage() {
                               color: '#78758E',
                               fontWeight: 500,
                               fontSize: '16px'
-                            }}>{companyProfile ? companyProfile.company_name : 'Not available'}</p>
+                            }}>{companyProfile?.company_name || 'Not available'}</p>
                           </div>
                           <div>
                             <p style={{
@@ -514,7 +514,7 @@ export default function ProfilePage() {
                               color: '#78758E',
                               fontWeight: 500,
                               fontSize: '16px'
-                            }}>{companyProfile ? companyProfile.company_website_url : 'Not available'}</p>
+                            }}>{companyProfile?.company_website_url || 'Not available'}</p>
                           </div>
                           <div>
                             <p style={{
