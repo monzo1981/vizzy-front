@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic' 
 
-import { useState, useRef, useEffect, memo, useCallback } from "react"
+import { useState, useRef, useEffect, memo, useCallback, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Plus, MicOff, X, Mic } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -164,7 +164,7 @@ const TypewriterPlaceholder = ({ fontSize }: { fontSize: string }) => {
   );
 };
 
-export default function Chat() {
+function ChatContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { isOpen, toggle } = useSidebar()
@@ -1513,5 +1513,13 @@ export default function Chat() {
         </div>
       </GradientBackground>
     </div>
+  )
+}
+
+export default function Chat() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ChatContent />
+    </Suspense>
   )
 }
