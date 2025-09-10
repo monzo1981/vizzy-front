@@ -185,7 +185,7 @@ export default function ProfilePage() {
   return (
     <GradientBackground isDarkMode={isDarkMode}>
       {/* Fixed Header/Navbar - PURE WHITE */}
-      <header className="fixed top-0 left-0 right-0 bg-white shadow-md px-6 py-4 z-50">
+  <header className={`fixed top-0 left-0 right-0 shadow-md px-6 py-4 z-50 ${isDarkMode ? 'bg-[#0E0E10]' : 'bg-white'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-8">
             {/* Logo - NO TOGGLE HERE */}
@@ -195,7 +195,7 @@ export default function ProfilePage() {
               title="Go to Chat"
             >
               <Image 
-                src={"/vizzy-logo.svg"} 
+                src={isDarkMode ? "/vizzy-logo-dark.svg" : "/vizzy-logo.svg"} 
                 alt="Vizzy Logo" 
                 width={150}
                 height={100}
@@ -228,25 +228,26 @@ export default function ProfilePage() {
         {/* Sidebar - PURE WHITE, COLLAPSIBLE */}
         <aside
           className={`
-            fixed left-0 top-[72px] h-[calc(100vh-72px)] bg-white shadow-lg
+            fixed left-0 top-[72px] h-[calc(100vh-72px)] shadow-lg
             transition-all duration-300 ease-in-out z-40
             ${sidebarExpanded ? "w-[280px]" : "w-[60px]"}
             overflow-hidden
+            ${isDarkMode ? 'bg-[#0E0E10]' : 'bg-white'}
           `}
         >
           <div className="flex flex-col h-full pt-4">
             {/* Toggle Button - TOP OF SIDEBAR */}
-            <div className="p-3 border-b border-gray-200">
+            <div className={`p-3 border-b ${isDarkMode ? 'border-[#23232A]' : 'border-gray-200'}`}> 
               <Button 
                 variant="ghost" 
                 size="icon"
                 onClick={() => setSidebarExpanded(!sidebarExpanded)}
-                className="w-full hover:bg-gray-100"
+                className={`w-full ${isDarkMode ? 'hover:bg-[#23232A] text-white' : 'hover:bg-gray-100 text-gray-700'}`}
               >
                 {sidebarExpanded ? (
-                  <ChevronLeft className="w-5 h-5" />
+                  <ChevronLeft className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
                 ) : (
-                  <Menu className="w-5 h-5" />
+                  <Menu className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
                 )}
               </Button>
             </div>
@@ -262,16 +263,16 @@ export default function ProfilePage() {
                   <div className="space-y-1">
                     <Button 
                       variant="ghost" 
-                      className={`w-full hover:bg-gray-100 ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
+                      className={`w-full ${isDarkMode ? 'hover:bg-[#23232A] text-white' : 'hover:bg-gray-100 text-gray-700'} ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
                     >
-                      <User className="w-5 h-5" />
+                      <User className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
                       {sidebarExpanded && <span className="ml-3">Edit Profile</span>}
                     </Button>
                     <Button 
                       variant="ghost" 
-                      className={`w-full hover:bg-gray-100 ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
+                      className={`w-full ${isDarkMode ? 'hover:bg-[#23232A] text-white' : 'hover:bg-gray-100 text-gray-700'} ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
                     >
-                      <Bell className="w-5 h-5" />
+                      <Bell className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
                       {sidebarExpanded && <span className="ml-3">Notification</span>}
                     </Button>
                   </div>
@@ -285,30 +286,30 @@ export default function ProfilePage() {
                   <div className="space-y-1">
                     <Button 
                       variant="ghost" 
-                      className={`w-full hover:bg-gray-100 ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
+                      className={`w-full ${isDarkMode ? 'hover:bg-[#23232A] text-white' : 'hover:bg-gray-100 text-gray-700'} ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
                     >
-                      <Activity className="w-5 h-5" />
+                      <Activity className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
                       {sidebarExpanded && <span className="ml-3">Activetes</span>}
                     </Button>
                     <Button 
                       variant="ghost" 
-                      className={`w-full hover:bg-gray-100 ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
+                      className={`w-full ${isDarkMode ? 'hover:bg-[#23232A] text-white' : 'hover:bg-gray-100 text-gray-700'} ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
                     >
-                      <Puzzle className="w-5 h-5" />
+                      <Puzzle className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
                       {sidebarExpanded && <span className="ml-3">Interest</span>}
                     </Button>
                     <Button 
                       variant="ghost" 
-                      className={`w-full hover:bg-gray-100 ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
+                      className={`w-full ${isDarkMode ? 'hover:bg-[#23232A] text-white' : 'hover:bg-gray-100 text-gray-700'} ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
                     >
-                      <Users className="w-5 h-5" />
+                      <Users className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
                       {sidebarExpanded && <span className="ml-3">Invite & win</span>}
                     </Button>
                     <Button 
                       variant="ghost" 
-                      className={`w-full hover:bg-gray-100 ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
+                      className={`w-full ${isDarkMode ? 'hover:bg-[#23232A] text-white' : 'hover:bg-gray-100 text-gray-700'} ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
                     >
-                      <CreditCard className="w-5 h-5" />
+                      <CreditCard className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
                       {sidebarExpanded && <span className="ml-3">Payment</span>}
                     </Button>
                   </div>
@@ -322,16 +323,16 @@ export default function ProfilePage() {
                   <div className="space-y-1">
                     <Button 
                       variant="ghost" 
-                      className={`w-full hover:bg-gray-100 ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
+                      className={`w-full ${isDarkMode ? 'hover:bg-[#23232A] text-white' : 'hover:bg-gray-100 text-gray-700'} ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
                     >
-                      <Lock className="w-5 h-5" />
+                      <Lock className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
                       {sidebarExpanded && <span className="ml-3">Password</span>}
                     </Button>
                     <Button 
                       variant="ghost" 
-                      className={`w-full hover:bg-gray-100 ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
+                      className={`w-full ${isDarkMode ? 'hover:bg-[#23232A] text-white' : 'hover:bg-gray-100 text-gray-700'} ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
                     >
-                      <User className="w-5 h-5" />
+                      <User className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
                       {sidebarExpanded && <span className="ml-3">Access</span>}
                     </Button>
                   </div>
@@ -343,9 +344,9 @@ export default function ProfilePage() {
             <div className="border-t border-gray-200 p-3 space-y-1">
               <Button 
                 variant="ghost" 
-                className={`w-full hover:bg-gray-100 ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
+                className={`w-full ${isDarkMode ? 'hover:bg-[#23232A] text-white' : 'hover:bg-gray-100 text-gray-700'} ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
               >
-                <LogOut className="w-5 h-5" />
+                <LogOut className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
                 {sidebarExpanded && <span className="ml-3">Log out</span>}
               </Button>
               <Button 
@@ -369,7 +370,9 @@ export default function ProfilePage() {
                 <div className="lg:col-span-2">
                   {/* Profile Card */}
                   <Card className="border-0" style={{ 
-                    background: 'linear-gradient(100.74deg, rgba(127, 202, 254, 0.5) -2.34%, rgba(255, 255, 255, 0.5) 25.59%, rgba(255, 228, 224, 0.5) 63.57%, rgba(255, 255, 255, 0.5) 106.88%)',
+                    background: isDarkMode
+                      ? 'linear-gradient(100.74deg, rgba(127, 202, 254) -2.34%, rgba(255, 255, 255) 25.59%, rgba(255, 228, 224) 63.57%, rgba(255, 255, 255) 106.88%)'
+                      : 'linear-gradient(100.74deg, rgba(127, 202, 254, 0.5) -2.34%, rgba(255, 255, 255, 0.5) 25.59%, rgba(255, 228, 224, 0.5) 63.57%, rgba(255, 255, 255, 0.5) 106.88%)',
                     borderRadius: '36px'
                   }}>
                     <CardContent className="p-6">
@@ -691,7 +694,7 @@ export default function ProfilePage() {
                                 }}
                               />
                             </div>
-                            <div className="flex items-center justify-center w-32 h-32 bg-white/20 rounded-lg">
+                            <div className="flex items-center justify-center w-32 h-32 rounded-lg">
                               {companyProfile && companyProfile.logo_url ? (
                                 <Image 
                                   src={companyProfile.logo_url}

@@ -2,12 +2,20 @@
 export const dynamic = 'force-dynamic' 
 
 import { Inter } from "next/font/google";
+import { Noto_Sans_Arabic } from "next/font/google";
 import "./globals.css";
 import { useEffect } from "react";
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+});
+
+const notoSansArabic = Noto_Sans_Arabic({
+  variable: "--font-noto-arabic",
+  subsets: ["arabic"],
+  display: "block",
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
 });
 
 
@@ -29,14 +37,64 @@ export default function RootLayout({
     }
   }, []);
 
+  // Auto-detect Arabic text and apply appropriate font
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const applyArabicFont = () => {
+        // Arabic Unicode range: U+0600-U+06FF
+        const arabicRegex = /[\u0600-\u06FF]/;
+        
+        // Find all text nodes in the document
+        const walker = document.createTreeWalker(
+          document.body,
+          NodeFilter.SHOW_TEXT,
+          null
+        );
+        
+        const textNodes = [];
+        let node;
+        while (node = walker.nextNode()) {
+          textNodes.push(node);
+        }
+        
+        // Check each text node for Arabic content
+        textNodes.forEach(textNode => {
+          if (textNode.textContent && arabicRegex.test(textNode.textContent)) {
+            const element = textNode.parentElement;
+            if (element && !element.hasAttribute('data-font-applied')) {
+              element.style.fontFamily = "'Noto Sans Arabic', var(--font-inter), Inter, sans-serif";
+              element.setAttribute('data-font-applied', 'arabic');
+            }
+          }
+        });
+      };
+      
+      // Apply on initial load
+      applyArabicFont();
+      
+      // Apply when DOM changes (for dynamic content)
+      const observer = new MutationObserver(() => {
+        applyArabicFont();
+      });
+      
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        characterData: true
+      });
+      
+      return () => observer.disconnect();
+    }
+  }, []);
+
   return (
     <html lang="en">
       <head>
+        <link rel="icon" href="/vizzy-chat-icon.svg" />
         <script src="https://accounts.google.com/gsi/client" async defer></script>
       </head>
       <body
-        className={`${inter.variable} antialiased`}
-        style={{ fontFamily: 'var(--font-inter), Inter, sans-serif' }}
+        className={`${inter.variable} ${notoSansArabic.variable} antialiased`}
       >
         {children}
       </body>

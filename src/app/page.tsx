@@ -59,9 +59,8 @@ const Login = () => {
             <div className="mb-12 w-full flex justify-center">
               <p
                 dir="rtl"
-                className="text-white leading-relaxed"
+                className="text-white leading-relaxed font-arabic"
                 style={{
-                  fontFamily: 'Noto Sans Arabic',
                   fontSize: '60px',
                   fontWeight: 700,
                   lineHeight: '1.3',
@@ -70,7 +69,7 @@ const Login = () => {
                   textAlign: 'right'
                 }}
               >
-                أنا <span style={{ color: '#7FCAFE', fontFamily: 'inter', fontWeight: 900 }}>VIZZY</span> أول مساعد شخصي<br />
+                أنا <span style={{ color: '#7FCAFE', fontFamily: 'var(--font-inter), Inter', fontWeight: 900 }}>VIZZY</span> أول مساعد شخصي<br />
                 للتسويق بالذكــاء الاصطـناعي
               </p>
             </div>

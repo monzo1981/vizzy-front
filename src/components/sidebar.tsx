@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Search } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 interface SidebarProps {
   isOpen: boolean
@@ -12,6 +13,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onToggle, isDarkMode = false, onDarkModeToggle, isMobile = false }: SidebarProps) {
+  const router = useRouter()
   const [isExpanded, setIsExpanded] = useState(isMobile)
   const [isPinned, setIsPinned] = useState(isMobile)
 
@@ -19,6 +21,24 @@ export function Sidebar({ onToggle, isDarkMode = false, onDarkModeToggle, isMobi
     setIsPinned(!isPinned)
     setIsExpanded(!isPinned)
     onToggle()
+  }
+
+  const handleNewChat = () => {
+    // Clear the session from localStorage
+    sessionStorage.removeItem('ai_chat_session_id')
+    
+    // If already on chat page, reload to show initial state
+    if (window.location.pathname === '/chat') {
+      window.location.reload()
+    } else {
+      // Navigate to chat page (which will show the initial state)
+      router.push('/chat')
+    }
+    
+    // Close mobile sidebar if open
+    if (isMobile) {
+      onToggle()
+    }
   }
 
   const recentChats = [
@@ -140,11 +160,14 @@ export function Sidebar({ onToggle, isDarkMode = false, onDarkModeToggle, isMobi
 
               <div className="flex flex-col flex-1 px-4 overflow-hidden">
                 {/* New Chat */}
-                <button className={`flex items-center gap-3 px-3 py-2.5 transition-colors rounded-lg mb-4 ${
-                  isDarkMode 
-                    ? 'hover:bg-white/10 text-white' 
-                    : 'hover:bg-white/40 text-gray-700'
-                }`}>
+                <button 
+                  onClick={handleNewChat}
+                  className={`flex items-center gap-3 px-3 py-2.5 transition-colors rounded-lg mb-4 ${
+                    isDarkMode 
+                      ? 'hover:bg-white/10 text-white' 
+                      : 'hover:bg-white/40 text-gray-700'
+                  }`}
+                >
                   <img 
                     src="/edit.svg" 
                     alt="Edit" 
@@ -242,6 +265,7 @@ export function Sidebar({ onToggle, isDarkMode = false, onDarkModeToggle, isMobi
 
               {/* New Chat Icon */}
               <button 
+                onClick={handleNewChat}
                 className={`p-2 transition-colors rounded-lg mb-4 ${
                   isDarkMode 
                     ? 'hover:bg-white/10 text-white' 
