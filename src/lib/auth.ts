@@ -285,6 +285,9 @@ export const logout = () => {
   // Clear company profile cache
   localStorage.removeItem('company_profile');
   
+  // Clear any cached user limits (should not be stored, but cleanup just in case)
+  localStorage.removeItem('user_limits');
+  
   console.log('[Auth] User logged out');
 };
 

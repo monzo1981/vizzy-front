@@ -190,8 +190,8 @@ export class N8NWebhook {
             ...(limitsData.max_videos !== undefined && { max_videos: limitsData.max_videos }),
         };
         
-        // Save limits to localStorage for UI display
-        localStorage.setItem('user_limits', JSON.stringify(limits));
+        // Note: User limits are NOT stored in localStorage as they change frequently
+        // Always fetch fresh data from backend to ensure accuracy
         
         console.log('Successfully extracted user limits:', limits);
         return limits;

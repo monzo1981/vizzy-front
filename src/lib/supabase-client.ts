@@ -23,6 +23,7 @@ export interface ChatMessageDB {
   content: string;
   timestamp: string;
   visual?: string;
+  image_url?: string; // New field for user uploaded images
   service_type?: string;
 }
 

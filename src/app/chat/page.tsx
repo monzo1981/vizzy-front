@@ -481,12 +481,26 @@ function ChatContent() {
             const normalizer = new ResponseNormalizer(msg.content);
             const { text, mediaUrl } = normalizer.normalize();
             
+            // For user messages, prioritize image_url over visual and mediaUrl
+            let finalVisual = msg.visual;
+            if (msg.role === 'user' && msg.image_url) {
+              finalVisual = msg.image_url;
+            } else if (mediaUrl) {
+              finalVisual = mediaUrl;
+            }
+            
+            // Handle content - if user message has image but no text, show "Sent an image"
+            let finalContent = text || msg.content;
+            if (msg.role === 'user' && (!finalContent || finalContent.trim() === '') && finalVisual) {
+              finalContent = 'Sent an image';
+            }
+            
             return {
               id: `existing-${index}-${Date.now()}`,
-              content: text || msg.content,
+              content: finalContent,
               sender: msg.role === 'user' ? 'user' : 'assistant',
               timestamp: new Date(msg.timestamp),
-              visual: mediaUrl || msg.visual,
+              visual: finalVisual,
               serviceType: msg.service_type,
               isProcessing: false,
               isVoice: false
