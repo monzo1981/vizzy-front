@@ -1122,11 +1122,12 @@ function ChatContent() {
                         }
                       }}
                       placeholder=""
-                      className={`w-full text-lg sm:text-xl md:text-2xl lg:text-[40px] font-thin border-none bg-transparent px-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto relative z-10 ${
+                      className={`w-full font-thin border-none bg-transparent px-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto relative z-10 ${
                         isDarkMode ? 'text-white' : 'text-black'
                       }`}
                       rows={1}
                       style={{ 
+                        fontSize: 'clamp(18px, 4vw, 32px)',
                         minHeight: '32px', 
                         maxHeight: '120px'
                       }}

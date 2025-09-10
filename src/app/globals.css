@@ -89,14 +89,63 @@
   }
 }
 
+/* Noto Sans Arabic is now loaded via Next.js Font Optimization for better performance */
+
 @layer base {
   * {
     border-color: hsl(var(--border));
-    font-family: var(--font-inter), Inter, sans-serif;
+    font-family: var(--font-inter), Inter;
   }
+  
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
-    font-family: var(--font-inter), Inter, sans-serif;
+    font-family: 'Noto Sans Arabic', var(--font-inter), Inter;
   }
+  
+  /* Arabic text styling */
+  *:lang(ar), 
+  [lang="ar"],
+  [dir="rtl"] {
+    font-family: var(--font-noto-arabic), var(--font-inter), Inter !important;
+  }
+  
+  /* Fallback for elements containing Arabic text */
+  *:has([lang="ar"]) {
+    font-family: var(--font-noto-arabic), var(--font-inter), Inter;
+  }
+}
+
+/* Smart Arabic text detection using Unicode ranges */
+@supports (font-family: 'Noto Sans Arabic') {
+  /* Apply Arabic font to text that contains Arabic Unicode characters */
+  * {
+    font-family: var(--font-inter), Inter;
+  }
+  
+  /* Override for Arabic script (Unicode range U+0600-U+06FF) */
+  *:lang(ar),
+  [lang="ar"],
+  [dir="rtl"] {
+    font-family: var(--font-noto-arabic), var(--font-inter), Inter !important;
+  }
+}
+
+/* CSS custom properties for font families */
+:root {
+  --font-arabic: var(--font-noto-arabic), var(--font-inter), Inter;
+  --font-latin: var(--font-inter), Inter;
+}
+
+/* Utility classes for manual font application */
+.font-arabic {
+  font-family: var(--font-arabic) !important;
+}
+
+.font-latin {
+  font-family: var(--font-latin) !important;
+}
+
+.font-mixed {
+  font-family: var(--font-noto-arabic), var(--font-inter), Inter !important;
 }
