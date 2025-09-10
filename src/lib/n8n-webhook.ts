@@ -30,7 +30,7 @@ interface N8NRequest {
   }>;
 }
 
-type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
 
 interface N8NResponse {
   response?: string;
@@ -244,7 +244,7 @@ export class N8NWebhook {
           logo_url: this.companyProfile?.logo_url || null,
           respond_only_to: 'current_user_message',
           // Add previous context
-          previous_context: chatHistory || [],
+          previous_context: chatHistory ? chatHistory.slice(-20) : [],
         } as N8NRequest),
       });
 
@@ -305,7 +305,7 @@ export class N8NWebhook {
           logo_url: this.companyProfile?.logo_url || null,
           respond_only_to: 'current_user_message',
           // Add previous context
-          previous_context: chatHistory || [],
+          previous_context: chatHistory ? chatHistory.slice(-20) : [],
         } as N8NRequest),
       });
 
@@ -368,7 +368,7 @@ export class N8NWebhook {
           logo_url: this.companyProfile?.logo_url || null,
           respond_only_to: 'current_user_message',
           // Add previous context
-          previous_context: chatHistory || [],
+          previous_context: chatHistory ? chatHistory.slice(-20) : [],
         } as N8NRequest),
       });
 
