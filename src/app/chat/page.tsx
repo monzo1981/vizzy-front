@@ -232,6 +232,46 @@ function ChatContent() {
   const n8nWebhook = useRef<N8NWebhook | null>(null)
   const { playSound } = useNotificationSound("/vizzy-message.mp3");
 
+  // Function to download image
+  const downloadImage = async (imageUrl: string, fileName?: string) => {
+    try {
+      let blob: Blob
+      
+      // Check if it's a base64 image
+      if (imageUrl.startsWith('data:')) {
+        // Convert base64 to blob
+        const response = await fetch(imageUrl)
+        blob = await response.blob()
+      } else {
+        // For regular URLs, fetch the image
+        const response = await fetch(imageUrl)
+        blob = await response.blob()
+      }
+      
+      // Create a temporary URL for the blob
+      const url = window.URL.createObjectURL(blob)
+      
+      // Create a temporary anchor element and trigger download
+      const link = document.createElement('a')
+      link.href = url
+      link.download = fileName || `vizzy-image-${Date.now()}.png`
+      document.body.appendChild(link)
+      link.click()
+      
+      // Clean up
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Error downloading image:', error)
+      // Fallback: try to open in new tab if download fails
+      try {
+        window.open(imageUrl, '_blank')
+      } catch (fallbackError) {
+        console.error('Fallback failed too:', fallbackError)
+      }
+    }
+  }
+
   // Function to create AI chat session
   const createAIChatSession = async (initialMessage?: string): Promise<string | undefined> => {
     try {
@@ -1136,7 +1176,7 @@ function ChatContent() {
                         }
                       }}
                       placeholder=""
-                      className={`w-full font-thin border-none bg-transparent px-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto relative z-10 ${
+                      className={`w-full font-thin border-none bg-transparent px-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto no-scrollbar relative z-10 ${
                         isDarkMode ? 'text-white' : 'text-black'
                       }`}
                       rows={1}
@@ -1239,12 +1279,13 @@ function ChatContent() {
                         {(message.sender === 'assistant' || message.sender === 'system') && (
                           <div className="flex items-start space-x-4">
                             <div className="w-8 h-8 flex items-center justify-center">
-                                <Image 
-                                  src="/vizzy-chat-icon.svg" 
-                                  alt="Vizzy AI" 
-                                  width={24}
-                                  height={24}
-                                />
+                              <Image
+                                src="/vizzy-chat-icon.svg"
+                                alt="Vizzy AI"
+                                width={24}
+                                height={24}
+                                style={isDarkMode ? { filter: 'invert(87%) sepia(13%) saturate(1042%) hue-rotate(176deg) brightness(104%) contrast(97%)' } : {}}
+                              />
                             </div>
                             <div className="max-w-2xl">
                               {/* Message content */}
@@ -1263,7 +1304,7 @@ function ChatContent() {
                               {/* Show visual content */}
                               {message.visual && (
                                 <div 
-                                  className="mt-4 backdrop-blur-xl rounded-3xl p-6 flex items-center justify-center cursor-pointer" 
+                                  className="mt-4 backdrop-blur-xl rounded-3xl p-6 flex items-center justify-center cursor-pointer relative" 
                                   style={{ 
                                     width: '370px', 
                                     background: isDarkMode 
@@ -1288,23 +1329,63 @@ function ChatContent() {
                                       Your browser does not support the video tag.
                                     </video>
                                   ) : isBase64Image(message.visual) ? (
-                                    <img 
-                                      src={message.visual} 
-                                      alt="Generated visual content" 
-                                      className="rounded-lg max-w-full max-h-full object-contain"
-                                      style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }}
-                                      onError={(e) => {
-                                        console.error('Image failed to load:', message.visual);
-                                        (e.currentTarget as HTMLImageElement).style.display = 'none';
-                                      }}
-                                    />
+                                    <div className="relative inline-block">
+                                      <img 
+                                        src={message.visual} 
+                                        alt="Generated visual content" 
+                                        className="rounded-lg max-w-full max-h-full object-contain"
+                                        style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }}
+                                        onError={(e) => {
+                                          console.error('Image failed to load:', message.visual);
+                                          (e.currentTarget as HTMLImageElement).style.display = 'none';
+                                        }}
+                                      />
+                                      {/* Download button for base64 images */}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          downloadImage(message.visual!, `vizzy-image-${Date.now()}.png`)
+                                        }}
+                                        className="absolute transition-all duration-200 transform hover:scale-110 z-10"
+                                        style={{ top: '8px', right: '8px' }}
+                                        title="Download image"
+                                      >
+                                        <Image 
+                                          src="/download.svg" 
+                                          alt="Download" 
+                                          width={20} 
+                                          height={20} 
+                                          className="text-gray-700" 
+                                        />
+                                      </button>
+                                    </div>
                                   ) : (
-                                    <StableImage
-                                      src={`/api/image-proxy?imageUrl=${encodeURIComponent(message.visual)}`}
-                                      alt="Generated visual content"
-                                      className="rounded-lg max-w-full max-h-full object-contain"
-                                      style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }}
-                                    />
+                                    <div className="relative inline-block">
+                                      <StableImage
+                                        src={`/api/image-proxy?imageUrl=${encodeURIComponent(message.visual)}`}
+                                        alt="Generated visual content"
+                                        className="rounded-lg max-w-full max-h-full object-contain"
+                                        style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }}
+                                      />
+                                      {/* Download button for proxy images */}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          downloadImage(`/api/image-proxy?imageUrl=${encodeURIComponent(message.visual!)}`, `vizzy-image-${Date.now()}.png`)
+                                        }}
+                                        className="cursor-pointer absolute transition-all duration-200 transform hover:scale-110 z-10"
+                                        style={{ top: '8px', right: '8px' }}
+                                        title="Download image"
+                                      >
+                                        <Image 
+                                          src="/download.svg" 
+                                          alt="Download" 
+                                          width={20} 
+                                          height={20} 
+                                          className="text-gray-700" 
+                                        />
+                                      </button>
+                                    </div>
                                   )}
                                 </div>
                               )}
@@ -1334,20 +1415,38 @@ function ChatContent() {
                                     </div>
                                   </div>
                                 ) : (
-                                  <div  className="text-base leading-relaxed text-black chat-message-content" dir="auto" style={{  textAlign: 'start',  unicodeBidi: 'plaintext', wordBreak: 'break-word' }}>
+                                  <div  className="text-base leading-relaxed text-black chat-message-content" dir="auto" style={{  textAlign: 'start',  unicodeBidi: 'plaintext', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
                                     {message.content}
                                   </div>
                                 )}
                                 
                                 {/* Show image if attached to user message */}
                                 {message.visual && (
-                                  <div className="mt-3">
+                                  <div className="mt-3 relative">
                                     <img 
                                       src={message.visual} 
                                       alt="Uploaded image" 
                                       className="rounded-lg max-w-full"
                                       style={{ maxWidth: '200px', height: 'auto' }}
                                     />
+                                    {/* Download button for user images */}
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        downloadImage(message.visual!, `user-image-${Date.now()}.png`)
+                                      }}
+                                      className="absolute transition-all duration-200 transform hover:scale-110 z-10"
+                                      style={{ top: '8px', right: '8px' }}
+                                      title="Download image"
+                                    >
+                                      <Image 
+                                        src="/download.svg" 
+                                        alt="Download" 
+                                        width={20} 
+                                        height={20} 
+                                        className="text-gray-700" 
+                                      />
+                                    </button>
                                   </div>
                                 )}
                               </div>
@@ -1480,7 +1579,7 @@ function ChatContent() {
                             }
                           }}
                           placeholder=""
-                          className={`w-full text-[24px] font-thin border-none bg-transparent px-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto relative z-10 ${
+                          className={`w-full text-[24px] font-thin border-none bg-transparent px-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto no-scrollbar relative z-10 ${
                             isDarkMode ? 'text-white' : 'text-black'
                           }`}
                           rows={1}

@@ -371,7 +371,7 @@ export default function ProfilePage() {
                   {/* Profile Card */}
                   <Card className="border-0" style={{ 
                     background: isDarkMode
-                      ? 'linear-gradient(100.74deg, rgba(127, 202, 254, 0.8) -2.34%, rgba(255, 255, 255, 0.8) 25.59%, rgba(255, 228, 224, 0.8) 63.57%, rgba(255, 255, 255, 0.8) 106.88%)'
+                      ? 'linear-gradient(100.74deg, rgba(127, 202, 254) -2.34%, rgba(255, 255, 255) 25.59%, rgba(255, 228, 224) 63.57%, rgba(255, 255, 255) 106.88%)'
                       : 'linear-gradient(100.74deg, rgba(127, 202, 254, 0.5) -2.34%, rgba(255, 255, 255, 0.5) 25.59%, rgba(255, 228, 224, 0.5) 63.57%, rgba(255, 255, 255, 0.5) 106.88%)',
                     borderRadius: '36px'
                   }}>
@@ -694,7 +694,7 @@ export default function ProfilePage() {
                                 }}
                               />
                             </div>
-                            <div className="flex items-center justify-center w-32 h-32 bg-white/20 rounded-lg">
+                            <div className="flex items-center justify-center w-32 h-32 rounded-lg">
                               {companyProfile && companyProfile.logo_url ? (
                                 <Image 
                                   src={companyProfile.logo_url}
