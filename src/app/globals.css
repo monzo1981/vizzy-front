@@ -1,3 +1,21 @@
+/* Custom scrollbar for personal info section in ProfileEditModal */
+.scrollbar-white-thin::-webkit-scrollbar {
+  width: 6px;
+  background: transparent;
+}
+.scrollbar-white-thin::-webkit-scrollbar-thumb {
+  background: #fff;
+  border-radius: 8px;
+}
+.scrollbar-white-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+/* For Firefox */
+.scrollbar-white-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #fff transparent;
+}
+
 @import "tailwindcss";
 
 @layer utilities {
@@ -149,3 +167,4 @@
 .font-mixed {
   font-family: var(--font-noto-arabic), var(--font-inter), Inter !important;
 }
+

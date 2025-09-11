@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { X, Upload, Save, UserIcon, Building2 } from "lucide-react"
+import { X, Upload, UserIcon, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar } from "@/components/ui/avatar"
 import { type User, updateUser } from "@/lib/auth"
@@ -12,6 +12,7 @@ interface ProfileEditModalProps {
   onClose: () => void
   currentUser: User | null
   onUserUpdate: (updatedUser: User) => void
+  onToast?: (type: 'success' | 'error', message: string) => void
 }
 
 interface UserProfileData {
@@ -28,7 +29,7 @@ interface CompanyProfileData {
   company_website_url: string
 }
 
-export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate }: ProfileEditModalProps) {
+export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate, onToast }: ProfileEditModalProps) {
   const [activeTab, setActiveTab] = useState<'personal' | 'company'>('personal')
   const [isLoading, setIsLoading] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
@@ -154,16 +155,16 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate }:
         updateUser(updatedUser)
         onUserUpdate(updatedUser)
         
-        alert('Profile updated successfully!')
+        onToast?.('success', 'Profile updated successfully!')
         onClose()
       } else {
         const errorData = await response.text()
         console.error('Profile update failed:', response.status, errorData)
-        alert(`Failed to update profile: ${response.status}`)
+        onToast?.('error', `Failed to update profile: ${response.status}`)
       }
     } catch (error) {
       console.error('Error updating profile:', error)
-      alert('Error updating profile')
+      onToast?.('error', 'Error updating profile')
     } finally {
       setIsLoading(false)
     }
@@ -202,16 +203,16 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate }:
         const webhook = new N8NWebhook()
         webhook.updateCompanyProfileCache(updatedProfile)
         
-        alert('Company information updated successfully!')
+        onToast?.('success', 'Company information updated successfully!')
         onClose()
       } else {
         const errorData = await response.text()
         console.error('API Error:', response.status, errorData)
-        alert('Failed to update company information')
+        onToast?.('error', 'Failed to update company information')
       }
     } catch (error) {
       console.error('Error updating company info:', error)
-      alert('Error updating company information')
+      onToast?.('error', 'Error updating company information')
     } finally {
       setIsLoading(false)
     }
@@ -223,27 +224,32 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate }:
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/50" 
+        className="fixed inset-0" 
+        style={{ background: 'rgba(17,0,46,0.48)' }}
         onClick={onClose}
       />
       
       {/* Modal */}
-      <div className={`
-        relative w-full max-w-4xl mx-4 rounded-xl shadow-xl border
-        ${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'}
-      `}>
+      <div
+        className="relative w-full max-w-4xl mx-4 shadow-xl"
+        style={{
+          borderRadius: '56px',
+          background: 'linear-gradient(180deg, #D3E6FC -4.03%, #FFFFFF 112.18%)'
+        }}
+      >
         {/* Header */}
-        <div className={`
-          flex items-center justify-between p-6 border-b
-          ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}
-        `}>
-          <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+        <div
+          className="flex items-center justify-between p-6"
+          style={{ borderTopLeftRadius: 56, borderTopRightRadius: 56, borderBottom: '1px solid #E5E7EB' }}
+        >
+          <h2 className="text-xl" style={{ color: '#111', fontWeight: 400 }}>
             Edit Profile
           </h2>
           <Button
             onClick={onClose}
             variant="ghost"
             size="icon"
+            style={{ background: '#fff', borderRadius: '50%', padding: 4, width: 32, height: 32, minWidth: 32, minHeight: 32 }}
             className={isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'}
           >
             <X size={20} />
@@ -251,41 +257,48 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate }:
         </div>
 
         {/* Tabs */}
-        <div className={`flex border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div
+          className="flex gap-3 px-6 pt-4 pb-2"
+          style={{ borderBottom: '1px solid #E5E7EB' }}
+        >
           <button
             onClick={() => setActiveTab('personal')}
-            className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
-              activeTab === 'personal'
-                ? isDarkMode 
-                  ? 'text-blue-400 border-b-2 border-blue-400 bg-gray-800/50' 
-                  : 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                : isDarkMode
-                  ? 'text-gray-400 hover:text-gray-200'
-                  : 'text-gray-500 hover:text-gray-700'
-            }`}
+            style={{
+              borderRadius: 20,
+              background: activeTab === 'personal' ? '#fff' : '#fff',
+              color: '#111',
+              opacity: activeTab === 'personal' ? 1 : 0.4,
+              fontWeight: 400,
+              padding: '12px 0',
+              border: 'none',
+              fontSize: 18,
+              width: '100%',
+              transition: 'opacity 0.2s',
+            }}
           >
-            <UserIcon size={16} className="inline mr-2" />
             Personal Info
           </button>
           <button
             onClick={() => setActiveTab('company')}
-            className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
-              activeTab === 'company'
-                ? isDarkMode 
-                  ? 'text-blue-400 border-b-2 border-blue-400 bg-gray-800/50' 
-                  : 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                : isDarkMode
-                  ? 'text-gray-400 hover:text-gray-200'
-                  : 'text-gray-500 hover:text-gray-700'
-            }`}
+            style={{
+              borderRadius: 20,
+              background: activeTab === 'company' ? '#fff' : '#fff',
+              color: '#111',
+              opacity: activeTab === 'company' ? 1 : 0.4,
+              fontWeight: 400,
+              padding: '12px 0',
+              border: 'none',
+              fontSize: 18,
+              width: '100%',
+              transition: 'opacity 0.2s',
+            }}
           >
-            <Building2 size={16} className="inline mr-2" />
             Company Info
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 max-h-96 overflow-y-auto">
+  <div className="p-6 max-h-96 overflow-y-auto scrollbar-white-thin">
           {activeTab === 'personal' ? (
             <div className="space-y-6">
               {/* Profile Picture */}
@@ -294,7 +307,7 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate }:
                   src={profilePicturePreview}
                   fallback={currentUser && currentUser.first_name && currentUser.last_name ? `${currentUser.first_name.charAt(0)}${currentUser.last_name.charAt(0)}`.toUpperCase() : 'U'}
                   alt="Profile Picture" 
-                  size="lg" 
+                  size={75}
                 />
                 <div>
                   <Button
@@ -302,8 +315,9 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate }:
                     variant="outline"
                     size="sm"
                     className="mb-2"
+                    style={{ border: '1.5px solid #4248FF', borderRadius: 36, color: '#4248FF', paddingLeft: 18, paddingRight: 18 }}
                   >
-                    <Upload size={16} className="mr-2" />
+                    <Upload size={16} className="mr-2" color="#78758E" />
                     Change Photo
                   </Button>
                   <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -325,40 +339,34 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate }:
               {/* Personal Info Form */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                  <label style={{ color: '#78758E', fontWeight: 400 }} className="block text-sm mb-2">
                     First Name
                   </label>
                   <input
                     type="text"
                     value={userProfile.first_name}
                     onChange={(e) => setUserProfile(prev => ({ ...prev, first_name: e.target.value }))}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                      isDarkMode 
-                        ? 'bg-gray-800 border-gray-600 text-white' 
-                        : 'bg-white border-gray-300 text-gray-900'
-                    }`}
+                    className="w-full px-3 focus:ring-2 focus:ring-blue-500"
+                    style={{ background: 'rgba(255,255,255,0.6)', border: 'none', color: '#111', paddingTop: 14, paddingBottom: 14, borderRadius: 20 }}
                   />
                 </div>
 
                 <div>
-                  <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                  <label style={{ color: '#78758E', fontWeight: 400 }} className="block text-sm mb-2">
                     Last Name
                   </label>
                   <input
                     type="text"
                     value={userProfile.last_name}
                     onChange={(e) => setUserProfile(prev => ({ ...prev, last_name: e.target.value }))}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                      isDarkMode 
-                        ? 'bg-gray-800 border-gray-600 text-white' 
-                        : 'bg-white border-gray-300 text-gray-900'
-                    }`}
+                    className="w-full px-3 focus:ring-2 focus:ring-blue-500"
+                    style={{ background: 'rgba(255,255,255,0.6)', border: 'none', color: '#111', paddingTop: 14, paddingBottom: 14, borderRadius: 20 }}
                   />
                 </div>
               </div>
 
               <div>
-                <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                <label style={{ color: '#78758E', fontWeight: 400 }} className="block text-sm mb-2">
                   Email
                 </label>
                 <input
@@ -366,11 +374,8 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate }:
                   value={userProfile.email}
                   readOnly
                   disabled
-                  className={`w-full px-3 py-2 border rounded-lg ${
-                    isDarkMode 
-                      ? 'bg-gray-700 border-gray-600 text-gray-300' 
-                      : 'bg-gray-100 border-gray-300 text-gray-500'
-                  }`}
+                  className="w-full px-3"
+                  style={{ background: 'rgba(255,255,255,0.6)', border: 'none', color: '#78758E', paddingTop: 14, paddingBottom: 14, borderRadius: 20 }}
                 />
                 <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                   Email cannot be changed
@@ -378,18 +383,15 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate }:
               </div>
 
               <div>
-                <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                <label style={{ color: '#78758E', fontWeight: 400 }} className="block text-sm mb-2">
                   Phone Number
                 </label>
                 <input
                   type="tel"
                   value={userProfile.phone_number}
                   onChange={(e) => setUserProfile(prev => ({ ...prev, phone_number: e.target.value }))}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                    isDarkMode 
-                      ? 'bg-gray-800 border-gray-600 text-white' 
-                      : 'bg-white border-gray-300 text-gray-900'
-                  }`}
+                    className="w-full px-3 focus:ring-2 focus:ring-blue-500"
+                    style={{ background: 'rgba(255,255,255,0.6)', border: 'none', color: '#111', paddingTop: 14, paddingBottom: 14, borderRadius: 20 }}
                 />
               </div>
             </div>
@@ -397,23 +399,20 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate }:
             <div className="space-y-6">
               {/* Company Info Form */}
               <div>
-                <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                <label style={{ color: '#78758E', fontWeight: 400 }} className="block text-sm mb-2">
                   Company Name
                 </label>
                 <input
                   type="text"
                   value={companyProfile.company_name}
                   onChange={(e) => setCompanyProfile(prev => ({ ...prev, company_name: e.target.value }))}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                    isDarkMode 
-                      ? 'bg-gray-800 border-gray-600 text-white' 
-                      : 'bg-white border-gray-300 text-gray-900'
-                  }`}
+                    className="w-full px-3 focus:ring-2 focus:ring-blue-500"
+                    style={{ background: 'rgba(255,255,255,0.6)', border: 'none', color: '#111', paddingTop: 14, paddingBottom: 14, borderRadius: 20 }}
                 />
               </div>
 
               <div>
-                <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                <label style={{ color: '#78758E', fontWeight: 400 }} className="block text-sm mb-2">
                   Company Website URL
                 </label>
                 <input
@@ -421,16 +420,13 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate }:
                   value={companyProfile.company_website_url}
                   onChange={(e) => setCompanyProfile(prev => ({ ...prev, company_website_url: e.target.value }))}
                   placeholder="https://example.com"
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                    isDarkMode 
-                      ? 'bg-gray-800 border-gray-600 text-white' 
-                      : 'bg-white border-gray-300 text-gray-900'
-                  }`}
+                  className="w-full px-3 focus:ring-2 focus:ring-blue-500"
+                  style={{ background: 'rgba(255,255,255,0.6)', border: 'none', color: '#111', paddingTop: 14, paddingBottom: 14, borderRadius: 20 }}
                 />
               </div>
 
               <div>
-                <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                <label style={{ color: '#78758E', fontWeight: 400 }} className="block text-sm mb-2">
                   Job Title
                 </label>
                 <input
@@ -438,11 +434,8 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate }:
                   value={userProfile.job_title}
                   readOnly
                   disabled
-                  className={`w-full px-3 py-2 border rounded-lg ${
-                    isDarkMode 
-                      ? 'bg-gray-700 border-gray-600 text-gray-300' 
-                      : 'bg-gray-100 border-gray-300 text-gray-500'
-                  }`}
+                  className="w-full px-3"
+                  style={{ background: 'rgba(255,255,255,0.6)', border: 'none', color: '#78758E', paddingTop: 14, paddingBottom: 14, borderRadius: 20 }}
                 />
                 <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                   Job title is currently set as default
@@ -453,23 +446,28 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate }:
         </div>
 
         {/* Footer */}
-        <div className={`
-          flex items-center justify-end gap-3 p-6 border-t
-          ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}
-        `}>
+        <div
+          className="flex items-center justify-end gap-3 p-6"
+          style={{ borderTop: '1px solid #E5E7EB' }}
+        >
           <Button
             onClick={onClose}
-            variant="outline"
             disabled={isLoading}
+            style={{ background: '#FF4A19', color: '#fff', borderRadius: 36, minWidth: 100 }}
           >
             Cancel
           </Button>
           <Button
             onClick={activeTab === 'personal' ? savePersonalInfo : saveCompanyInfo}
             disabled={isLoading}
-            className="gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+            style={{
+              background: 'linear-gradient(271.55deg, #4248FF -1.67%, #7FCAFE 99.45%)',
+              color: '#fff',
+              borderRadius: 36,
+              minWidth: 120
+            }}
+            className="gap-2"
           >
-            <Save size={16} />
             {isLoading ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>

@@ -87,10 +87,22 @@ export default function RootLayout({
     }
   }, []);
 
+  // Set page title based on route
+  let pageTitle = "Vizzy";
+  if (typeof window !== "undefined") {
+    const path = window.location.pathname;
+    if (path === "/") pageTitle = "Vizzy";
+    else if (path.startsWith("/chat")) pageTitle = "Chat";
+    else if (path.startsWith("/profile")) pageTitle = "Profile";
+    else if (path.startsWith("/signup")) pageTitle = "Sign Up";
+  }
+
   return (
     <html lang="en">
       <head>
-        <link rel="icon" href="/vizzy-chat-icon.svg" />
+        <title>{pageTitle}</title>
+        <link rel="icon" href="/vizzy-chat-icon.svg" media="(prefers-color-scheme: light)" />
+        <link rel="icon" href="/vizzy-chat-icon-dark.svg" media="(prefers-color-scheme: dark)" />
         <script src="https://accounts.google.com/gsi/client" async defer></script>
       </head>
       <body
