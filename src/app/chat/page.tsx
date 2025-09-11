@@ -18,6 +18,7 @@ import { TextDirectionHandler } from "@/lib/text-direction-handler"
 import { useNotificationSound } from "@/lib/useNotificationSound";
 import { supabase, type ChatMessage, type ChatMessageDB } from "@/lib/supabase-client"
 import { RealtimeChannel } from "@supabase/supabase-js"
+import { useToast, ToastContainer } from "@/components/ui/toast"
 
 
 // API Configuration
@@ -192,6 +193,7 @@ const TypewriterPlaceholder = ({ fontSize }: { fontSize: string }) => {
 };
 
 function ChatContent() {
+  const { toasts, toast, removeToast } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
   const { isOpen, toggle } = useSidebar()
@@ -900,12 +902,12 @@ function ChatContent() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        alert("Image size must be less than 10MB");
+        toast.error("Image size must be less than 10MB");
         return;
       }
 
       if (!file.type.startsWith('image/')) {
-        alert("Please select an image file");
+        toast.error("Please select an image file");
         return;
       }
 
@@ -918,11 +920,11 @@ function ChatContent() {
         if (publicUrl) {
           setSelectedImage(publicUrl);
         } else {
-          alert("Failed to upload image. Please try again.");
+          toast.error("Failed to upload image. Please try again.");
         }
       } catch (error) {
         console.error('Error uploading image:', error);
-        alert("Failed to upload image. Please try again.");
+        toast.error("Failed to upload image. Please try again.");
       } finally {
         // Stop loading animation
         setIsImageUploading(false);
@@ -1017,7 +1019,7 @@ function ChatContent() {
       setIsRecording(true)
     } catch (error) {
       console.error("Error accessing microphone:", error)
-      alert("Could not access microphone. Please check permissions.")
+      toast.error("Could not access microphone. Please check permissions.")
     }
   }
 
@@ -1708,6 +1710,9 @@ function ChatContent() {
           )}
         </div>
       </GradientBackground>
+      
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   )
 }
