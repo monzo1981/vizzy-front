@@ -15,7 +15,6 @@ import {
   Users,
   LogOut,
   Trash2,
-  
   Menu,
   ChevronLeft,
   Activity,
@@ -31,8 +30,10 @@ import { isAuthenticated, getUser, type User as AuthUser } from "@/lib/auth"
 import { N8NWebhook } from "@/lib/n8n-webhook"
 import { GradientBackground } from "@/components/gradient-background"
 import { ProfileEditModal } from "@/components/profile-edit-modal"
+import { useToast, ToastContainer } from "@/components/ui/toast"
 
 export default function ProfilePage() {
+  const { toasts, toast, removeToast } = useToast()
   const [sidebarExpanded, setSidebarExpanded] = useState(false)
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -126,7 +127,7 @@ export default function ProfilePage() {
     try {
       const token = localStorage.getItem('access_token')
       if (!token) {
-        alert('Please login again')
+        toast.error('Please login again')
         return
       }
 
@@ -162,6 +163,8 @@ export default function ProfilePage() {
           company_name: updatedCompanyData.company_name || companyProfile?.company_name || null,
           company_website_url: updatedCompanyData.company_website_url || companyProfile?.company_website_url || null,
           logo_url: updatedCompanyData.logo_url || null,
+          industry: updatedCompanyData.industry || companyProfile?.industry || null,
+          job_title: updatedCompanyData.job_title || companyProfile?.job_title || null,
         }
         
         const webhook = new N8NWebhook()
@@ -170,15 +173,15 @@ export default function ProfilePage() {
         // Update local state
         setCompanyProfile(updatedProfile)
         
-        alert('Logo updated successfully!')
+        toast.success('Logo updated successfully!')
       } else {
         const errorData = await response.text()
         console.error('API Error:', response.status, errorData)
-        alert('Failed to update logo')
+        toast.error('Failed to update logo')
       }
     } catch (error) {
       console.error('Error updating logo:', error)
-      alert('Error updating logo')
+      toast.error('Error updating logo')
     }
   }
 
@@ -398,7 +401,7 @@ export default function ProfilePage() {
                               fontSize: '40px',
                               color: '#4248FF'
                             }}>
-                              {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Mohsen'}
+                              {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Vizzy User'}
                             </h2>
                             <Badge 
                               className="text-white border-0"
@@ -451,86 +454,131 @@ export default function ProfilePage() {
                           </Button>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <p style={{
-                              color: '#4248FF',
-                              fontWeight: 500,
-                              fontSize: '16px',
-                              marginBottom: '4px'
-                            }}>Name</p>
-                            <p style={{
-                              color: '#78758E',
-                              fontWeight: 500,
-                              fontSize: '16px'
-                            }}>
-                              {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Mohsen Momtaz'}
-                            </p>
-                          </div>
-                          <div>
-                            <p style={{
-                              color: '#4248FF',
-                              fontWeight: 500,
-                              fontSize: '16px',
-                              marginBottom: '4px'
-                            }}>Email</p>
-                            <p style={{
-                              color: '#78758E',
-                              fontWeight: 500,
-                              fontSize: '16px'
-                            }}>{currentUser ? currentUser.email : 'mohsn@egyspy.gov'}</p>
-                          </div>
-                          <div>
-                            <p style={{
-                              color: '#4248FF',
-                              fontWeight: 500,
-                              fontSize: '16px',
-                              marginBottom: '4px'
-                            }}>Mobile</p>
-                            <p style={{
-                              color: '#78758E',
-                              fontWeight: 500,
-                              fontSize: '16px'
-                            }}>{currentUser?.phone_number || 'Not available'}</p>
-                          </div>
-                          <div>
-                            <p style={{
-                              color: '#4248FF',
-                              fontWeight: 500,
-                              fontSize: '16px',
-                              marginBottom: '4px'
-                            }}>Business name</p>
-                            <p style={{
-                              color: '#78758E',
-                              fontWeight: 500,
-                              fontSize: '16px'
-                            }}>{companyProfile ? companyProfile.company_name : 'Not available'}</p>
-                          </div>
-                          <div>
-                            <p style={{
-                              color: '#4248FF',
-                              fontWeight: 500,
-                              fontSize: '16px',
-                              marginBottom: '4px'
-                            }}>Website</p>
-                            <p style={{
-                              color: '#78758E',
-                              fontWeight: 500,
-                              fontSize: '16px'
-                            }}>{companyProfile ? companyProfile.company_website_url : 'Not available'}</p>
-                          </div>
-                          <div>
-                            <p style={{
-                              color: '#4248FF',
-                              fontWeight: 500,
-                              fontSize: '16px',
-                              marginBottom: '4px'
-                            }}>Job Title</p>
-                            <p style={{
-                              color: '#78758E',
-                              fontWeight: 500,
-                              fontSize: '16px'
-                            }}>Software Engineer</p>
+                        <div 
+                          className="max-h-32 overflow-y-auto pr-2"
+                          style={{
+                            scrollbarWidth: 'thin',
+                            scrollbarColor: '#9CA3AF transparent'
+                          }}
+                        >
+                          <style jsx>{`
+                            div::-webkit-scrollbar {
+                              width: 4px;
+                            }
+                            div::-webkit-scrollbar-track {
+                              background: transparent;
+                            }
+                            div::-webkit-scrollbar-thumb {
+                              background-color: #9CA3AF;
+                              border-radius: 2px;
+                            }
+                            div::-webkit-scrollbar-thumb:hover {
+                              background-color: #6B7280;
+                            }
+                          `}</style>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* First row: Name, Business name, empty */}
+                            <div>
+                              <p style={{
+                                color: '#4248FF',
+                                fontWeight: 500,
+                                fontSize: '16px',
+                                marginBottom: '4px'
+                              }}>Name</p>
+                              <p style={{
+                                color: '#78758E',
+                                fontWeight: 500,
+                                fontSize: '16px'
+                              }}>
+                                {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Mohsen Momtaz'}
+                              </p>
+                            </div>
+                            <div>
+                              <p style={{
+                                color: '#4248FF',
+                                fontWeight: 500,
+                                fontSize: '16px',
+                                marginBottom: '4px'
+                              }}>Business name</p>
+                              <p style={{
+                                color: '#78758E',
+                                fontWeight: 500,
+                                fontSize: '16px'
+                              }}>{companyProfile ? companyProfile.company_name : 'Not available'}</p>
+                            </div>
+                            {/* Empty div for alignment */}
+                            <div></div>
+
+                            {/* Second row: Job Title, Industry, empty */}
+                            <div>
+                              <p style={{
+                                color: '#4248FF',
+                                fontWeight: 500,
+                                fontSize: '16px',
+                                marginBottom: '4px'
+                              }}>Job Title</p>
+                              <p style={{
+                                color: '#78758E',
+                                fontWeight: 500,
+                                fontSize: '16px'
+                              }}>{companyProfile?.job_title || 'Software Engineer'}</p>
+                            </div>
+                            <div>
+                              <p style={{
+                                color: '#4248FF',
+                                fontWeight: 500,
+                                fontSize: '16px',
+                                marginBottom: '4px'
+                              }}>Industry</p>
+                              <p style={{
+                                color: '#78758E',
+                                fontWeight: 500,
+                                fontSize: '16px'
+                              }}>{companyProfile?.industry || 'Not available'}</p>
+                            </div>
+                            {/* Empty div for alignment */}
+                            <div></div>
+
+                            {/* Third row: Email, Mobile, Website */}
+                            <div>
+                              <p style={{
+                                color: '#4248FF',
+                                fontWeight: 500,
+                                fontSize: '16px',
+                                marginBottom: '4px'
+                              }}>Email</p>
+                              <p style={{
+                                color: '#78758E',
+                                fontWeight: 500,
+                                fontSize: '16px'
+                              }}>{currentUser ? currentUser.email : 'Not available'}</p>
+                            </div>
+                            <div>
+                              <p style={{
+                                color: '#4248FF',
+                                fontWeight: 500,
+                                fontSize: '16px',
+                                marginBottom: '4px'
+                              }}>Mobile</p>
+                              <p style={{
+                                color: '#78758E',
+                                fontWeight: 500,
+                                fontSize: '16px'
+                              }}>{currentUser?.phone_number || 'Not available'}</p>
+                            </div>
+                            <div>
+                              <p style={{
+                                color: '#4248FF',
+                                fontWeight: 500,
+                                fontSize: '16px',
+                                marginBottom: '4px'
+                              }}>Website</p>
+                              <p style={{
+                                color: '#78758E',
+                                fontWeight: 500,
+                                fontSize: '16px'
+                              }}>{companyProfile ? companyProfile.company_website_url : 'Not available'}</p>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -538,17 +586,17 @@ export default function ProfilePage() {
                   </Card>
 
                   {/* Recent Work and My Links Row */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                    {/* Recent Work Card */}
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mt-6">
+                    {/* Recent Work Card - Takes 3 columns out of 5 */}
                     <Card 
-                      className="border-0 text-white"
+                      className="border-0 text-white md:col-span-3"
                       style={{
                         background: '#7FCAFE',
                         borderRadius: '36px',
                       }}
                     >
                       <CardContent className="p-6">
-                        <h3 className="font-bold mb-4" style={{ fontWeight: 700, fontSize: 64, fontFamily: 'Inter', textAlign: 'center' }}>Recent work</h3>
+                        <h3 className="font-bold mb-4" style={{ fontWeight: 700, fontSize: 40, fontFamily: 'Inter', textAlign: 'center' }}>Recent work</h3>
                         <div className="flex flex-col h-full min-h-[220px]">
                           <div className="flex-1 flex items-center justify-center">
                             <Image
@@ -594,7 +642,7 @@ export default function ProfilePage() {
                     </Card>
 
                     {/* Right Column Cards */}
-                    <div className="space-y-4">
+                    <div className="space-y-4 md:col-span-2">
                       {/* My Links Card */}
                       <Card 
                         className="border-0 text-white"
@@ -608,7 +656,7 @@ export default function ProfilePage() {
                             style={{
                               fontFamily: 'Inter',
                               fontWeight: 700,
-                              fontSize: '50px',
+                              fontSize: '30px',
                               textAlign: 'center',
                               marginBottom: '12px',
                             }}
@@ -644,36 +692,27 @@ export default function ProfilePage() {
                         }}
                       >
                         <CardContent className="p-6">
-                          <div className="flex flex-row items-center gap-6">
-                            <div className="flex flex-col gap-2 flex-1">
+                          <div className="flex items-center gap-4">
+                            <div className="flex-shrink-0 flex flex-col items-center text-center">
                               <h3
                                 style={{
                                   fontFamily: 'Inter',
                                   fontWeight: 700,
-                                  fontSize: '36px',
+                                  fontSize: '30px',
                                   lineHeight: '100%',
                                   letterSpacing: 0,
-                                  marginBottom: 0,
-                                  textAlign: 'left',
+                                  marginBottom: '16px',
+                                  textAlign: 'center',
+                                  whiteSpace: 'nowrap',
                                 }}
-                              >Your</h3>
-                              <h3
-                                style={{
-                                  fontFamily: 'Inter',
-                                  fontWeight: 700,
-                                  fontSize: '34px', 
-                                  lineHeight: '100%',
-                                  letterSpacing: 0,
-                                  textAlign: 'left',
-                                }}
-                              >Logo !</h3>
+                              >Your Logo</h3>
                               <Button
                                 type="button"
-                                className="flex items-center justify-center border-0 mt-4"
+                                className="flex items-center justify-center border-0"
                                 style={{
                                   background: '#FFEB77',
                                   borderRadius: '50px',
-                                  color: '#4248FF',
+                                  color: '#111',
                                   fontWeight: 700,
                                   fontSize: '16px',
                                   padding: '12px 32px',
@@ -683,32 +722,22 @@ export default function ProfilePage() {
                               >
                                 Upload
                               </Button>
-                              <input
-                                id="logo-upload-input"
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0]
-                                  if (file) handleLogoUpload(file)
-                                }}
-                              />
                             </div>
-                            <div className="flex items-center justify-center w-32 h-32 rounded-lg">
+                            <div className="flex-1 flex items-center justify-center">
                               {companyProfile && companyProfile.logo_url ? (
                                 <Image 
                                   src={companyProfile.logo_url}
                                   alt="Company Logo"
-                                  width={128}
-                                  height={128}
-                                  className="w-full h-full object-cover rounded-lg"
+                                  width={100}
+                                  height={100}
+                                  className="w-full h-full object-cover rounded-lg max-w-[100px] max-h-[100px]"
                                 />
                               ) : (
                                 <Image 
                                   src="/logo-upload.svg"
                                   alt="Upload Logo"
-                                  width={72}
-                                  height={72}
+                                  width={70}
+                                  height={70}
                                   className="opacity-80"
                                 />
                               )}
@@ -730,45 +759,45 @@ export default function ProfilePage() {
                       borderRadius: '36px' 
                     }}
                   >
-                    <CardContent className="p-8">
+                    <CardContent className="p-8" style={{ minHeight: 420 }}>
                       <h3
                         style={{
                           background: 'linear-gradient(94.41deg, #4248FF -4.88%, #FF4A19 119.67%)',
                           WebkitBackgroundClip: 'text',
                           WebkitTextFillColor: 'transparent',
                           fontWeight: 700,
-                          fontSize: '64px',
+                          fontSize: '40px',
                           textAlign: 'center',
-                          marginBottom: '32px',
+                          marginBottom: 0,
                         }}
                       >
                         Credits
                       </h3>
-                      <div className="relative mx-auto mb-6" style={{ width: 220, height: 220 }}>
-                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 220 220">
+                      <div className="relative mx-auto mb-6" style={{ width: 150, height: 150 }}>
+                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 150 150">
                           <circle
-                            cx="110" cy="110" r="100"
+                            cx="75" cy="75" r="65"
                             fill="none"
                             stroke="#FF4A19"
-                            strokeWidth="12"
+                            strokeWidth="8"
                           />
                           <circle
-                            cx="110" cy="110" r="100"
+                            cx="75" cy="75" r="65"
                             fill="none"
                             stroke="#7FCAFE"
-                            strokeWidth="18"
-                            strokeDasharray={`${(progressPercent / 100) * 2 * Math.PI * 100},${2 * Math.PI * 100}`}
+                            strokeWidth="12"
+                            strokeDasharray={`${(progressPercent / 100) * 2 * Math.PI * 65},${2 * Math.PI * 65}`}
                             strokeDashoffset={0}
                             style={{ transition: 'stroke-dasharray 0.5s' }}
                           />
                         </svg>
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <span style={{ color: '#4248FF', fontWeight: 900, fontSize: '50px' }}>{progressPercent}%</span>
+                          <span style={{ color: '#4248FF', fontWeight: 900, fontSize: '28px' }}>{progressPercent}%</span>
                         </div>
                       </div>
                       <div className="text-center mb-6">
                         <p style={{ color: '#11002E', fontWeight: 400, fontSize: '16px' }}>
-                          You have <span style={{ fontWeight: 700 }}>{remainingCredits}</span> credits remaining
+                          You have <span style={{ fontWeight: 700, color: '#4248FF' }}>{remainingCredits}</span> credits remaining
                         </p>
                         <p style={{ color: '#11002E', fontWeight: 400, fontSize: '16px' }}>Upgrade now to unlock more generations</p>
                       </div>
@@ -778,10 +807,10 @@ export default function ProfilePage() {
                           background: '#4248FF',
                           color: 'white',
                           fontWeight: 900,
-                          fontSize: '28px',
+                          fontSize: '20px',
                           borderRadius: '18px',
-                          paddingTop: '28px',
-                          paddingBottom: '28px',
+                          paddingTop: '14px',
+                          paddingBottom: '14px',
                         }}
                       >
                         Upgrade Now
@@ -801,7 +830,7 @@ export default function ProfilePage() {
                       <h3
                         style={{
                           fontWeight: 700,
-                          fontSize: '40px',
+                          fontSize: '30px',
                           textAlign: 'center',
                           color: '#4248FF',
                           marginBottom: 0,
@@ -811,77 +840,45 @@ export default function ProfilePage() {
                       </h3>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      {/* Asset Item 1 */}
-                      <div className="flex items-center justify-between p-3 bg-orange-100 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-orange-200 rounded-lg flex items-center justify-center">
-                            <span className="text-xs font-bold">ND</span>
+                      {/* Asset Items - All identical, background #D3E6FC */}
+                      {[
+                        { icon: '/manual.svg', label: 'Brand Manual' },
+                        { icon: '/profile.svg', label: 'Company Profile' },
+                        { icon: '/document.svg', label: 'Document 1' },
+                        { icon: '/document.svg', label: 'Document 2' },
+                      ].map((asset, i) => (
+                        <div key={i} className="flex items-center justify-between p-3" style={{ background: '#D3E6FC', borderRadius: 20 }}>
+                          <div className="flex items-center gap-3">
+                            <div className="bg-white flex items-center justify-center" style={{ width: 64, height: 64, padding: 8, borderRadius: 12, boxShadow: '0 0 2px 0 rgba(0, 0, 0, 0.25)' }}>
+                              <Image src={asset.icon} alt="Asset Icon" width={48} height={48} />
+                            </div>
+                            <div>
+                              <p className="font-medium" style={{ color: '#11002E', fontSize: 16, fontWeight: 600 }}>{asset.label}</p>
+                              <div>
+                                <p className="text-xs text-gray-500" style={{ fontWeight: 200 }}>Description:</p>
+                                <p className="text-xs text-gray-500" style={{ fontWeight: 200 }}>Logo - Stock images ..</p>
+                              </div>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium text-sm">Noi Du Caire</p>
-                            <p className="text-xs text-gray-500">1 logo • Blog designs</p>
-                          </div>
-                        </div>
-                        <Button size="sm" className="bg-blue-500 hover:bg-blue-600 text-white text-xs">
-                          See Details
-                        </Button>
-                      </div>
-
-                      {/* Asset Item 2 */}
-                      <div className="flex items-center justify-between p-3 bg-pink-100 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                            <span className="text-xs font-bold text-white">D</span>
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">Deriskly Logo</p>
-                            <p className="text-xs text-gray-500">1 logo • Blog designs</p>
-                          </div>
-                        </div>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="text-xs bg-transparent hover:bg-pink-50"
-                        >
-                          See Details
-                        </Button>
-                      </div>
-
-                      {/* Asset Item 3 */}
-                      <div className="flex items-center justify-between p-3 bg-yellow-100 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-yellow-200 rounded-lg flex items-center justify-center">
-                            <span className="text-xs font-bold">BS</span>
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">Bo2loz Shoes</p>
-                            <p className="text-xs text-gray-500">1 logo • Blog designs</p>
+                          <div className="flex flex-col items-end gap-1 ml-2">
+                            <button
+                              type="button"
+                              className="flex items-center gap-2"
+                              style={{ background: 'none', border: 'none', color: '#78758E', fontWeight: 300, fontSize: 14, padding: 0, cursor: 'pointer', marginBottom: 4 }}
+                            >
+                              <Image src="/edit.svg" alt="Edit" width={14} height={14} style={{ filter: 'invert(47%) sepia(8%) saturate(756%) hue-rotate(210deg) brightness(95%) contrast(84%)' }} />
+                              <span style={{ color: '#78758E' }}>Edit name</span>
+                            </button>
+                            <Button 
+                              size="sm" 
+                              className="text-white text-xs"
+                              style={{ background: '#7FCAFE', borderRadius: 36, fontWeight: 600 }}
+                            >
+                              See Details
+                            </Button>
                           </div>
                         </div>
-                        <Button size="sm" className="bg-blue-500 hover:bg-blue-600 text-white text-xs">
-                          See Details
-                        </Button>
-                      </div>
-
-                      {/* Asset Item 4 */}
-                      <div className="flex items-center justify-between p-3 bg-green-100 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-green-200 rounded-lg flex items-center justify-center">
-                            <span className="text-xs font-bold">ND</span>
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">Noi Du Caire</p>
-                            <p className="text-xs text-gray-500">1 logo • Blog designs</p>
-                          </div>
-                        </div>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="text-xs bg-transparent hover:bg-green-50"
-                        >
-                          See Details
-                        </Button>
-                      </div>
+                      ))}
                     </CardContent>
                   </Card>
                 </div>
@@ -922,7 +919,17 @@ export default function ProfilePage() {
             setCompanyProfile(updatedCompanyProfile)
           }
         }}
+        onToast={(type, message) => {
+          if (type === 'success') {
+            toast.success(message)
+          } else {
+            toast.error(message)
+          }
+        }}
       />
+      
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </GradientBackground>
   )
 }

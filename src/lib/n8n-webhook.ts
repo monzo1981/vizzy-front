@@ -21,6 +21,8 @@ interface N8NRequest {
   company_name?: string;
   company_website_url?: string;
   logo_url?: string;
+  industry?: string;
+  job_title?: string;
   // Chat history
   previous_context?: Array<{
     role: 'user' | 'assistant' | 'system';
@@ -53,6 +55,8 @@ interface CompanyProfile {
     company_name: string | null;
     company_website_url: string | null;
     logo_url: string | null;
+    industry: string | null;
+    job_title: string | null;
 }
 
 export class N8NWebhook {
@@ -118,6 +122,8 @@ export class N8NWebhook {
             company_name: data.data.company_name || null,
             company_website_url: data.data.company_website_url || null,
             logo_url: data.data.logo_url || null,
+            industry: data.data.industry || null,
+            job_title: data.data.job_title || null,
           };
           
           // Cache the profile in localStorage
@@ -131,6 +137,8 @@ export class N8NWebhook {
             company_name: null,
             company_website_url: null,
             logo_url: null,
+            industry: null,
+            job_title: null,
           };
           this.profileFetched = true;
         }
@@ -242,6 +250,8 @@ export class N8NWebhook {
           company_name: this.companyProfile?.company_name || null,
           company_website_url: this.companyProfile?.company_website_url || null,
           logo_url: this.companyProfile?.logo_url || null,
+          industry: this.companyProfile?.industry || null,
+          job_title: this.companyProfile?.job_title || null,
           respond_only_to: 'current_user_message',
           // Add previous context
           previous_context: chatHistory ? chatHistory.slice(-4) : [],
@@ -303,6 +313,8 @@ export class N8NWebhook {
           company_name: this.companyProfile?.company_name || null,
           company_website_url: this.companyProfile?.company_website_url || null,
           logo_url: this.companyProfile?.logo_url || null,
+          industry: this.companyProfile?.industry || null,
+          job_title: this.companyProfile?.job_title || null,
           respond_only_to: 'current_user_message',
           // Add previous context
           previous_context: chatHistory ? chatHistory.slice(-4) : [],
@@ -366,6 +378,8 @@ export class N8NWebhook {
           company_name: this.companyProfile?.company_name || null,
           company_website_url: this.companyProfile?.company_website_url || null,
           logo_url: this.companyProfile?.logo_url || null,
+          industry: this.companyProfile?.industry || null,
+          job_title: this.companyProfile?.job_title || null,
           respond_only_to: 'current_user_message',
           // Add previous context
           previous_context: chatHistory ? chatHistory.slice(-4) : [],

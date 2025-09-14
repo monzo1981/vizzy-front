@@ -22,9 +22,12 @@ export const isVideoUrl = (url: string): boolean => {
   // Special handling for Azure Blob Storage videos 
   // Check if it's actually a video by looking for video indicators in filename
   const isAzureBlobVideo = url.includes('vizzystorage.blob.core.windows.net') && 
-    (url.toLowerCase().includes('ugc-') || // UGC prefix typically indicates video
-     url.toLowerCase().includes('video') || 
-     videoExtensions.some(ext => url.toLowerCase().includes(ext))) &&
+    (
+      url.toLowerCase().includes('ugc-') || // UGC prefix typically indicates video
+      url.toLowerCase().includes('video') || 
+      videoExtensions.some(ext => url.toLowerCase().includes(ext)) ||
+      url.toLowerCase().includes('prodact-shoot-') // pattern مؤقت خاص بالفيديوهات بدون امتداد
+    ) &&
     // Exclude obvious image patterns
     !url.toLowerCase().includes('linkedin') &&
     !url.toLowerCase().includes('image') &&

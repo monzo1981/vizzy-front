@@ -865,6 +865,96 @@ function ChatContent() {
     }
   }
 
+  // دالة لضغط وتحويل الصورة إلى PNG
+  const compressAndConvertImage = async (
+    file: File, 
+    maxWidth: number = 1920, 
+    maxHeight: number = 1080, 
+    quality: number = 0.85
+  ): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        const img = document.createElement('img');
+        
+        img.onload = () => {
+          // حساب الأبعاد الجديدة مع الحفاظ على النسبة
+          let width = img.width;
+          let height = img.height;
+          
+          // تصغير الصورة إذا كانت أكبر من الحد المسموح
+          if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+          }
+          
+          // إنشاء canvas للرسم عليه
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          if (!ctx) {
+            reject(new Error('Failed to get canvas context'));
+            return;
+          }
+          
+          // تعيين أبعاد الـ canvas
+          canvas.width = width;
+          canvas.height = height;
+          
+          // تحسين جودة الرسم
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          
+          // رسم الصورة على الـ canvas
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // تحويل الـ canvas إلى blob بصيغة PNG
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(new Error('Failed to convert image'));
+                return;
+              }
+              
+              // إنشاء File object جديد بصيغة PNG
+              const compressedFile = new File(
+                [blob], 
+                file.name.replace(/\.[^/.]+$/, '.png'), // تغيير امتداد الملف إلى .png
+                { 
+                  type: 'image/png',
+                  lastModified: Date.now()
+                }
+              );
+              
+              console.log('Original size:', (file.size / 1024).toFixed(2), 'KB');
+              console.log('Compressed size:', (compressedFile.size / 1024).toFixed(2), 'KB');
+              console.log('Compression ratio:', ((1 - compressedFile.size / file.size) * 100).toFixed(1), '%');
+              
+              resolve(compressedFile);
+            },
+            'image/png',
+            quality // جودة الضغط (0.85 = 85% جودة)
+          );
+        };
+        
+        img.onerror = () => {
+          reject(new Error('Failed to load image'));
+        };
+        
+        img.src = e.target?.result as string;
+      };
+      
+      reader.onerror = () => {
+        reject(new Error('Failed to read file'));
+      };
+      
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // دالة رفع الصورة المحدثة
   const handleImageUpload = async (file: File): Promise<string | null> => {
     const token = localStorage.getItem('access_token');
     if (!token) {
@@ -898,39 +988,54 @@ function ChatContent() {
     }
   };
 
+  // دالة التعامل مع اختيار الصورة المحدثة
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // التحقق من نوع الملف
+      if (!file.type.startsWith('image/')) {
+        toast.error("Please select an image file");
+        return;
+      }
+      
+      // التحقق من حجم الملف الأصلي
       if (file.size > 10 * 1024 * 1024) {
         toast.error("Image size must be less than 10MB");
         return;
       }
 
-      if (!file.type.startsWith('image/')) {
-        toast.error("Please select an image file");
-        return;
-      }
-
-      // Start loading animation
+      // بدء الرسوم المتحركة للتحميل
       setIsImageUploading(true);
 
       try {
-        const publicUrl = await handleImageUpload(file);
+        // ضغط وتحويل الصورة إلى PNG
+        console.log('Converting and compressing image...');
+        const compressedFile = await compressAndConvertImage(
+          file,
+          1920,  // الحد الأقصى للعرض
+          1080,  // الحد الأقصى للارتفاع
+          0.85   // الجودة (85%)
+        );
+        
+        // رفع الصورة المضغوطة
+        const publicUrl = await handleImageUpload(compressedFile);
 
         if (publicUrl) {
           setSelectedImage(publicUrl);
+          toast.success("Image uploaded successfully!");
         } else {
           toast.error("Failed to upload image. Please try again.");
         }
       } catch (error) {
-        console.error('Error uploading image:', error);
-        toast.error("Failed to upload image. Please try again.");
+        console.error('Error processing image:', error);
+        toast.error("Failed to process image. Please try again.");
       } finally {
-        // Stop loading animation
+        // إيقاف الرسوم المتحركة للتحميل
         setIsImageUploading(false);
       }
     }
 
+    // إعادة تعيين قيمة الإدخال
     if (e.target) {
       e.target.value = "";
     }
@@ -1431,24 +1536,6 @@ function ChatContent() {
                                       className="rounded-lg max-w-full"
                                       style={{ maxWidth: '200px', height: 'auto' }}
                                     />
-                                    {/* Download button for user images */}
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        downloadImage(message.visual!, `user-image-${Date.now()}.png`)
-                                      }}
-                                      className="absolute transition-all duration-200 transform hover:scale-110 z-10"
-                                      style={{ top: '8px', right: '8px' }}
-                                      title="Download image"
-                                    >
-                                      <Image 
-                                        src="/download.svg" 
-                                        alt="Download" 
-                                        width={20} 
-                                        height={20} 
-                                        className="text-gray-700" 
-                                      />
-                                    </button>
                                   </div>
                                 )}
                               </div>
