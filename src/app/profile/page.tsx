@@ -905,6 +905,20 @@ export default function ProfilePage() {
         </main>
       </div>
       
+      {/* Hidden file input for logo upload */}
+      <input
+        id="logo-upload-input"
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) {
+            handleLogoUpload(file)
+          }
+        }}
+      />
+      
       {/* Profile Edit Modal */}
       <ProfileEditModal
         isOpen={isProfileModalOpen}
