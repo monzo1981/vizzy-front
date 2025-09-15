@@ -192,6 +192,81 @@ const TypewriterPlaceholder = ({ fontSize }: { fontSize: string }) => {
   );
 };
 
+// Animated Border Wrapper Component
+const AnimatedBorderWrapper = ({ 
+  children, 
+  isAnimating, 
+  className = "",
+  isDarkMode = false
+}: { 
+  children: React.ReactNode; 
+  isAnimating: boolean; 
+  className?: string;
+  isDarkMode?: boolean;
+}) => {
+  const borderRadius = '50px'; // ثابت 50px بدلاً من responsive
+
+  return (
+    <>
+      <style jsx>{`
+        @property --angle {
+          syntax: '<angle>';
+          initial-value: 0deg;
+          inherits: false;
+        }
+        
+        @keyframes rotateGradient {
+          from {
+            --angle: 0deg;
+          }
+          to {
+            --angle: 360deg;
+          }
+        }
+        
+        .animated-border-wrapper {
+          position: relative;
+          padding: 2px;
+          background: ${isAnimating ? `conic-gradient(from calc(var(--angle) - 46.15deg) at 50.76% 47.25%, 
+            #4248FF99 -40.22deg, 
+            #7FCAFE99 50.49deg, 
+            #FFEB7799 104.02deg, 
+            #4248FF99 158.81deg, 
+            #FF4A1999 224.78deg, 
+            #4248FF99 319.78deg, 
+            #7FCAFE99 410.49deg)` : 'transparent'};
+          animation: ${isAnimating ? 'rotateGradient 3s linear' : 'none'};
+          transition: all 0.5s ease-out;
+          box-shadow: ${isAnimating ? (isDarkMode ? '0px 0px 15px rgba(66, 72, 255, 0.4)' : '0px 0px 15px rgba(255, 255, 255, 0.4)') : 'none'};
+          overflow: hidden;
+        }
+        
+        .animated-border-content {
+          overflow: hidden;
+        }
+      `}</style>
+      <div 
+        className={`animated-border-wrapper ${className}`}
+        style={{ 
+          borderRadius,
+          overflow: 'hidden'
+        }}
+      >
+        <div 
+          className="animated-border-content"
+          style={{ 
+            borderRadius,
+            overflow: 'hidden',
+            backgroundColor: isDarkMode ? '#181819' : '#ffffff'
+          }}
+        >
+          {children}
+        </div>
+      </div>
+    </>
+  );
+};
+
 function ChatContent() {
   const { toasts, toast, removeToast } = useToast()
   const router = useRouter()
@@ -210,6 +285,9 @@ function ChatContent() {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  
+  // Animated border state
+  const [showAnimatedBorder, setShowAnimatedBorder] = useState(false)
   
   // AI Chat Session State
   const [sessionId, setSessionId] = useState<string | undefined>(undefined)
@@ -771,6 +849,18 @@ function ChatContent() {
     };
   }, [hasMessages, setInputValue, expandedImage, inputRef, compactInputRef]);
 
+  // Trigger animated border on component mount
+  useEffect(() => {
+    setShowAnimatedBorder(true);
+    
+    // Turn off animation after 3 seconds
+    const timer = setTimeout(() => {
+      setShowAnimatedBorder(false);
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
   const handleRemoveImage = () => {
     setSelectedImage(null);
     if (fileInputRef.current) {
@@ -1225,16 +1315,23 @@ function ChatContent() {
             // Initial State - Welcome Screen
             <main className="flex-1 flex flex-col items-center justify-center px-6 pb-8">
               <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-[57px] font-medium text-center leading-none mb-8 sm:mb-12 lg:mb-16 ${isDarkMode ? 'text-white' : 'text-[#11002E]'}`}>
-                {"What's on the agenda today?"}
+                {"What's on your agenda today?"}
               </h1>
 
               {/* Search Input */}
               <div className="w-full max-w-xl sm:max-w-2xl md:max-w-3xl lg:max-w-4xl mb-6 sm:mb-8 lg:mb-10">
-                <div className={`relative backdrop-blur-xl rounded-[30px] sm:rounded-[40px] lg:rounded-[50px] border px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 ${
-                  isDarkMode 
-                    ? 'bg-[#181819] border-white/30' 
-                    : 'bg-white/60 border-white/30'
-                }`}>
+                <AnimatedBorderWrapper
+                  isAnimating={showAnimatedBorder}
+                  className="w-full"
+                  isDarkMode={isDarkMode}
+                >
+                  <div className={`relative backdrop-blur-xl rounded-[50px] border px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 ${
+                    isDarkMode 
+                      ? 'bg-[#181819] border-white/30' 
+                      : 'bg-white border-white/30'
+                  }`} style={{ 
+                    backgroundColor: isDarkMode ? '#181819' : '#ffffff'
+                  }}>
                   
                   {/* Selected Image Preview */}
                   {(selectedImage || isImageUploading) && (
@@ -1366,7 +1463,8 @@ function ChatContent() {
                     </div>
                   </div>
                   
-                </div>
+                  </div>
+                </AnimatedBorderWrapper>
               </div>
 
             </main>
@@ -1583,11 +1681,19 @@ function ChatContent() {
                 isDarkMode ? 'bg-gradient-to-t from-[#181819]/20 to-transparent' : 'bg-gradient-to-t from-white/20 to-transparent'
               }`}>
                 <div className="max-w-4xl mx-auto">
-                  <div className={`relative backdrop-blur-xl border px-8 py-7 transition-all duration-500 ease-in-out ${
-                    isDarkMode 
-                      ? 'bg-[#181819] border-white/30' 
-                      : 'bg-white/60 border-white/30'
-                  }`} style={{ borderRadius: '50px' }}>
+                  <AnimatedBorderWrapper
+                    isAnimating={showAnimatedBorder}
+                    className="w-full"
+                    isDarkMode={isDarkMode}
+                  >
+                    <div className={`relative backdrop-blur-xl border px-8 py-7 transition-all duration-500 ease-in-out ${
+                      isDarkMode 
+                        ? 'bg-[#181819] border-white/30' 
+                        : 'bg-white border-white/30'
+                    }`} style={{ 
+                      borderRadius: '50px',
+                      backgroundColor: isDarkMode ? '#181819' : '#ffffff'
+                    }}>
                     
                     {/* Selected Image Preview */}
                     {(selectedImage || isImageUploading) && (
@@ -1750,6 +1856,7 @@ function ChatContent() {
                       </div>
                     </div>
                   </div>
+                  </AnimatedBorderWrapper>
                 </div>
               </div>
             </div>

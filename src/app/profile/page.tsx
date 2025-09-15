@@ -596,7 +596,7 @@ export default function ProfilePage() {
                       }}
                     >
                       <CardContent className="p-6">
-                        <h3 className="font-bold mb-4" style={{ fontWeight: 700, fontSize: 40, fontFamily: 'Inter', textAlign: 'center' }}>Recent work</h3>
+                        <h3 className="font-bold mb-4" style={{ fontWeight: 700, fontSize: 30, fontFamily: 'Inter', textAlign: 'center' }}>Recent work</h3>
                         <div className="flex flex-col h-full min-h-[220px]">
                           <div className="flex-1 flex items-center justify-center">
                             <Image
@@ -766,7 +766,7 @@ export default function ProfilePage() {
                           WebkitBackgroundClip: 'text',
                           WebkitTextFillColor: 'transparent',
                           fontWeight: 700,
-                          fontSize: '40px',
+                          fontSize: '30px',
                           textAlign: 'center',
                           marginBottom: 0,
                         }}
