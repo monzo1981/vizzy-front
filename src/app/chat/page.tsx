@@ -6,6 +6,7 @@ import { useState, useRef, useEffect, memo, useCallback, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Plus, MicOff, X, Mic } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { AvatarDropdown } from "@/components/ui/avatar-dropdown"
 import { GradientBackground } from "../../components/gradient-background"
 import { Sidebar, useSidebar } from "../../components/sidebar"
@@ -1269,7 +1270,7 @@ function ChatContent() {
         {/* Main Content */}
         <div className={`h-screen flex flex-col transition-all duration-300 ${isOpen ? 'lg:ml-20' : 'lg:ml-20'}`}>
           {/* Header - Fixed */}
-          <header className="flex-shrink-0 flex items-center justify-between px-6 py-4">
+          <header className="flex-shrink-0 flex items-center justify-between px-6 py-6">
             {/* Mobile Menu Button */}
             <div className="lg:hidden">
               <button
@@ -1295,13 +1296,27 @@ function ChatContent() {
                 <Image 
                   src={isDarkMode ? "/vizzy-logo-dark.svg" : "/vizzy-logo.svg"} 
                   alt="Vizzy Logo" 
-                  width={300}
+                  width={220}
                   height={200}
-                  className="w-48 h-auto lg:w-[300px]"
+                  className="w-48 h-auto lg:w-[220px]"
                 />
               </div>
             </div>
             <div className="flex items-center gap-4">
+              {/* Pro Badge */}
+              <Badge 
+                className="text-white border-0"
+                style={{
+                  background: 'linear-gradient(90deg, #FF4A19 0%, #4248FF 100%)',
+                  borderRadius: '18px',
+                  fontWeight: 900,
+                  fontStyle: 'italic',
+                  fontSize: '16px',
+                  padding: '4px 12px'
+                }}
+              >
+                Pro
+              </Badge>
               {/* Avatar Dropdown */}
               <AvatarDropdown 
                 currentUser={currentUser}
@@ -1360,7 +1375,7 @@ function ChatContent() {
                   <div className="relative w-full mb-4 sm:mb-6 lg:mb-8">
                     {/* Custom Gradient Placeholder */}
                     {!inputValue && (
-                      <TypewriterPlaceholder fontSize="clamp(18px, 4vw, 32px)" />
+                      <TypewriterPlaceholder fontSize="clamp(18px, 4vw, 26px)" />
                     )}
                     
                     <textarea
@@ -1385,7 +1400,7 @@ function ChatContent() {
                       }`}
                       rows={1}
                       style={{ 
-                        fontSize: 'clamp(18px, 4vw, 32px)',
+                        fontSize: 'clamp(18px, 4vw, 26px)',
                         minHeight: '32px', 
                         maxHeight: '120px'
                       }}

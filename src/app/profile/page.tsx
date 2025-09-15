@@ -40,6 +40,15 @@ export default function ProfilePage() {
   const [companyProfile, setCompanyProfile] = useState<any | null>(null)
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
+  const [recentWork, setRecentWork] = useState<Array<{
+    id: string;
+    content_url: string;
+    created_at: string;
+    ai_chat_session_id?: string;
+  }>>([])
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const [touchStart, setTouchStart] = useState(0)
+  const [touchEnd, setTouchEnd] = useState(0)
   // UserLimits type is extended in n8n-webhook.ts to include max_images, max_videos
   const [progressPercent, setProgressPercent] = useState<number>(0);
   const [remainingCredits, setRemainingCredits] = useState<number | string>('-');
@@ -95,6 +104,97 @@ export default function ProfilePage() {
     }
     fetchLimits();
   }, []);
+
+  // Fetch recent work
+  useEffect(() => {
+    async function fetchRecentWork() {
+      try {
+        const token = localStorage.getItem('access_token')
+        if (!token) return
+
+        // Fetch limited data for carousel (5 items)
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/recent-work/?limit=5`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.data) {
+            setRecentWork(data.data)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching recent work:', error)
+      }
+    }
+
+    if (isAuthenticated()) {
+      fetchRecentWork()
+    }
+  }, [])
+
+  // Function to fetch all recent work (for browsing)
+  const fetchAllRecentWork = async () => {
+    try {
+      const token = localStorage.getItem('access_token')
+      if (!token) return []
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/recent-work/?limit=all`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.data) {
+          return data.data
+        }
+      }
+      return []
+    } catch (error) {
+      console.error('Error fetching all recent work:', error)
+      return []
+    }
+  }
+
+  // Auto-slide effect - Continuous movement
+  useEffect(() => {
+    if (recentWork.length <= 1) return
+
+    const interval = setInterval(() => {
+      setCurrentSlide(prev => (prev + 1) % recentWork.length)
+    }, 3000) // 4 seconds for longer viewing time
+
+    return () => clearInterval(interval)
+  }, [recentWork.length])
+
+  // Touch handlers for mobile swipe - Faster response
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+    
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > 30 // Reduced threshold for faster response
+    const isRightSwipe = distance < -30
+
+    if (isLeftSwipe && recentWork.length > 0) {
+      setCurrentSlide(prev => (prev + 1) % recentWork.length)
+    } else if (isRightSwipe && recentWork.length > 0) {
+      setCurrentSlide(prev => prev === 0 ? recentWork.length - 1 : prev - 1)
+    }
+  }
 
   useEffect(() => {
     const savedDarkMode = localStorage.getItem('darkMode')
@@ -596,26 +696,173 @@ export default function ProfilePage() {
                       }}
                     >
                       <CardContent className="p-6">
-                        <h3 className="font-bold mb-4" style={{ fontWeight: 700, fontSize: 30, fontFamily: 'Inter', textAlign: 'center' }}>Recent work</h3>
-                        <div className="flex flex-col h-full min-h-[220px]">
-                          <div className="flex-1 flex items-center justify-center">
-                            <Image
-                              src="/recent-work.png"
-                              alt="Recent Work"
-                              width={400}
-                              height={220}
-                              className="rounded-lg object-cover w-full max-w-[400px] h-[180px]"
-                            />
+                        <h3 className="font-bold mb-2" style={{ fontWeight: 700, fontSize: 30, fontFamily: 'Inter', textAlign: 'center' }}>Recent work</h3>
+                        <div className="flex flex-col h-full min-h-[240px]">
+                          <div className="flex-1 flex items-center justify-center relative overflow-hidden"
+                            onTouchStart={handleTouchStart}
+                            onTouchMove={handleTouchMove}
+                            onTouchEnd={handleTouchEnd}
+                          >
+                            {recentWork.length > 0 ? (
+                              <div className="relative w-full h-[200px] flex items-center justify-center">
+                                {/* Navigation Arrows */}
+                                <button
+                                  onClick={() => setCurrentSlide(prev => prev === 0 ? recentWork.length - 1 : prev - 1)}
+                                  className="absolute left-2 z-50 p-3 rounded-full transition-all duration-200 hover:scale-110 hover:opacity-100 hover:bg-white/20"
+                                  style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'white',
+                                    opacity: 0.8,
+                                    cursor: 'pointer',
+                                    backdropFilter: 'blur(4px)',
+                                  }}
+                                >
+                                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                </button>
+                                
+                                <button
+                                  onClick={() => setCurrentSlide(prev => (prev + 1) % recentWork.length)}
+                                  className="absolute right-2 z-50 p-3 rounded-full transition-all duration-200 hover:scale-110 hover:opacity-100 hover:bg-white/20"
+                                  style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'white',
+                                    opacity: 0.8,
+                                    cursor: 'pointer',
+                                    backdropFilter: 'blur(4px)',
+                                  }}
+                                >
+                                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                </button>
+
+                                {/* Triangular Stacked Carousel Container */}
+                                <div className="relative w-full h-full flex items-center justify-center">
+                                  {recentWork.map((item, index) => {
+                                    // Create seamless circular movement for 5 visible images
+                                    const totalItems = recentWork.length
+                                    let position = (index - currentSlide + totalItems) % totalItems
+                                    
+                                    // Handle negative positions for seamless loop
+                                    if (position > totalItems / 2) {
+                                      position = position - totalItems
+                                    }
+                                    
+                                    // Calculate properties for 5 visible images in triangle formation
+                                    const absPosition = Math.abs(position)
+                                    const isCenter = position === 0
+                                    const isVisible = absPosition <= 2 // Show 5 images total (-2, -1, 0, 1, 2)
+                                    
+                                    if (!isVisible) return null
+                                    
+                                    let scale = 1
+                                    let opacity = 1
+                                    let zIndex = 10
+                                    let translateX = 0
+                                    let translateY = 0
+                                    
+                                    if (isCenter) {
+                                      // Center image - largest and in front
+                                      scale = 1
+                                      opacity = 1
+                                      zIndex = 30
+                                      translateX = 0
+                                      translateY = 0
+                                    } else if (absPosition === 1) {
+                                      // First level - medium size, slightly behind
+                                      scale = 0.8
+                                      opacity = 0.8
+                                      zIndex = 20
+                                      translateX = position * 70 // Keep wider spacing for bigger width
+                                      translateY = 15 // Back to original vertical spacing
+                                    } else if (absPosition === 2) {
+                                      // Second level - same size as first level but further behind
+                                      scale = 0.8 // Same size as first level
+                                      opacity = 0.6
+                                      zIndex = 10
+                                      translateX = position * 55 // Keep adjusted spacing for wider images
+                                      translateY = 25 // Back to original vertical spacing
+                                    }
+                                    
+                                    return (
+                                      <div
+                                        key={item.id}
+                                        className="absolute transition-all duration-1000 ease-in-out cursor-pointer"
+                                        style={{
+                                          transform: `translateX(${translateX}px) translateY(${translateY}px) scale(${scale})`,
+                                          opacity,
+                                          zIndex,
+                                          width: '160px', // Keep the wider width
+                                          height: '180px', // Back to original height
+                                        }}
+                                        onClick={() => setCurrentSlide(index)}
+                                      >
+                                        <Image
+                                          src={item.content_url}
+                                          alt={`Generated content ${index + 1}`}
+                                          width={160}
+                                          height={180}
+                                          className="rounded-lg object-cover w-full h-full shadow-lg"
+                                          onError={(e) => {
+                                            // Handle broken images
+                                            const target = e.target as HTMLImageElement
+                                            target.src = '/recent-work.png'
+                                          }}
+                                        />
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center h-[200px] text-white/70">
+                                <p>No recent work available</p>
+                              </div>
+                            )}
                           </div>
-                          {/* Navigation Bars */}
+                          {/* Navigation Dots */}
                           <div className="flex flex-col gap-2 mt-6">
                             <div className="flex justify-center w-full gap-2">
-                              {/* 5 bars, center one orange, others blue, all width = 20% */}
-                              <div style={{ width: '20%', height: '8px', background: '#D3E6FC', borderRadius: '8px', opacity: 1 }}></div>
-                              <div style={{ width: '20%', height: '8px', background: '#D3E6FC', borderRadius: '8px', opacity: 1 }}></div>
-                              <div style={{ width: '20%', height: '10px', background: '#FF4A19', borderRadius: '8px', opacity: 1 }}></div>
-                              <div style={{ width: '20%', height: '8px', background: '#D3E6FC', borderRadius: '8px', opacity: 1 }}></div>
-                              <div style={{ width: '20%', height: '8px', background: '#D3E6FC', borderRadius: '8px', opacity: 1 }}></div>
+                              {recentWork.length > 0 ? (
+                                recentWork.map((_, index) => {
+                                  const isActive = index === currentSlide
+                                  const width = Math.max(15, 80 / Math.max(5, recentWork.length)) // Responsive width
+                                  return (
+                                    <button
+                                      key={index}
+                                      onClick={() => setCurrentSlide(index)}
+                                      style={{
+                                        width: `${width}%`,
+                                        height: isActive ? '10px' : '8px',
+                                        background: isActive ? '#FF4A19' : '#D3E6FC',
+                                        borderRadius: '8px',
+                                        opacity: 1,
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.3s ease'
+                                      }}
+                                    />
+                                  )
+                                })
+                              ) : (
+                                // Default 5 dots when no data
+                                Array.from({ length: 5 }).map((_, index) => (
+                                  <div
+                                    key={index}
+                                    style={{
+                                      width: '20%',
+                                      height: index === 2 ? '10px' : '8px',
+                                      background: index === 2 ? '#FF4A19' : '#D3E6FC',
+                                      borderRadius: '8px',
+                                      opacity: 1
+                                    }}
+                                  />
+                                ))
+                              )}
                             </div>
                             <div className="flex justify-end w-full mt-2">
                               <Button

@@ -101,8 +101,7 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <title>{pageTitle}</title>
-        <link rel="icon" href="/vizzy-chat-icon.svg" media="(prefers-color-scheme: light)" />
-        <link rel="icon" href="/vizzy-chat-icon-dark.svg" media="(prefers-color-scheme: dark)" />
+        <link rel="icon" href="/web-icon.svg" />
         <script src="https://accounts.google.com/gsi/client" async defer></script>
       </head>
       <body
