@@ -621,7 +621,7 @@ export default function ProfilePage() {
                                 color: '#78758E',
                                 fontWeight: 500,
                                 fontSize: '16px'
-                              }}>{companyProfile?.job_title || 'Software Engineer'}</p>
+                              }}>{companyProfile?.job_title || 'Not available'}</p>
                             </div>
                             <div>
                               <p style={{
