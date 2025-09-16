@@ -1407,6 +1407,7 @@ function ChatContent() {
                     />
                   </div>
 
+
                   {/* Bottom bar with buttons */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
