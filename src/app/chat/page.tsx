@@ -6,6 +6,7 @@ import { useState, useRef, useEffect, memo, useCallback, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Plus, MicOff, X, Mic } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { AvatarDropdown } from "@/components/ui/avatar-dropdown"
 import { GradientBackground } from "../../components/gradient-background"
 import { Sidebar, useSidebar } from "../../components/sidebar"
@@ -192,6 +193,81 @@ const TypewriterPlaceholder = ({ fontSize }: { fontSize: string }) => {
   );
 };
 
+// Animated Border Wrapper Component
+const AnimatedBorderWrapper = ({ 
+  children, 
+  isAnimating, 
+  className = "",
+  isDarkMode = false
+}: { 
+  children: React.ReactNode; 
+  isAnimating: boolean; 
+  className?: string;
+  isDarkMode?: boolean;
+}) => {
+  const borderRadius = '50px'; // ثابت 50px بدلاً من responsive
+
+  return (
+    <>
+      <style jsx>{`
+        @property --angle {
+          syntax: '<angle>';
+          initial-value: 0deg;
+          inherits: false;
+        }
+        
+        @keyframes rotateGradient {
+          from {
+            --angle: 0deg;
+          }
+          to {
+            --angle: 360deg;
+          }
+        }
+        
+        .animated-border-wrapper {
+          position: relative;
+          padding: 2px;
+          background: ${isAnimating ? `conic-gradient(from calc(var(--angle) - 46.15deg) at 50.76% 47.25%, 
+            #4248FF99 -40.22deg, 
+            #7FCAFE99 50.49deg, 
+            #FFEB7799 104.02deg, 
+            #4248FF99 158.81deg, 
+            #FF4A1999 224.78deg, 
+            #4248FF99 319.78deg, 
+            #7FCAFE99 410.49deg)` : 'transparent'};
+          animation: ${isAnimating ? 'rotateGradient 3s linear' : 'none'};
+          transition: all 0.5s ease-out;
+          box-shadow: ${isAnimating ? (isDarkMode ? '0px 0px 15px rgba(66, 72, 255, 0.4)' : '0px 0px 15px rgba(255, 255, 255, 0.4)') : 'none'};
+          overflow: hidden;
+        }
+        
+        .animated-border-content {
+          overflow: hidden;
+        }
+      `}</style>
+      <div 
+        className={`animated-border-wrapper ${className}`}
+        style={{ 
+          borderRadius,
+          overflow: 'hidden'
+        }}
+      >
+        <div 
+          className="animated-border-content"
+          style={{ 
+            borderRadius,
+            overflow: 'hidden',
+            backgroundColor: isDarkMode ? '#181819' : '#ffffff'
+          }}
+        >
+          {children}
+        </div>
+      </div>
+    </>
+  );
+};
+
 function ChatContent() {
   const { toasts, toast, removeToast } = useToast()
   const router = useRouter()
@@ -210,6 +286,9 @@ function ChatContent() {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  
+  // Animated border state
+  const [showAnimatedBorder, setShowAnimatedBorder] = useState(false)
   
   // AI Chat Session State
   const [sessionId, setSessionId] = useState<string | undefined>(undefined)
@@ -771,6 +850,18 @@ function ChatContent() {
     };
   }, [hasMessages, setInputValue, expandedImage, inputRef, compactInputRef]);
 
+  // Trigger animated border on component mount
+  useEffect(() => {
+    setShowAnimatedBorder(true);
+    
+    // Turn off animation after 3 seconds
+    const timer = setTimeout(() => {
+      setShowAnimatedBorder(false);
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
   const handleRemoveImage = () => {
     setSelectedImage(null);
     if (fileInputRef.current) {
@@ -865,6 +956,96 @@ function ChatContent() {
     }
   }
 
+  // دالة لضغط وتحويل الصورة إلى PNG
+  const compressAndConvertImage = async (
+    file: File, 
+    maxWidth: number = 1920, 
+    maxHeight: number = 1080, 
+    quality: number = 0.85
+  ): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        const img = document.createElement('img');
+        
+        img.onload = () => {
+          // حساب الأبعاد الجديدة مع الحفاظ على النسبة
+          let width = img.width;
+          let height = img.height;
+          
+          // تصغير الصورة إذا كانت أكبر من الحد المسموح
+          if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+          }
+          
+          // إنشاء canvas للرسم عليه
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          if (!ctx) {
+            reject(new Error('Failed to get canvas context'));
+            return;
+          }
+          
+          // تعيين أبعاد الـ canvas
+          canvas.width = width;
+          canvas.height = height;
+          
+          // تحسين جودة الرسم
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          
+          // رسم الصورة على الـ canvas
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // تحويل الـ canvas إلى blob بصيغة PNG
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(new Error('Failed to convert image'));
+                return;
+              }
+              
+              // إنشاء File object جديد بصيغة PNG
+              const compressedFile = new File(
+                [blob], 
+                file.name.replace(/\.[^/.]+$/, '.png'), // تغيير امتداد الملف إلى .png
+                { 
+                  type: 'image/png',
+                  lastModified: Date.now()
+                }
+              );
+              
+              console.log('Original size:', (file.size / 1024).toFixed(2), 'KB');
+              console.log('Compressed size:', (compressedFile.size / 1024).toFixed(2), 'KB');
+              console.log('Compression ratio:', ((1 - compressedFile.size / file.size) * 100).toFixed(1), '%');
+              
+              resolve(compressedFile);
+            },
+            'image/png',
+            quality // جودة الضغط (0.85 = 85% جودة)
+          );
+        };
+        
+        img.onerror = () => {
+          reject(new Error('Failed to load image'));
+        };
+        
+        img.src = e.target?.result as string;
+      };
+      
+      reader.onerror = () => {
+        reject(new Error('Failed to read file'));
+      };
+      
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // دالة رفع الصورة المحدثة
   const handleImageUpload = async (file: File): Promise<string | null> => {
     const token = localStorage.getItem('access_token');
     if (!token) {
@@ -898,39 +1079,54 @@ function ChatContent() {
     }
   };
 
+  // دالة التعامل مع اختيار الصورة المحدثة
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // التحقق من نوع الملف
+      if (!file.type.startsWith('image/')) {
+        toast.error("Please select an image file");
+        return;
+      }
+      
+      // التحقق من حجم الملف الأصلي
       if (file.size > 10 * 1024 * 1024) {
         toast.error("Image size must be less than 10MB");
         return;
       }
 
-      if (!file.type.startsWith('image/')) {
-        toast.error("Please select an image file");
-        return;
-      }
-
-      // Start loading animation
+      // بدء الرسوم المتحركة للتحميل
       setIsImageUploading(true);
 
       try {
-        const publicUrl = await handleImageUpload(file);
+        // ضغط وتحويل الصورة إلى PNG
+        console.log('Converting and compressing image...');
+        const compressedFile = await compressAndConvertImage(
+          file,
+          1920,  // الحد الأقصى للعرض
+          1080,  // الحد الأقصى للارتفاع
+          0.85   // الجودة (85%)
+        );
+        
+        // رفع الصورة المضغوطة
+        const publicUrl = await handleImageUpload(compressedFile);
 
         if (publicUrl) {
           setSelectedImage(publicUrl);
+          toast.success("Image uploaded successfully!");
         } else {
           toast.error("Failed to upload image. Please try again.");
         }
       } catch (error) {
-        console.error('Error uploading image:', error);
-        toast.error("Failed to upload image. Please try again.");
+        console.error('Error processing image:', error);
+        toast.error("Failed to process image. Please try again.");
       } finally {
-        // Stop loading animation
+        // إيقاف الرسوم المتحركة للتحميل
         setIsImageUploading(false);
       }
     }
 
+    // إعادة تعيين قيمة الإدخال
     if (e.target) {
       e.target.value = "";
     }
@@ -1074,7 +1270,7 @@ function ChatContent() {
         {/* Main Content */}
         <div className={`h-screen flex flex-col transition-all duration-300 ${isOpen ? 'lg:ml-20' : 'lg:ml-20'}`}>
           {/* Header - Fixed */}
-          <header className="flex-shrink-0 flex items-center justify-between px-6 py-4">
+          <header className="flex-shrink-0 flex items-center justify-between px-6 py-6">
             {/* Mobile Menu Button */}
             <div className="lg:hidden">
               <button
@@ -1100,13 +1296,27 @@ function ChatContent() {
                 <Image 
                   src={isDarkMode ? "/vizzy-logo-dark.svg" : "/vizzy-logo.svg"} 
                   alt="Vizzy Logo" 
-                  width={300}
+                  width={220}
                   height={200}
-                  className="w-48 h-auto lg:w-[300px]"
+                  className="w-48 h-auto lg:w-[220px]"
                 />
               </div>
             </div>
             <div className="flex items-center gap-4">
+              {/* Pro Badge */}
+              <Badge 
+                className="text-white border-0"
+                style={{
+                  background: 'linear-gradient(90deg, #FF4A19 0%, #4248FF 100%)',
+                  borderRadius: '18px',
+                  fontWeight: 900,
+                  fontStyle: 'italic',
+                  fontSize: '16px',
+                  padding: '4px 12px'
+                }}
+              >
+                Pro
+              </Badge>
               {/* Avatar Dropdown */}
               <AvatarDropdown 
                 currentUser={currentUser}
@@ -1120,16 +1330,23 @@ function ChatContent() {
             // Initial State - Welcome Screen
             <main className="flex-1 flex flex-col items-center justify-center px-6 pb-8">
               <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-[57px] font-medium text-center leading-none mb-8 sm:mb-12 lg:mb-16 ${isDarkMode ? 'text-white' : 'text-[#11002E]'}`}>
-                {"What's on the agenda today?"}
+                {"What's on your agenda today?"}
               </h1>
 
               {/* Search Input */}
               <div className="w-full max-w-xl sm:max-w-2xl md:max-w-3xl lg:max-w-4xl mb-6 sm:mb-8 lg:mb-10">
-                <div className={`relative backdrop-blur-xl rounded-[30px] sm:rounded-[40px] lg:rounded-[50px] border px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 ${
-                  isDarkMode 
-                    ? 'bg-[#181819] border-white/30' 
-                    : 'bg-white/60 border-white/30'
-                }`}>
+                <AnimatedBorderWrapper
+                  isAnimating={showAnimatedBorder}
+                  className="w-full"
+                  isDarkMode={isDarkMode}
+                >
+                  <div className={`relative backdrop-blur-xl rounded-[50px] border px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 ${
+                    isDarkMode 
+                      ? 'bg-[#181819] border-white/30' 
+                      : 'bg-white border-white/30'
+                  }`} style={{ 
+                    backgroundColor: isDarkMode ? '#181819' : '#ffffff'
+                  }}>
                   
                   {/* Selected Image Preview */}
                   {(selectedImage || isImageUploading) && (
@@ -1158,7 +1375,7 @@ function ChatContent() {
                   <div className="relative w-full mb-4 sm:mb-6 lg:mb-8">
                     {/* Custom Gradient Placeholder */}
                     {!inputValue && (
-                      <TypewriterPlaceholder fontSize="clamp(18px, 4vw, 32px)" />
+                      <TypewriterPlaceholder fontSize="clamp(18px, 4vw, 26px)" />
                     )}
                     
                     <textarea
@@ -1183,12 +1400,13 @@ function ChatContent() {
                       }`}
                       rows={1}
                       style={{ 
-                        fontSize: 'clamp(18px, 4vw, 32px)',
+                        fontSize: 'clamp(18px, 4vw, 26px)',
                         minHeight: '32px', 
                         maxHeight: '120px'
                       }}
                     />
                   </div>
+
 
                   {/* Bottom bar with buttons */}
                   <div className="flex items-center justify-between">
@@ -1261,7 +1479,8 @@ function ChatContent() {
                     </div>
                   </div>
                   
-                </div>
+                  </div>
+                </AnimatedBorderWrapper>
               </div>
 
             </main>
@@ -1431,24 +1650,6 @@ function ChatContent() {
                                       className="rounded-lg max-w-full"
                                       style={{ maxWidth: '200px', height: 'auto' }}
                                     />
-                                    {/* Download button for user images */}
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        downloadImage(message.visual!, `user-image-${Date.now()}.png`)
-                                      }}
-                                      className="absolute transition-all duration-200 transform hover:scale-110 z-10"
-                                      style={{ top: '8px', right: '8px' }}
-                                      title="Download image"
-                                    >
-                                      <Image 
-                                        src="/download.svg" 
-                                        alt="Download" 
-                                        width={20} 
-                                        height={20} 
-                                        className="text-gray-700" 
-                                      />
-                                    </button>
                                   </div>
                                 )}
                               </div>
@@ -1496,11 +1697,19 @@ function ChatContent() {
                 isDarkMode ? 'bg-gradient-to-t from-[#181819]/20 to-transparent' : 'bg-gradient-to-t from-white/20 to-transparent'
               }`}>
                 <div className="max-w-4xl mx-auto">
-                  <div className={`relative backdrop-blur-xl border px-8 py-7 transition-all duration-500 ease-in-out ${
-                    isDarkMode 
-                      ? 'bg-[#181819] border-white/30' 
-                      : 'bg-white/60 border-white/30'
-                  }`} style={{ borderRadius: '50px' }}>
+                  <AnimatedBorderWrapper
+                    isAnimating={showAnimatedBorder}
+                    className="w-full"
+                    isDarkMode={isDarkMode}
+                  >
+                    <div className={`relative backdrop-blur-xl border px-8 py-7 transition-all duration-500 ease-in-out ${
+                      isDarkMode 
+                        ? 'bg-[#181819] border-white/30' 
+                        : 'bg-white border-white/30'
+                    }`} style={{ 
+                      borderRadius: '50px',
+                      backgroundColor: isDarkMode ? '#181819' : '#ffffff'
+                    }}>
                     
                     {/* Selected Image Preview */}
                     {(selectedImage || isImageUploading) && (
@@ -1663,6 +1872,7 @@ function ChatContent() {
                       </div>
                     </div>
                   </div>
+                  </AnimatedBorderWrapper>
                 </div>
               </div>
             </div>

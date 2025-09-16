@@ -98,7 +98,7 @@ export class ResponseNormalizer {
         console.log("📝 Text around URL:", cleanedResponse.substring(Math.max(0, urlIndex - 20), Math.min(cleanedResponse.length, urlIndex + 150)));
       }
       
-      const [urlInText, remainingText] = this._extractUrlFromText(cleanedResponse, true); // Keep URL in text
+      const [urlInText, remainingText] = this._extractUrlFromText(cleanedResponse, false); // Remove URL from text
       const cleanedText = ResponseTextCleaner.improveDisplayText(remainingText || cleanedResponse);
       
       const result = { 
@@ -125,7 +125,7 @@ export class ResponseNormalizer {
       const firstItem = this.jsonResponse[0];
       if (typeof firstItem === 'string') {
         const cleanedItem = firstItem.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
-        const [urlInText, remainingText] = this._extractUrlFromText(cleanedItem, true); // Keep URL in text
+        const [urlInText, remainingText] = this._extractUrlFromText(cleanedItem, false); // Remove URL from text
         const cleanedText = ResponseTextCleaner.improveDisplayText(remainingText || cleanedItem);
         return { text: cleanedText, mediaUrl: urlInText };
       } else if (typeof firstItem === 'object' && firstItem !== null) {
@@ -201,11 +201,11 @@ export class ResponseNormalizer {
 
     // Check if text contains embedded URL (only if we don't have URL from separate field)
     if (text && !isUrlFromSeparateField) {
-      const [urlInText, remainingText] = this._extractUrlFromText(text, true); // Keep URL in text
+      const [urlInText, remainingText] = this._extractUrlFromText(text, false); // Remove URL from text
       if (urlInText) {
         mediaUrl = urlInText;
-        text = remainingText; // Use the text with URL preserved
-        console.log("✅ Extracted embedded URL from text content, keeping in text");
+        text = remainingText; // Use the text with URL removed
+        console.log("✅ Extracted embedded URL from text content, removed from text");
       }
     }
 
