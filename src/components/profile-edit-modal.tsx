@@ -421,6 +421,7 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate, o
                     fallback={currentUser && currentUser.first_name && currentUser.last_name ? `${currentUser.first_name.charAt(0)}${currentUser.last_name.charAt(0)}`.toUpperCase() : 'U'}
                     alt="Profile Picture" 
                     size={75}
+                    bgOverride="light" // أو "light" أو "dark" أو "auto" (default)
                   />
                   <div>
                     <Button

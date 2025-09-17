@@ -20,10 +20,147 @@ import { useNotificationSound } from "@/lib/useNotificationSound";
 import { supabase, type ChatMessage, type ChatMessageDB } from "@/lib/supabase-client"
 import { RealtimeChannel } from "@supabase/supabase-js"
 import { useToast, ToastContainer } from "@/components/ui/toast"
+import TypewriterPlaceholder from "@/components/chat/TypewriterPlaceholder"
+import AnimatedBorderWrapper from "@/components/chat/AnimatedBorderWrapper"
+import { 
+  downloadImage, 
+  isBase64Image, 
+  handleImageSelect as handleImageSelectHelper
+} from "@/lib/chat/imageHelpers"
+import {
+  createAIChatSession as createSession,
+  pollForFirstMessage as pollMessage,
+  messagesToChatHistory as convertMessages
+} from "@/lib/chat/sessionHelpers"
+import {
+  startRecording as startVoiceRecording,
+  stopRecording as stopVoiceRecording,
+  cancelRecording as cancelVoiceRecording,
+  toggleRecording as toggleVoiceRecording,
+  type VoiceRecordingHandlers
+} from "@/lib/chat/voiceHelpers"
 
 
 // API Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+
+// Tutorial Card Component
+const TutorialCard = ({ 
+  title, 
+  subtitle, 
+  onNext, 
+  onSkip, 
+  className = "",
+  style = {},
+  borderRadius = "default"
+}: { 
+  title: string
+  subtitle: string
+  onNext: () => void
+  onSkip: () => void
+  className?: string
+  style?: React.CSSProperties
+  borderRadius?: "default" | "second" | "third"
+}) => {
+  // Define different border radius styles
+  const getBorderRadius = () => {
+    switch (borderRadius) {
+      case "second":
+        return {
+          borderTopLeftRadius: '4px',
+          borderTopRightRadius: '20px',
+          borderBottomRightRadius: '20px',
+          borderBottomLeftRadius: '14px',
+        }
+      case "third":
+        return {
+          borderTopLeftRadius: '20px',
+          borderTopRightRadius: '14px',
+          borderBottomRightRadius: '4px',
+          borderBottomLeftRadius: '20px',
+        }
+      default:
+        return {
+          borderTopLeftRadius: '20px',
+          borderTopRightRadius: '4px',
+          borderBottomRightRadius: '14px',
+          borderBottomLeftRadius: '20px',
+        }
+    }
+  }
+
+  return (
+    <div className={`absolute z-50 ${className}`} style={style}>
+      <div
+        className="relative"
+        style={{
+          width: '180px',
+          minHeight: 'auto',
+          background: '#4248FFE0',
+          border: '#7FCAFE 0.5px solid',
+          boxShadow: '0px 0px 8px 0px #7FCAFE73',
+          ...getBorderRadius(),
+        }}
+      >
+        <div className="p-3 flex flex-col">
+          <div className="mb-3">
+            <div 
+              style={{
+                fontSize: '16px',
+                fontWeight: 700,
+                color: 'white',
+                lineHeight: '1.2',
+                marginBottom: '2px',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {title}
+            </div>
+            <div 
+              style={{
+                fontSize: '12px',
+                fontWeight: 300,
+                color: 'white',
+                lineHeight: '1.2',
+                wordWrap: 'break-word'
+              }}
+            >
+              {subtitle}
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={onNext}
+              style={{
+                fontSize: '12px',
+                fontWeight: 300,
+                color: 'white',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              next
+            </button>
+            <button
+              onClick={onSkip}
+              style={{
+                fontSize: '12px',
+                fontWeight: 300,
+                color: 'white',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              skip
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const StableImage = memo(({ src, alt, className, style, onClick }: { src: string, alt: string, className: string, style: React.CSSProperties, onClick?: (e: React.MouseEvent<HTMLImageElement>) => void }) => {
     const [imageError, setImageError] = useState(false);
@@ -83,191 +220,6 @@ const ImageUploadLoader = ({ isDarkMode }: { isDarkMode: boolean }) => {
   );
 };
 
-const TypewriterPlaceholder = ({ fontSize }: { fontSize: string }) => {
-  const sentences = [
-    'افكارك الكروكي …. هحولها لتصميمات تجنن',
-    'Bees can fly up to 5 miles just to find food.',
-    'Old posts reborn like new… just send me the image',
-    'اعرف منافسينك بيعملو ايه وانت مكانك',
-    'تحب تصميم معايدة؟ رمضان على الابواب',
-    'ايوة …. انا بس اللي بعرف اكتب عربي صح على الصور!',
-    'Here is a bio that sounds cooler than your old one',
-    'C’mon, I’m not CHEAP!!!!! I’m budget friendly',
-    'افكار بودكاست ايها علاقة بيك و مسلية فعلا',
-    'Voiceover scripts that sound human, not robotic',
-    'متهيألي المقاس اللي قولتة مش مضبوط! الصح ١:١',
-    'Captions that make people stop scrolling',
-    'عايز صور لمنتجك تستعملها على الموقع؟ سيبها عليا؟',
-    'Ads that don’t feel like ads, that punch',
-    'بص التصميم حلو… بس لو تحب اقدر احسنة اكتر',
-    'Just say it and I will turn this design into a world-class video',
-    'The buzzing sound comes from bees beating their wings 200 times per second.',
-    'Of course I can write mails and send them to whoever',
-    'خلينا نضيف الحجاب للتصميم، يدي إحساس مصري أكتر. تحب نبدأ؟',
-    'Need Logo animation to use in your branding?',
-    'Hold my coffee while I create that game-changing visual',
-    'مبروك المشروع الجديد … تحب نبتدي بالموقع؟',
-    'A whole month’s content plan… done !',
-    'All of your social posts in a snap',
-    'Show me the design you like and I’ll show you what I can do',
-    'Content for LinkedIn? What about a free image from VIZZY!',
-    'اتفضل خطة تسويقية كاملة، تحب نبتدي بالتصميمات؟',
-    'Ok, upload your  your logo and let’s make it yours all the way!',
-    'Actually, I’ll finish both directions for you before you call the client',
-    'Endless UGC actors talking about your brand',
-    'Campaign ideas that don’t feel recycled',
-    'Did you try VIBE marketing? I guess it’s time',
-    'Yeah sure, I can generate 10 new ideas for this post and let’s pick the best we like',
-    'Product descriptions people read and believe',
-    'البادجات كدة غلط…. تسمحلي اعيد توزيعها؟',
-    'Even if it’s a minor edit—let’s do it together',
-    'Emails your audience actually want to open',
-    'عايز تعمل فيديو لمنتجك؟ صوره وابعتهولي',
-    'Show me the design you like and I’ll show you what I can do',
-    'No need to hire a copywriter… we are not in 2024 anymore!',
-    'Yeah I know all of the latest trends, let me pick what suits our brand',
-    'لو مش عايز تكتب ابعت فويس وانا حفهم قصدك',
-  ];
-
-  const [sentenceIndex, setSentenceIndex] = useState(0);
-  const [displayedText, setDisplayedText] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  useEffect(() => {
-    const typingSpeed = 30; // Faster typing
-    const deletingSpeed = 30; // Faster deleting
-
-    const handleTyping = () => {
-      const i = sentenceIndex % sentences.length;
-      const fullText = sentences[i];
-
-      setDisplayedText(
-        isDeleting
-          ? fullText.substring(0, displayedText.length - 1)
-          : fullText.substring(0, displayedText.length + 1)
-      );
-
-      if (!isDeleting && displayedText === fullText) {
-        // Pause before deleting
-        setTimeout(() => setIsDeleting(true), 1500); // 1.5 second pause
-      } else if (isDeleting && displayedText === '') {
-        setIsDeleting(false);
-        let nextIndex;
-        do {
-            nextIndex = Math.floor(Math.random() * sentences.length);
-        } while (nextIndex === sentenceIndex);
-        setSentenceIndex(nextIndex);
-      }
-    };
-
-    const timer = setTimeout(
-      handleTyping,
-      isDeleting ? deletingSpeed : typingSpeed
-    );
-
-    return () => clearTimeout(timer);
-  }, [displayedText, isDeleting, sentenceIndex]);
-
-  const currentSentence = sentences[sentenceIndex];
-  const isArabic = /[\u0600-\u06FF]/.test(currentSentence);
-
-  const style: React.CSSProperties = {
-    color: '#C3BFE6',
-    fontSize: fontSize,
-    fontWeight: '200',
-    paddingTop: '0px',
-    textAlign: isArabic ? 'right' : 'left',
-    direction: isArabic ? 'rtl' : 'ltr',
-    width: '100%',
-    ...(isArabic ? { fontFamily: 'Noto Sans Arabic' } : {}),
-  };
-
-  return (
-    <div
-      className="absolute inset-0 pointer-events-none flex items-start"
-    >
-      <div style={style}>
-        {displayedText}
-      </div>
-    </div>
-  );
-};
-
-// Animated Border Wrapper Component
-const AnimatedBorderWrapper = ({ 
-  children, 
-  isAnimating, 
-  className = "",
-  isDarkMode = false
-}: { 
-  children: React.ReactNode; 
-  isAnimating: boolean; 
-  className?: string;
-  isDarkMode?: boolean;
-}) => {
-  const borderRadius = '50px'; // ثابت 50px بدلاً من responsive
-
-  return (
-    <>
-      <style jsx>{`
-        @property --angle {
-          syntax: '<angle>';
-          initial-value: 0deg;
-          inherits: false;
-        }
-        
-        @keyframes rotateGradient {
-          from {
-            --angle: 0deg;
-          }
-          to {
-            --angle: 360deg;
-          }
-        }
-        
-        .animated-border-wrapper {
-          position: relative;
-          padding: 2px;
-          background: ${isAnimating ? `conic-gradient(from calc(var(--angle) - 46.15deg) at 50.76% 47.25%, 
-            #4248FF99 -40.22deg, 
-            #7FCAFE99 50.49deg, 
-            #FFEB7799 104.02deg, 
-            #4248FF99 158.81deg, 
-            #FF4A1999 224.78deg, 
-            #4248FF99 319.78deg, 
-            #7FCAFE99 410.49deg)` : 'transparent'};
-          animation: ${isAnimating ? 'rotateGradient 3s linear' : 'none'};
-          transition: all 0.5s ease-out;
-          box-shadow: ${isAnimating ? (isDarkMode ? '0px 0px 15px rgba(66, 72, 255, 0.4)' : '0px 0px 15px rgba(255, 255, 255, 0.4)') : 'none'};
-          overflow: hidden;
-        }
-        
-        .animated-border-content {
-          overflow: hidden;
-        }
-      `}</style>
-      <div 
-        className={`animated-border-wrapper ${className}`}
-        style={{ 
-          borderRadius,
-          overflow: 'hidden'
-        }}
-      >
-        <div 
-          className="animated-border-content"
-          style={{ 
-            borderRadius,
-            overflow: 'hidden',
-            backgroundColor: isDarkMode ? '#181819' : '#ffffff'
-          }}
-        >
-          {children}
-        </div>
-      </div>
-    </>
-  );
-};
-
 function ChatContent() {
   const { toasts, toast, removeToast } = useToast()
   const router = useRouter()
@@ -289,6 +241,10 @@ function ChatContent() {
   
   // Animated border state
   const [showAnimatedBorder, setShowAnimatedBorder] = useState(false)
+  
+  // Tutorial state
+  const [showTutorial, setShowTutorial] = useState(false)
+  const [tutorialStep, setTutorialStep] = useState(1)
   
   // AI Chat Session State
   const [sessionId, setSessionId] = useState<string | undefined>(undefined)
@@ -313,177 +269,29 @@ function ChatContent() {
   const n8nWebhook = useRef<N8NWebhook | null>(null)
   const { playSound } = useNotificationSound("/vizzy-message.mp3");
 
-  // Function to download image
-  const downloadImage = async (imageUrl: string, fileName?: string) => {
-    try {
-      let blob: Blob
-      
-      // Check if it's a base64 image
-      if (imageUrl.startsWith('data:')) {
-        // Convert base64 to blob
-        const response = await fetch(imageUrl)
-        blob = await response.blob()
-      } else {
-        // For regular URLs, fetch the image
-        const response = await fetch(imageUrl)
-        blob = await response.blob()
-      }
-      
-      // Create a temporary URL for the blob
-      const url = window.URL.createObjectURL(blob)
-      
-      // Create a temporary anchor element and trigger download
-      const link = document.createElement('a')
-      link.href = url
-      link.download = fileName || `vizzy-image-${Date.now()}.png`
-      document.body.appendChild(link)
-      link.click()
-      
-      // Clean up
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-    } catch (error) {
-      console.error('Error downloading image:', error)
-      // Fallback: try to open in new tab if download fails
-      try {
-        window.open(imageUrl, '_blank')
-      } catch (fallbackError) {
-        console.error('Fallback failed too:', fallbackError)
-      }
-    }
-  }
-
-  // Function to create AI chat session
+  // Wrapper for createAIChatSession with required parameters
   const createAIChatSession = async (initialMessage?: string): Promise<string | undefined> => {
-    try {
-      setIsCreatingSession(true)
-      
-      const token = localStorage.getItem('access_token')
-      if (!token) {
-        console.error('No auth token found')
-        return undefined
-      }
-      
-      const response = await fetch(`${API_BASE_URL}/ai-chat-session/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          initial_message: initialMessage || ''
-        })
-      })
-      
-      if (!response.ok) {
-        try {
-          const errorData = await response.json()
-          console.error('Failed to create session:', response.status, errorData)
-          
-          if (response.status === 403) {
-            console.error('Permission denied. User might not be a client or token expired.')
-          }
-        } catch (e) {
-          console.error('Failed to create session:', response.status)
-        }
-        return undefined
-      }
-      
-      const data = await response.json()
-      const newSessionId = data.session_id
-      setSessionId(newSessionId)
-      
-      sessionStorage.setItem('ai_chat_session_id', newSessionId)
-      console.log('🎯 Created new AI chat session:', newSessionId)
-      
-      return newSessionId
-    } catch (error) {
-      console.error('Error creating AI chat session:', error)
-      return undefined
-    } finally {
-      setIsCreatingSession(false)
+    const token = localStorage.getItem('access_token');
+    if (!token || !API_BASE_URL) {
+      console.error('No auth token or API URL found');
+      return undefined;
     }
-  }
 
-  // Polling function for first message (fallback)
+    return await createSession(
+      initialMessage,
+      { apiBaseUrl: API_BASE_URL, token },
+      { setIsCreatingSession, setSessionId }
+    );
+  };
+
+  // Wrapper for pollForFirstMessage with required parameters
   const pollForFirstMessage = useCallback(async (sessionId: string, userMessageId: string) => {
-    let retries = 0;
-    const maxRetries = 10;
-    const interval = 1000; // 1 second
-
-    const poll = async () => {
-      if (retries >= maxRetries) {
-        console.log('⏱️ Polling timeout reached');
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('core_aichatsession')
-          .select('chat_messages')
-          .eq('id', sessionId)
-          .single();
-
-        if (error) {
-          console.error('❌ Error polling for message:', error);
-          retries++;
-          setTimeout(poll, interval);
-          return;
-        }
-
-        const allMessages = data?.chat_messages || [];
-        
-        // Look for new assistant messages after our user message
-        const newAssistantMessages = allMessages.filter((msg: ChatMessageDB, index: number) => {
-          // Generate a unique ID for this message
-          const messageId = `${sessionId}-${index}-${msg.timestamp}`;
-          
-          return msg.role === 'assistant' && 
-                 !processedMessageIds.current.has(messageId) &&
-                 index >= lastProcessedCount.current;
-        });
-
-        if (newAssistantMessages.length > 0) {
-          console.log(`✅ Found ${newAssistantMessages.length} new assistant messages via polling`);
-          
-          // Process new messages
-          const normalizedMessages: ChatMessage[] = newAssistantMessages.map((msg: ChatMessageDB, idx: number) => {
-            const messageIndex = allMessages.indexOf(msg);
-            const messageId = `${sessionId}-${messageIndex}-${msg.timestamp}`;
-            processedMessageIds.current.add(messageId);
-            
-            const normalizer = new ResponseNormalizer(msg.content);
-            const { text, mediaUrl } = normalizer.normalize();
-            
-            return {
-              id: `poll-${Date.now()}-${idx}`,
-              content: text || msg.content,
-              sender: 'assistant' as const,
-              timestamp: new Date(msg.timestamp),
-              visual: mediaUrl || msg.visual,
-              serviceType: msg.service_type,
-              isProcessing: false,
-              isVoice: false
-            };
-          });
-          
-          setMessages(prev => [...prev, ...normalizedMessages]);
-          lastProcessedCount.current = allMessages.length;
-          setIsLoading(false);
-        } else {
-          retries++;
-          setTimeout(poll, interval);
-        }
-      } catch (error) {
-        console.error('❌ Polling error:', error);
-        retries++;
-        setTimeout(poll, interval);
-      }
-    };
-
-    // Start polling
-    poll();
+    await pollMessage(
+      sessionId,
+      userMessageId,
+      { setMessages, setIsLoading },
+      { processedMessageIds, lastProcessedCount }
+    );
   }, []);
 
   // Check for existing session on mount
@@ -517,11 +325,37 @@ function ChatContent() {
     }
   }, [])
 
+  // Check if user has seen tutorial before
+  useEffect(() => {
+    const hasSeenTutorial = localStorage.getItem('hasSeenChatTutorial')
+    if (!hasSeenTutorial && messages.length === 0) {
+      setShowTutorial(true)
+    }
+  }, [messages.length])
+
   // Save dark mode preference
   const toggleDarkMode = () => {
     const newDarkMode = !isDarkMode
     setIsDarkMode(newDarkMode)
     localStorage.setItem('darkMode', String(newDarkMode))
+  }
+
+  // Tutorial functions
+  const nextTutorialStep = () => {
+    if (tutorialStep < 3) {
+      setTutorialStep(tutorialStep + 1)
+    } else {
+      completeTutorial()
+    }
+  }
+
+  const skipTutorial = () => {
+    completeTutorial()
+  }
+
+  const completeTutorial = () => {
+    setShowTutorial(false)
+    localStorage.setItem('hasSeenChatTutorial', 'true')
   }
 
   // Auto-scroll to bottom when new messages arrive
@@ -869,21 +703,9 @@ function ChatContent() {
     }
   };
 
-  const isBase64Image = (url: string | undefined): boolean => {
-    if (!url) return false
-    return url.startsWith('data:image')
-  }
-
-  // Helper function to convert messages to chat history format
+  // Wrapper for messagesToChatHistory
   const messagesToChatHistory = (messages: ChatMessage[]) => {
-    return messages.map(msg => ({
-      role: msg.sender === 'user' ? 'user' as const : 
-            msg.sender === 'assistant' ? 'assistant' as const : 
-            'system' as const,
-      content: msg.content,
-      timestamp: msg.timestamp.toISOString(),
-      visual: msg.visual
-    }));
+    return convertMessages(messages);
   }
 
   const handleSend = async (message?: string) => {
@@ -956,301 +778,99 @@ function ChatContent() {
     }
   }
 
-  // دالة لضغط وتحويل الصورة إلى PNG
-  const compressAndConvertImage = async (
-    file: File, 
-    maxWidth: number = 1920, 
-    maxHeight: number = 1080, 
-    quality: number = 0.85
-  ): Promise<File> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      
-      reader.onload = (e) => {
-        const img = document.createElement('img');
-        
-        img.onload = () => {
-          // حساب الأبعاد الجديدة مع الحفاظ على النسبة
-          let width = img.width;
-          let height = img.height;
-          
-          // تصغير الصورة إذا كانت أكبر من الحد المسموح
-          if (width > maxWidth || height > maxHeight) {
-            const ratio = Math.min(maxWidth / width, maxHeight / height);
-            width = Math.round(width * ratio);
-            height = Math.round(height * ratio);
-          }
-          
-          // إنشاء canvas للرسم عليه
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          
-          if (!ctx) {
-            reject(new Error('Failed to get canvas context'));
-            return;
-          }
-          
-          // تعيين أبعاد الـ canvas
-          canvas.width = width;
-          canvas.height = height;
-          
-          // تحسين جودة الرسم
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-          
-          // رسم الصورة على الـ canvas
-          ctx.drawImage(img, 0, 0, width, height);
-          
-          // تحويل الـ canvas إلى blob بصيغة PNG
-          canvas.toBlob(
-            (blob) => {
-              if (!blob) {
-                reject(new Error('Failed to convert image'));
-                return;
-              }
-              
-              // إنشاء File object جديد بصيغة PNG
-              const compressedFile = new File(
-                [blob], 
-                file.name.replace(/\.[^/.]+$/, '.png'), // تغيير امتداد الملف إلى .png
-                { 
-                  type: 'image/png',
-                  lastModified: Date.now()
-                }
-              );
-              
-              console.log('Original size:', (file.size / 1024).toFixed(2), 'KB');
-              console.log('Compressed size:', (compressedFile.size / 1024).toFixed(2), 'KB');
-              console.log('Compression ratio:', ((1 - compressedFile.size / file.size) * 100).toFixed(1), '%');
-              
-              resolve(compressedFile);
-            },
-            'image/png',
-            quality // جودة الضغط (0.85 = 85% جودة)
-          );
-        };
-        
-        img.onerror = () => {
-          reject(new Error('Failed to load image'));
-        };
-        
-        img.src = e.target?.result as string;
-      };
-      
-      reader.onerror = () => {
-        reject(new Error('Failed to read file'));
-      };
-      
-      reader.readAsDataURL(file);
-    });
-  };
-
-  // دالة رفع الصورة المحدثة
-  const handleImageUpload = async (file: File): Promise<string | null> => {
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      console.error('No auth token found');
-      return null;
-    }
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/upload/image/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Failed to upload image:', response.status, errorData);
-        return null;
-      }
-
-      const data = await response.json();
-      return data.public_url;
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      return null;
-    }
-  };
-
-  // دالة التعامل مع اختيار الصورة المحدثة
+  // Wrapper function for image selection with correct parameters
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // التحقق من نوع الملف
-      if (!file.type.startsWith('image/')) {
-        toast.error("Please select an image file");
-        return;
-      }
-      
-      // التحقق من حجم الملف الأصلي
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error("Image size must be less than 10MB");
-        return;
-      }
-
-      // بدء الرسوم المتحركة للتحميل
-      setIsImageUploading(true);
-
-      try {
-        // ضغط وتحويل الصورة إلى PNG
-        console.log('Converting and compressing image...');
-        const compressedFile = await compressAndConvertImage(
-          file,
-          1920,  // الحد الأقصى للعرض
-          1080,  // الحد الأقصى للارتفاع
-          0.85   // الجودة (85%)
-        );
-        
-        // رفع الصورة المضغوطة
-        const publicUrl = await handleImageUpload(compressedFile);
-
-        if (publicUrl) {
-          setSelectedImage(publicUrl);
-          toast.success("Image uploaded successfully!");
-        } else {
-          toast.error("Failed to upload image. Please try again.");
-        }
-      } catch (error) {
-        console.error('Error processing image:', error);
-        toast.error("Failed to process image. Please try again.");
-      } finally {
-        // إيقاف الرسوم المتحركة للتحميل
-        setIsImageUploading(false);
-      }
+    const token = localStorage.getItem('access_token');
+    if (!token || !API_BASE_URL) {
+      toast.error("Authentication or configuration error");
+      return;
     }
 
-    // إعادة تعيين قيمة الإدخال
-    if (e.target) {
-      e.target.value = "";
+    await handleImageSelectHelper(
+      e,
+      {
+        setSelectedImage,
+        setIsImageUploading,
+        toast
+      },
+      {
+        token,
+        apiBaseUrl: API_BASE_URL
+      }
+    );
+  };
+
+  // Voice recording callback handlers
+  const handleRecordingComplete = async (base64Audio: string) => {
+    let currentSessionId = sessionId;
+    const isFirstMessage = !currentSessionId;
+    
+    if (isFirstMessage && !isCreatingSession) {
+      currentSessionId = await createAIChatSession('Voice message');
+      if (!currentSessionId) {
+        console.error('Failed to create AI chat session for voice');
+        return;
+      }
+      // Wait for subscription
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    const voiceMessage: ChatMessage = {
+      id: `voice-${Date.now()}`,
+      content: '🎤 Voice message',
+      sender: 'user',
+      timestamp: new Date(),
+      isVoice: true
+    };
+    setMessages(prev => [...prev, voiceMessage]);
+    
+    setIsLoading(true);
+    
+    try {
+      if (n8nWebhook.current) {
+        const chatHistory = messagesToChatHistory(messages);
+        await n8nWebhook.current.sendVoiceMessage(base64Audio, currentSessionId, chatHistory);
+        console.log("🎤 Voice message sent to N8N successfully");
+        
+        // Use polling for first message
+        if (isFirstMessage || !isSubscribed) {
+          console.log("📊 Using polling for voice message");
+          pollForFirstMessage(currentSessionId!, voiceMessage.id);
+        }
+      }
+    } catch (error) {
+      console.error('Error processing voice:', error);
+      const errorMessage: ChatMessage = {
+        id: `error-${Date.now()}`,
+        content: 'Failed to process voice message. Please try again.',
+        sender: 'assistant',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      setIsLoading(false);
     }
   };
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mimeType = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm'
-      const mediaRecorder = new MediaRecorder(stream, { mimeType })
-      
-      audioChunksRef.current = []
-      
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data)
-        }
-      }
-      
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType })
-        if (audioBlob.size > 0) {
-          const reader = new FileReader()
-          
-          reader.onloadend = async () => {
-            const base64AudioWithPrefix = reader.result as string
-            const base64Audio = base64AudioWithPrefix.split(',')[1]
-            
-            let currentSessionId = sessionId
-            const isFirstMessage = !currentSessionId;
-            
-            if (isFirstMessage && !isCreatingSession) {
-              currentSessionId = await createAIChatSession('Voice message')
-              if (!currentSessionId) {
-                console.error('Failed to create AI chat session for voice')
-                return
-              }
-              // Wait for subscription
-              await new Promise(resolve => setTimeout(resolve, 500));
-            }
-            
-            const voiceMessage: ChatMessage = {
-              id: `voice-${Date.now()}`,
-              content: '🎤 Voice message',
-              sender: 'user',
-              timestamp: new Date(),
-              isVoice: true
-            }
-            setMessages(prev => [...prev, voiceMessage])
-            
-            setIsLoading(true)
-            
-            try {
-              if (n8nWebhook.current) {
-                const chatHistory = messagesToChatHistory(messages);
-                await n8nWebhook.current.sendVoiceMessage(base64Audio, currentSessionId, chatHistory)
-                console.log("🎤 Voice message sent to N8N successfully");
-                
-                // Use polling for first message
-                if (isFirstMessage || !isSubscribed) {
-                  console.log("📊 Using polling for voice message");
-                  pollForFirstMessage(currentSessionId!, voiceMessage.id);
-                }
-              }
-            } catch (error) {
-              console.error('Error processing voice:', error)
-              const errorMessage: ChatMessage = {
-                id: `error-${Date.now()}`,
-                content: 'Failed to process voice message. Please try again.',
-                sender: 'assistant',
-                timestamp: new Date()
-              }
-              setMessages(prev => [...prev, errorMessage])
-              setIsLoading(false)
-            }
-          }
-          
-          reader.readAsDataURL(audioBlob)
-        }
-        
-        stream.getTracks().forEach(track => track.stop())
-      }
-      
-      mediaRecorderRef.current = mediaRecorder
-      mediaRecorder.start()
-      setIsRecording(true)
-    } catch (error) {
-      console.error("Error accessing microphone:", error)
-      toast.error("Could not access microphone. Please check permissions.")
-    }
-  }
+  const voiceHandlers: VoiceRecordingHandlers = {
+    mediaRecorderRef,
+    audioChunksRef,
+    isRecording,
+    setIsRecording,
+    onRecordingComplete: handleRecordingComplete,
+    onError: (error: string) => toast.error(error)
+  };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop()
-      setIsRecording(false)
-    }
-  }
-
-  const cancelRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.onstop = () => { 
-        console.log("Recording cancelled.");
-        mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
-      };
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      audioChunksRef.current = [];
-    }
-  }
-
-  const toggleRecording = () => {
-    if (isRecording) {
-      stopRecording()
-    } else {
-      startRecording()
-    }
-  }
+  // Voice recording wrapper functions
+  const startRecording = () => startVoiceRecording(voiceHandlers);
+  const stopRecording = () => stopVoiceRecording(voiceHandlers);
+  const cancelRecording = () => cancelVoiceRecording(voiceHandlers);
+  const toggleRecording = () => toggleVoiceRecording(voiceHandlers);
 
   return (
     <div className={isDarkMode ? 'dark' : ''}>
       <GradientBackground opacity={hasMessages ? 0.6 : 1} isDarkMode={isDarkMode}>
         {/* Desktop Sidebar */}
-        <div className="hidden lg:block">
+        <div className="hidden lg:block relative">
           <Sidebar isOpen={isOpen} onToggle={toggle} isDarkMode={isDarkMode} onDarkModeToggle={toggleDarkMode} />
         </div>
 
@@ -1268,7 +888,38 @@ function ChatContent() {
         )}
 
         {/* Main Content */}
-        <div className={`h-screen flex flex-col transition-all duration-300 ${isOpen ? 'lg:ml-20' : 'lg:ml-20'}`}>
+        <div className={`h-screen flex flex-col transition-all duration-300 ${isOpen ? 'lg:ml-20' : 'lg:ml-20'} relative`}>
+          
+          {/* Tutorial Cards - All in one place for easy control */}
+          {showTutorial && (
+            <>
+              {/* First Tutorial Card - Step 1 */}
+              {tutorialStep === 1 && (
+                <TutorialCard
+                  title="update your profile"
+                  subtitle="get a customized services!"
+                  onNext={nextTutorialStep}
+                  onSkip={skipTutorial}
+                  className="fixed z-50"
+                  style={{ top: '82px', right: '60px' }}
+                />
+              )}
+              
+              {/* Second Tutorial Card - Step 2 */}
+              {tutorialStep === 2 && (
+                <TutorialCard
+                  title="Start a new Chat"
+                  subtitle="Or See Your recent chats."
+                  onNext={nextTutorialStep}
+                  onSkip={skipTutorial}
+                  className="fixed z-50"
+                  style={{ top: '200px', left: '64px' }}
+                  borderRadius="second"
+                />
+              )}
+            </>
+          )}
+          
           {/* Header - Fixed */}
           <header className="flex-shrink-0 flex items-center justify-between px-6 py-6">
             {/* Mobile Menu Button */}
@@ -1302,7 +953,7 @@ function ChatContent() {
                 />
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 relative">
               {/* Pro Badge */}
               <Badge 
                 className="text-white border-0"
@@ -1318,10 +969,12 @@ function ChatContent() {
                 Pro
               </Badge>
               {/* Avatar Dropdown */}
-              <AvatarDropdown 
-                currentUser={currentUser}
-                isDarkMode={isDarkMode}
-              />
+              <div className="relative">
+                <AvatarDropdown 
+                  currentUser={currentUser}
+                  isDarkMode={isDarkMode}
+                />
+              </div>
             </div>
           </header>
 
@@ -1333,155 +986,172 @@ function ChatContent() {
                 {"What's on your agenda today?"}
               </h1>
 
-              {/* Search Input */}
-              <div className="w-full max-w-xl sm:max-w-2xl md:max-w-3xl lg:max-w-4xl mb-6 sm:mb-8 lg:mb-10">
-                <AnimatedBorderWrapper
-                  isAnimating={showAnimatedBorder}
-                  className="w-full"
-                  isDarkMode={isDarkMode}
-                >
-                  <div className={`relative backdrop-blur-xl rounded-[50px] border px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 ${
-                    isDarkMode 
-                      ? 'bg-[#181819] border-white/30' 
-                      : 'bg-white border-white/30'
-                  }`} style={{ 
-                    backgroundColor: isDarkMode ? '#181819' : '#ffffff'
-                  }}>
-                  
-                  {/* Selected Image Preview */}
-                  {(selectedImage || isImageUploading) && (
-                    <div className="mb-4 relative inline-block">
-                      {isImageUploading ? (
-                        <ImageUploadLoader isDarkMode={isDarkMode} />
-                      ) : (
-                        <>
-                          <img src={selectedImage!} alt="Selected" className="h-20 rounded-lg" width={80} height={80} />
-                          <button
-                            onClick={handleRemoveImage}
-                            className={`absolute -top-2 -right-2 rounded-full p-1 ${
-                              isDarkMode 
-                                ? 'bg-[#D9D9D9] text-black' 
-                                : 'bg-[#7FCAFE] text-white'
-                            }`}
-                          >
-                            <X size={16} />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  )}
-                  
-                  {/* Input Field Container with Custom Placeholder */}
-                  <div className="relative w-full mb-4 sm:mb-6 lg:mb-8">
-                    {/* Custom Gradient Placeholder */}
-                    {!inputValue && (
-                      <TypewriterPlaceholder fontSize="clamp(18px, 4vw, 26px)" />
-                    )}
-                    
-                    <textarea
-                      ref={inputRef}
-                      value={inputValue}
-                      onChange={(e) => {
-                        setInputValue(e.target.value)
-                        // Auto-resize
-                        const target = e.target
-                        target.style.height = 'auto'
-                        target.style.height = `${Math.min(target.scrollHeight, 120)}px`
-                      }}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault()
-                          handleSend()
-                        }
-                      }}
-                      placeholder=""
-                      className={`w-full font-thin border-none bg-transparent px-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto no-scrollbar relative z-10 ${
-                        isDarkMode ? 'text-white' : 'text-black'
-                      }`}
-                      rows={1}
-                      style={{ 
-                        fontSize: 'clamp(18px, 4vw, 26px)',
-                        minHeight: '32px', 
-                        maxHeight: '120px'
-                      }}
-                    />
-                  </div>
+{/* Search Input */}
+<div className="w-full max-w-xl sm:max-w-2xl md:max-w-3xl lg:max-w-4xl mb-6 sm:mb-8 lg:mb-10">
+  <div
+    className="w-full relative"
+  >
+
+    {/* Third Tutorial Card - Step 3 - positioned relative to input container */}
+    {showTutorial && tutorialStep === 3 && (
+      <TutorialCard
+        title="Speak up your ideas"
+        subtitle="Just chat and transform your ideas into a visuals!"
+        onNext={nextTutorialStep}
+        onSkip={skipTutorial}
+        className="absolute z-50"
+        style={{ top: '-90px', left: '-150px' }}
+        borderRadius="third"
+      />
+    )}
+
+    <div className="relative p-[2px] backdrop-blur-xl rounded-[50px]" style={{
+      background: 'conic-gradient(from -46.15deg at 50.76% 47.25%, #4248FF -40.22deg, #7FCAFE 50.49deg, #FFEB77 104.02deg, #4248FF 158.81deg, #FF4A19 224.78deg, #4248FF 319.78deg, #7FCAFE 410.49deg)',
+      boxShadow: isDarkMode ? '0px 0px 12px 0px #4248ff54' : '0px 0px 27px 0px rgba(255, 255, 255, 0.75)'
+    }}>
+      <div className={`relative rounded-[48px] px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 ${
+        isDarkMode 
+          ? 'bg-[#181819]' 
+          : 'bg-white'
+      }`} style={{ 
+        backgroundColor: isDarkMode ? '#181819' : '#ffffff'
+      }}>
+      
+      {/* Selected Image Preview */}
+      {(selectedImage || isImageUploading) && (
+        <div className="mb-4 relative inline-block">
+          {isImageUploading ? (
+            <ImageUploadLoader isDarkMode={isDarkMode} />
+          ) : (
+            <>
+              <img src={selectedImage!} alt="Selected" className="h-20 rounded-lg" width={80} height={80} />
+              <button
+                onClick={handleRemoveImage}
+                className={`absolute -top-2 -right-2 rounded-full p-1 ${
+                  isDarkMode 
+                    ? 'bg-[#D9D9D9] text-black' 
+                    : 'bg-[#7FCAFE] text-white'
+                }`}
+              >
+                <X size={16} />
+              </button>
+            </>
+          )}
+        </div>
+      )}
+      
+      {/* Input Field Container with Custom Placeholder */}
+      <div className="relative w-full mb-4 sm:mb-6 lg:mb-8">
+        {/* Custom Gradient Placeholder */}
+        {!inputValue && (
+          <TypewriterPlaceholder fontSize="clamp(18px, 4vw, 26px)" isDarkMode={isDarkMode} />
+        )}
+        
+        <textarea
+          ref={inputRef}
+          value={inputValue}
+          onChange={(e) => {
+            setInputValue(e.target.value)
+            // Auto-resize
+            const target = e.target
+            target.style.height = 'auto'
+            target.style.height = `${Math.min(target.scrollHeight, 120)}px`
+          }}
+          onKeyPress={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              handleSend()
+            }
+          }}
+          placeholder=""
+          className={`w-full font-thin border-none bg-transparent px-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto no-scrollbar relative z-10 ${
+            isDarkMode ? 'text-white' : 'text-black'
+          }`}
+          rows={1}
+          style={{ 
+            fontSize: 'clamp(18px, 4vw, 26px)',
+            minHeight: '32px', 
+            maxHeight: '120px'
+          }}
+        />
+      </div>
 
 
-                  {/* Bottom bar with buttons */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      {/* Image Upload Button */}
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageSelect}
-                        className="hidden"
-                      />
-                      <Plus 
-                        size={24} 
-                        className={`sm:w-6 sm:h-6 lg:w-8 lg:h-8 cursor-pointer hover:opacity-80 transition-opacity ${
-                          isDarkMode ? 'text-white' : 'text-[#4248FF]'
-                        }`}
-                        onClick={() => fileInputRef.current?.click()}
-                      />
+      {/* Bottom bar with buttons */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          {/* Image Upload Button */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageSelect}
+            className="hidden"
+          />
+          <Plus 
+            size={24} 
+            className={`sm:w-6 sm:h-6 lg:w-8 lg:h-8 cursor-pointer hover:opacity-80 transition-opacity ${
+              isDarkMode ? 'text-white' : 'text-[#4248FF]'
+            }`}
+            onClick={() => fileInputRef.current?.click()}
+          />
 
-                      {/* Tools Button */}
-                      <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
-                        <Image 
-                          src="/tool-icon.svg" 
-                          alt="Tool Icon" 
-                          width={24} 
-                          height={24} 
-                          className="w-6 h-6 lg:w-8 lg:h-8"
-                          style={{ filter: isDarkMode ? 'brightness(0) invert(1)' : 'none' }}
-                        />
-                      </div>
-                    </div>
+          {/* Tools Button */}
+          <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
+            <Image 
+              src="/tool-icon.svg" 
+              alt="Tool Icon" 
+              width={24} 
+              height={24} 
+              className="w-6 h-6 lg:w-8 lg:h-8"
+              style={{ filter: isDarkMode ? 'brightness(0) invert(1)' : 'none' }}
+            />
+          </div>
+        </div>
 
-                    {/* Voice Recording Button */}
-                    <div className="flex items-center gap-4">
-                      {isRecording && (
-                        <button 
-                          onClick={cancelRecording}
-                          className="hover:scale-105 transition-transform cursor-pointer"
-                          title="Cancel Recording"
-                        >
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-400 rounded-full flex items-center justify-center">
-                            <X size={20} className="sm:w-6 sm:h-6 text-white" />
-                          </div>
-                        </button>
-                      )}
-                      <button 
-                        onClick={toggleRecording}
-                        disabled={isLoading || isCreatingSession}
-                        className={`hover:scale-105 transition-transform cursor-pointer ${isRecording ? 'animate-pulse' : ''}`}
-                        title={isRecording ? "Stop Recording" : "Start Recording"}
-                      >
-                        {isRecording ? (
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500 rounded-full flex items-center justify-center">
-                            <MicOff size={20} className="sm:w-6 sm:h-6 text-white" />
-                          </div>
-                        ) : (
-                          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" className="sm:w-12 sm:h-12" viewBox="0 0 58 53" fill="none">
-                            <g clipPath="url(#clip0_489_1814)">
-                              <path fillRule="evenodd" clipRule="evenodd" d="M37.8361 1.58398C39.0162 1.58398 39.9729 2.54065 39.9729 3.72074V49.3048C39.9729 50.4848 39.0162 51.4415 37.8361 51.4415C36.6561 51.4415 35.6994 50.4848 35.6994 49.3048V3.72074C35.6994 2.54065 36.6561 1.58398 37.8361 1.58398ZM29.2891 10.131C30.4692 10.131 31.4259 11.0877 31.4259 12.2677V40.7578C31.4259 41.9378 30.4692 42.8945 29.2891 42.8945C28.109 42.8945 27.1523 41.9378 27.1523 40.7578V12.2677C27.1523 11.0877 28.109 10.131 29.2891 10.131ZM12.1951 12.98C13.3752 12.98 14.3318 13.9367 14.3318 15.1167V37.9088C14.3318 39.0888 13.3752 40.0455 12.1951 40.0455C11.015 40.0455 10.0583 39.0888 10.0583 37.9088V15.1167C10.0583 13.9367 11.015 12.98 12.1951 12.98ZM46.3831 15.829C47.5632 15.829 48.5199 16.7857 48.5199 17.9658V35.0598C48.5199 36.2398 47.5632 37.1965 46.3831 37.1965C45.2031 37.1965 44.2464 36.2398 44.2464 35.0598V17.9658C44.2464 16.7857 45.2031 15.829 46.3831 15.829ZM20.7421 18.678C21.9222 18.678 22.8788 19.6347 22.8788 20.8148V32.2108C22.8788 33.3908 21.9222 34.3475 20.7421 34.3475C19.562 34.3475 18.6053 33.3908 18.6053 32.2108V20.8148C18.6053 19.6347 19.562 18.678 20.7421 18.678ZM3.64807 21.527C4.82816 21.527 5.78483 22.4837 5.78483 23.6638V29.3618C5.78483 30.5418 4.82816 31.4985 3.64807 31.4985C2.46799 31.4985 1.51132 30.5418 1.51132 29.3618V23.6638C1.51132 22.4837 2.46799 21.527 3.64807 21.527ZM54.9301 21.527C56.1102 21.527 57.0669 22.4837 57.0669 23.6638V29.3618C57.0669 30.5418 56.1102 31.4985 54.9301 31.4985C53.7501 31.4985 52.7934 30.5418 52.7934 29.3618V23.6638C52.7934 22.4837 53.7501 21.527 54.9301 21.527Z" fill={isDarkMode ? "#FFFFFF" : "#4248FF"}/>
-                            </g>
-                            <defs>
-                              <clipPath id="clip0_489_1814">
-                                <rect width="56.9801" height="51.2821" fill="white" transform="translate(0.799072 0.87207)"/>
-                              </clipPath>
-                            </defs>
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                  
-                  </div>
-                </AnimatedBorderWrapper>
+        {/* Voice Recording Button */}
+        <div className="flex items-center gap-4">
+          {isRecording && (
+            <button 
+              onClick={cancelRecording}
+              className="hover:scale-105 transition-transform cursor-pointer"
+              title="Cancel Recording"
+            >
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-400 rounded-full flex items-center justify-center">
+                <X size={20} className="sm:w-6 sm:h-6 text-white" />
               </div>
+            </button>
+          )}
+          <button 
+            onClick={toggleRecording}
+            disabled={isLoading || isCreatingSession}
+            className={`hover:scale-105 transition-transform cursor-pointer ${isRecording ? 'animate-pulse' : ''}`}
+            title={isRecording ? "Stop Recording" : "Start Recording"}
+          >
+            {isRecording ? (
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500 rounded-full flex items-center justify-center">
+                <MicOff size={20} className="sm:w-6 sm:h-6 text-white" />
+              </div>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" className="sm:w-12 sm:h-12" viewBox="0 0 58 53" fill="none">
+                <g clipPath="url(#clip0_489_1814)">
+                  <path fillRule="evenodd" clipRule="evenodd" d="M37.8361 1.58398C39.0162 1.58398 39.9729 2.54065 39.9729 3.72074V49.3048C39.9729 50.4848 39.0162 51.4415 37.8361 51.4415C36.6561 51.4415 35.6994 50.4848 35.6994 49.3048V3.72074C35.6994 2.54065 36.6561 1.58398 37.8361 1.58398ZM29.2891 10.131C30.4692 10.131 31.4259 11.0877 31.4259 12.2677V40.7578C31.4259 41.9378 30.4692 42.8945 29.2891 42.8945C28.109 42.8945 27.1523 41.9378 27.1523 40.7578V12.2677C27.1523 11.0877 28.109 10.131 29.2891 10.131ZM12.1951 12.98C13.3752 12.98 14.3318 13.9367 14.3318 15.1167V37.9088C14.3318 39.0888 13.3752 40.0455 12.1951 40.0455C11.015 40.0455 10.0583 39.0888 10.0583 37.9088V15.1167C10.0583 13.9367 11.015 12.98 12.1951 12.98ZM46.3831 15.829C47.5632 15.829 48.5199 16.7857 48.5199 17.9658V35.0598C48.5199 36.2398 47.5632 37.1965 46.3831 37.1965C45.2031 37.1965 44.2464 36.2398 44.2464 35.0598V17.9658C44.2464 16.7857 45.2031 15.829 46.3831 15.829ZM20.7421 18.678C21.9222 18.678 22.8788 19.6347 22.8788 20.8148V32.2108C22.8788 33.3908 21.9222 34.3475 20.7421 34.3475C19.562 34.3475 18.6053 33.3908 18.6053 32.2108V20.8148C18.6053 19.6347 19.562 18.678 20.7421 18.678ZM3.64807 21.527C4.82816 21.527 5.78483 22.4837 5.78483 23.6638V29.3618C5.78483 30.5418 4.82816 31.4985 3.64807 31.4985C2.46799 31.4985 1.51132 30.5418 1.51132 29.3618V23.6638C1.51132 22.4837 2.46799 21.527 3.64807 21.527ZM54.9301 21.527C56.1102 21.527 57.0669 22.4837 57.0669 23.6638V29.3618C57.0669 30.5418 56.1102 31.4985 54.9301 31.4985C53.7501 31.4985 52.7934 30.5418 52.7934 29.3618V23.6638C52.7934 22.4837 53.7501 21.527 54.9301 21.527Z" fill={isDarkMode ? "#FFFFFF" : "#4248FF"}/>
+                </g>
+                <defs>
+                  <clipPath id="clip0_489_1814">
+                    <rect width="56.9801" height="51.2821" fill="white" transform="translate(0.799072 0.87207)"/>
+                  </clipPath>
+                </defs>
+              </svg>
+            )}
+          </button>
+        </div>
+      </div>
+      
+      </div>
+    </div>
+  </div>
+</div>
 
             </main>
           ) : (
@@ -1692,189 +1362,188 @@ function ChatContent() {
                 </div>
               </div>
 
-              {/* Bottom Input - Fixed at bottom */}
-              <div className={`flex-shrink-0 backdrop-blur-sm p-6 pt-0 ${
-                isDarkMode ? 'bg-gradient-to-t from-[#181819]/20 to-transparent' : 'bg-gradient-to-t from-white/20 to-transparent'
-              }`}>
-                <div className="max-w-4xl mx-auto">
-                  <AnimatedBorderWrapper
-                    isAnimating={showAnimatedBorder}
-                    className="w-full"
-                    isDarkMode={isDarkMode}
-                  >
-                    <div className={`relative backdrop-blur-xl border px-8 py-7 transition-all duration-500 ease-in-out ${
-                      isDarkMode 
-                        ? 'bg-[#181819] border-white/30' 
-                        : 'bg-white border-white/30'
-                    }`} style={{ 
-                      borderRadius: '50px',
-                      backgroundColor: isDarkMode ? '#181819' : '#ffffff'
-                    }}>
-                    
-                    {/* Selected Image Preview */}
-                    {(selectedImage || isImageUploading) && (
-                      <div className="mb-2 relative inline-block">
-                        {isImageUploading ? (
-                          <div 
-                            className="h-16 w-16 rounded-lg flex items-center justify-center"
-                            style={{
-                              background: isDarkMode 
-                                ? '#20262D' 
-                                : 'linear-gradient(109.03deg, #BEDCFF -35.22%, rgba(255, 255, 255, 0.9) 17.04%, rgba(255, 232, 228, 0.4) 57.59%, #BEDCFF 97.57%)'
-                            }}
-                          >
-                            <div className="relative">
-                              <div 
-                                className="w-6 h-6 rounded-full border-2 animate-spin"
-                                style={{
-                                  borderColor: 'transparent',
-                                  borderTopColor: isDarkMode ? '#78758E' : '#7FCAFE',
-                                  borderRightColor: isDarkMode ? '#FFFFFF' : '#D3E6FC',
-                                  animationDuration: '1s'
-                                }}
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <img src={selectedImage!} alt="Selected" className="h-16 rounded-lg" width={64} height={64} />
-                            <button
-                              onClick={handleRemoveImage}
-                              className={`absolute -top-1 -right-1 rounded-full p-0.5 ${
-                                isDarkMode 
-                                  ? 'bg-[#D9D9D9] text-black' 
-                                  : 'bg-[#7FCAFE] text-white'
-                              }`}
-                            >
-                              <X size={12} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
-                    
-                    <div className="flex items-start gap-4 flex-1">
-                      {/* Custom Gradient Placeholder for Compact Mode */}
-                      <div className="relative flex-1">
-                        {!inputValue && (
-                          <div 
-                            className="absolute inset-0 pointer-events-none flex items-start"
-                            style={{ 
-                              background: 'linear-gradient(to right, #4248FF, #C3BFE6)',
-                              backgroundClip: 'text',
-                              WebkitBackgroundClip: 'text',
-                              color: 'transparent',
-                              fontSize: '24px',
-                              fontWeight: '100',
-                              paddingTop: '0px'
-                            }}
-                          >
-                            Ask me anything
-                          </div>
-                        )}
-                        
-                        <textarea
-                          ref={compactInputRef}
-                          value={inputValue}
-                          onChange={(e) => {
-                            setInputValue(e.target.value)
-                            // Auto-resize
-                            const target = e.target
-                            target.style.height = 'auto'
-                            target.style.height = `${Math.min(target.scrollHeight, 72)}px`
-                          }}
-                          onKeyPress={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault()
-                              handleSend()
-                            }
-                          }}
-                          placeholder=""
-                          className={`w-full text-[24px] font-thin border-none bg-transparent px-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto no-scrollbar relative z-10 ${
-                            isDarkMode ? 'text-white' : 'text-black'
-                          }`}
-                          rows={1}
-                          style={{ 
-                            minHeight: '24px', 
-                            maxHeight: '72px'
-                          }}
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Bottom bar with buttons */}
-                    <div className="flex items-center justify-between mt-4">
-                      <div className="flex items-center gap-4">
-                        {/* Image Upload Button */}
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageSelect}
-                          className="hidden"
-                        />
-                        <Plus 
-                          size={24} 
-                          className={`cursor-pointer hover:opacity-80 transition-opacity ${
-                            isDarkMode ? 'text-white' : 'text-[#4248FF]'
-                          }`}
-                          onClick={() => fileInputRef.current?.click()}
-                        />
-
-                        {/* Tools Button */}
-                        <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
-                          <Image 
-                            src="/tool-icon.svg" 
-                            alt="Tool Icon" 
-                            width={24} 
-                            height={24}
-                            style={{ filter: isDarkMode ? 'brightness(0) invert(1)' : 'none' }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Voice Recording Button */}
-                      <div className="flex items-center gap-4">
-                        {isRecording && (
-                          <button 
-                            onClick={cancelRecording}
-                            className="hover:scale-105 transition-transform cursor-pointer"
-                            title="Cancel Recording"
-                          >
-                            <div className="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center">
-                              <X size={16} className="text-white" />
-                            </div>
-                          </button>
-                        )}
-                        <button 
-                          onClick={toggleRecording}
-                          disabled={isLoading || isCreatingSession}
-                          className={`hover:scale-105 transition-transform cursor-pointer ${isRecording ? 'animate-pulse' : ''} ${isLoading || isCreatingSession ? 'opacity-50' : ''}`}
-                          title={isRecording ? "Stop Recording" : "Start Recording"}
-                        >
-                          {isRecording ? (
-                            <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
-                              <MicOff size={16} className="text-white" />
-                            </div>
-                          ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 58 53" fill="none">
-                              <g clipPath="url(#clip0_489_1814)">
-                                <path fillRule="evenodd" clipRule="evenodd" d="M37.8361 1.58398C39.0162 1.58398 39.9729 2.54065 39.9729 3.72074V49.3048C39.9729 50.4848 39.0162 51.4415 37.8361 51.4415C36.6561 51.4415 35.6994 50.4848 35.6994 49.3048V3.72074C35.6994 2.54065 36.6561 1.58398 37.8361 1.58398ZM29.2891 10.131C30.4692 10.131 31.4259 11.0877 31.4259 12.2677V40.7578C31.4259 41.9378 30.4692 42.8945 29.2891 42.8945C28.109 42.8945 27.1523 41.9378 27.1523 40.7578V12.2677C27.1523 11.0877 28.109 10.131 29.2891 10.131ZM12.1951 12.98C13.3752 12.98 14.3318 13.9367 14.3318 15.1167V37.9088C14.3318 39.0888 13.3752 40.0455 12.1951 40.0455C11.015 40.0455 10.0583 39.0888 10.0583 37.9088V15.1167C10.0583 13.9367 11.015 12.98 12.1951 12.98ZM46.3831 15.829C47.5632 15.829 48.5199 16.7857 48.5199 17.9658V35.0598C48.5199 36.2398 47.5632 37.1965 46.3831 37.1965C45.2031 37.1965 44.2464 36.2398 44.2464 35.0598V17.9658C44.2464 16.7857 45.2031 15.829 46.3831 15.829ZM20.7421 18.678C21.9222 18.678 22.8788 19.6347 22.8788 20.8148V32.2108C22.8788 33.3908 21.9222 34.3475 20.7421 34.3475C19.562 34.3475 18.6053 33.3908 18.6053 32.2108V20.8148C18.6053 19.6347 19.562 18.678 20.7421 18.678ZM3.64807 21.527C4.82816 21.527 5.78483 22.4837 5.78483 23.6638V29.3618C5.78483 30.5418 4.82816 31.4985 3.64807 31.4985C2.46799 31.4985 1.51132 30.5418 1.51132 29.3618V23.6638C1.51132 22.4837 2.46799 21.527 3.64807 21.527ZM54.9301 21.527C56.1102 21.527 57.0669 22.4837 57.0669 23.6638V29.3618C57.0669 30.5418 56.1102 31.4985 54.9301 31.4985C53.7501 31.4985 52.7934 30.5418 52.7934 29.3618V23.6638C52.7934 22.4837 53.7501 21.527 54.9301 21.527Z" fill={isDarkMode ? "#FFFFFF" : "#4248FF"}/>
-                              </g>
-                              <defs>
-                                <clipPath id="clip0_489_1814">
-                                  <rect width="56.9801" height="51.2821" fill="white" transform="translate(0.799072 0.87207)"/>
-                                </clipPath>
-                              </defs>
-                            </svg>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  </AnimatedBorderWrapper>
-                </div>
+{/* Bottom Input - Fixed at bottom */}
+<div className={`flex-shrink-0 backdrop-blur-sm p-6 pt-0 relative ${
+  isDarkMode ? 'bg-gradient-to-t from-[#181819]/20 to-transparent' : 'bg-gradient-to-t from-white/20 to-transparent'
+}`}>
+  <div className="max-w-4xl mx-auto relative">
+    <div className="relative p-[2px] backdrop-blur-xl rounded-[50px]" style={{
+      background: 'conic-gradient(from -46.15deg at 50.76% 47.25%, #4248FF -40.22deg, #7FCAFE 50.49deg, #FFEB77 104.02deg, #4248FF 158.81deg, #FF4A19 224.78deg, #4248FF 319.78deg, #7FCAFE 410.49deg)',
+      boxShadow: isDarkMode ? '0px 0px 12px 0px #4248ff54' : '0px 0px 27px 0px rgba(255, 255, 255, 0.75)'
+    }}>
+      <div className={`relative rounded-[48px] px-8 py-7 transition-all duration-500 ease-in-out ${
+        isDarkMode 
+          ? 'bg-[#181819]' 
+          : 'bg-white'
+      }`} style={{ 
+        backgroundColor: isDarkMode ? '#181819' : '#ffffff'
+      }}>
+      
+      {/* Selected Image Preview */}
+      {(selectedImage || isImageUploading) && (
+        <div className="mb-2 relative inline-block">
+          {isImageUploading ? (
+            <div 
+              className="h-16 w-16 rounded-lg flex items-center justify-center"
+              style={{
+                background: isDarkMode 
+                  ? '#20262D' 
+                  : 'linear-gradient(109.03deg, #BEDCFF -35.22%, rgba(255, 255, 255, 0.9) 17.04%, rgba(255, 232, 228, 0.4) 57.59%, #BEDCFF 97.57%)'
+              }}
+            >
+              <div className="relative">
+                <div 
+                  className="w-6 h-6 rounded-full border-2 animate-spin"
+                  style={{
+                    borderColor: 'transparent',
+                    borderTopColor: isDarkMode ? '#78758E' : '#7FCAFE',
+                    borderRightColor: isDarkMode ? '#FFFFFF' : '#D3E6FC',
+                    animationDuration: '1s'
+                  }}
+                />
               </div>
+            </div>
+          ) : (
+            <>
+              <img src={selectedImage!} alt="Selected" className="h-16 rounded-lg" width={64} height={64} />
+              <button
+                onClick={handleRemoveImage}
+                className={`absolute -top-1 -right-1 rounded-full p-0.5 ${
+                  isDarkMode 
+                    ? 'bg-[#D9D9D9] text-black' 
+                    : 'bg-[#7FCAFE] text-white'
+                }`}
+              >
+                <X size={12} />
+              </button>
+            </>
+          )}
+        </div>
+      )}
+      
+      <div className="flex items-start gap-4 flex-1">
+        {/* Custom Gradient Placeholder for Compact Mode */}
+        <div className="relative flex-1">
+          {!inputValue && (
+            <div 
+              className="absolute inset-0 pointer-events-none flex items-start"
+              style={{ 
+                background: 'linear-gradient(90deg, #4248FF -34.62%, #C3BFE6 130.34%)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                color: 'transparent',
+                fontSize: '24px',
+                fontWeight: '300',
+                paddingTop: '0px'
+              }}
+            >
+              Ask me anything
+            </div>
+          )}
+          
+          <textarea
+            ref={compactInputRef}
+            value={inputValue}
+            onChange={(e) => {
+              setInputValue(e.target.value)
+              // Auto-resize
+              const target = e.target
+              target.style.height = 'auto'
+              target.style.height = `${Math.min(target.scrollHeight, 72)}px`
+            }}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                handleSend()
+              }
+            }}
+            placeholder=""
+            className={`w-full text-[24px] font-thin border-none bg-transparent px-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto no-scrollbar relative z-10 ${
+              isDarkMode ? 'text-white' : 'text-black'
+            }`}
+            rows={1}
+            style={{ 
+              minHeight: '24px', 
+              maxHeight: '72px'
+            }}
+          />
+        </div>
+      </div>
+      
+      {/* Bottom bar with buttons */}
+      <div className="flex items-center justify-between mt-4">
+        <div className="flex items-center gap-4">
+          {/* Image Upload Button */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageSelect}
+            className="hidden"
+          />
+          <Plus 
+            size={24} 
+            className={`cursor-pointer hover:opacity-80 transition-opacity ${
+              isDarkMode ? 'text-white' : 'text-[#4248FF]'
+            }`}
+            onClick={() => fileInputRef.current?.click()}
+          />
+
+          {/* Tools Button */}
+          <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
+            <Image 
+              src="/tool-icon.svg" 
+              alt="Tool Icon" 
+              width={24} 
+              height={24}
+              style={{ filter: isDarkMode ? 'brightness(0) invert(1)' : 'none' }}
+            />
+          </div>
+        </div>
+
+        {/* Voice Recording Button */}
+        <div className="flex items-center gap-4">
+          {isRecording && (
+            <button 
+              onClick={cancelRecording}
+              className="hover:scale-105 transition-transform cursor-pointer"
+              title="Cancel Recording"
+            >
+              <div className="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center">
+                <X size={16} className="text-white" />
+              </div>
+            </button>
+          )}
+          <button 
+            onClick={toggleRecording}
+            disabled={isLoading || isCreatingSession}
+            className={`hover:scale-105 transition-transform cursor-pointer ${isRecording ? 'animate-pulse' : ''} ${isLoading || isCreatingSession ? 'opacity-50' : ''}`}
+            title={isRecording ? "Stop Recording" : "Start Recording"}
+          >
+            {isRecording ? (
+              <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
+                <MicOff size={16} className="text-white" />
+              </div>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 58 53" fill="none">
+                <g clipPath="url(#clip0_489_1814)">
+                  <path fillRule="evenodd" clipRule="evenodd" d="M37.8361 1.58398C39.0162 1.58398 39.9729 2.54065 39.9729 3.72074V49.3048C39.9729 50.4848 39.0162 51.4415 37.8361 51.4415C36.6561 51.4415 35.6994 50.4848 35.6994 49.3048V3.72074C35.6994 2.54065 36.6561 1.58398 37.8361 1.58398ZM29.2891 10.131C30.4692 10.131 31.4259 11.0877 31.4259 12.2677V40.7578C31.4259 41.9378 30.4692 42.8945 29.2891 42.8945C28.109 42.8945 27.1523 41.9378 27.1523 40.7578V12.2677C27.1523 11.0877 28.109 10.131 29.2891 10.131ZM12.1951 12.98C13.3752 12.98 14.3318 13.9367 14.3318 15.1167V37.9088C14.3318 39.0888 13.3752 40.0455 12.1951 40.0455C11.015 40.0455 10.0583 39.0888 10.0583 37.9088V15.1167C10.0583 13.9367 11.015 12.98 12.1951 12.98ZM46.3831 15.829C47.5632 15.829 48.5199 16.7857 48.5199 17.9658V35.0598C48.5199 36.2398 47.5632 37.1965 46.3831 37.1965C45.2031 37.1965 44.2464 36.2398 44.2464 35.0598V17.9658C44.2464 16.7857 45.2031 15.829 46.3831 15.829ZM20.7421 18.678C21.9222 18.678 22.8788 19.6347 22.8788 20.8148V32.2108C22.8788 33.3908 21.9222 34.3475 20.7421 34.3475C19.562 34.3475 18.6053 33.3908 18.6053 32.2108V20.8148C18.6053 19.6347 19.562 18.678 20.7421 18.678ZM3.64807 21.527C4.82816 21.527 5.78483 22.4837 5.78483 23.6638V29.3618C5.78483 30.5418 4.82816 31.4985 3.64807 31.4985C2.46799 31.4985 1.51132 30.5418 1.51132 29.3618V23.6638C1.51132 22.4837 2.46799 21.527 3.64807 21.527ZM54.9301 21.527C56.1102 21.527 57.0669 22.4837 57.0669 23.6638V29.3618C57.0669 30.5418 56.1102 31.4985 54.9301 31.4985C53.7501 31.4985 52.7934 30.5418 52.7934 29.3618V23.6638C52.7934 22.4837 53.7501 21.527 54.9301 21.527Z" fill={isDarkMode ? "#FFFFFF" : "#4248FF"}/>
+                </g>
+                <defs>
+                  <clipPath id="clip0_489_1814">
+                    <rect width="56.9801" height="51.2821" fill="white" transform="translate(0.799072 0.87207)"/>
+                  </clipPath>
+                </defs>
+              </svg>
+            )}
+          </button>
+        </div>
+      </div>
+      
+      </div>
+    </div>
+  </div>
+</div>
             </div>
           )}
 
@@ -1888,7 +1557,8 @@ function ChatContent() {
                 <button
                   onClick={() => setExpandedImage(null)}
                   className="absolute top-4 right-4 bg-white/20 backdrop-blur-sm rounded-full p-2 hover:bg-white/30 transition-colors"
-                >
+                                                                                                                        
+                               >
                   <X size={24} className="text-white" />
                 </button>
                 {isVideoUrl(expandedImage) ? (

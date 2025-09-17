@@ -57,6 +57,10 @@ interface CompanyProfile {
     logo_url: string | null;
     industry: string | null;
     job_title: string | null;
+    // Asset files
+    brand_manual: {file_id: string | null, file_url: string | null} | null;
+    company_profile_file: {file_id: string | null, file_url: string | null} | null;
+    document: {file_id: string | null, file_url: string | null} | null;
 }
 
 export class N8NWebhook {
@@ -124,6 +128,10 @@ export class N8NWebhook {
             logo_url: data.data.logo_url || null,
             industry: data.data.industry || null,
             job_title: data.data.job_title || null,
+            // Add asset files
+            brand_manual: data.data.brand_manual || null,
+            company_profile_file: data.data.company_profile || null,
+            document: data.data.document || null,
           };
           
           // Cache the profile in localStorage
@@ -139,6 +147,9 @@ export class N8NWebhook {
             logo_url: null,
             industry: null,
             job_title: null,
+            brand_manual: null,
+            company_profile_file: null,
+            document: null,
           };
           this.profileFetched = true;
         }
@@ -252,6 +263,10 @@ export class N8NWebhook {
           logo_url: this.companyProfile?.logo_url || null,
           industry: this.companyProfile?.industry || null,
           job_title: this.companyProfile?.job_title || null,
+          // Add asset files URLs
+          brand_manual_url: this.companyProfile?.brand_manual?.file_url || null,
+          company_profile_file_url: this.companyProfile?.company_profile_file?.file_url || null,
+          client_document_url: this.companyProfile?.document?.file_url || null,
           respond_only_to: 'current_user_message',
           // Add previous context
           previous_context: chatHistory ? chatHistory.slice(-4) : [],
@@ -315,6 +330,10 @@ export class N8NWebhook {
           logo_url: this.companyProfile?.logo_url || null,
           industry: this.companyProfile?.industry || null,
           job_title: this.companyProfile?.job_title || null,
+          // Add asset files URLs
+          brand_manual_url: this.companyProfile?.brand_manual?.file_url || null,
+          company_profile_file_url: this.companyProfile?.company_profile_file?.file_url || null,
+          client_document_url: this.companyProfile?.document?.file_url || null,
           respond_only_to: 'current_user_message',
           // Add previous context
           previous_context: chatHistory ? chatHistory.slice(-4) : [],
@@ -380,6 +399,10 @@ export class N8NWebhook {
           logo_url: this.companyProfile?.logo_url || null,
           industry: this.companyProfile?.industry || null,
           job_title: this.companyProfile?.job_title || null,
+          // Add asset files URLs
+          brand_manual_url: this.companyProfile?.brand_manual?.file_url || null,
+          company_profile_file_url: this.companyProfile?.company_profile_file?.file_url || null,
+          client_document_url: this.companyProfile?.document?.file_url || null,
           respond_only_to: 'current_user_message',
           // Add previous context
           previous_context: chatHistory ? chatHistory.slice(-4) : [],
