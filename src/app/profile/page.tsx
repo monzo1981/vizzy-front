@@ -621,9 +621,10 @@ export default function ProfilePage() {
                         >
                           <Avatar 
                             src={currentUser?.profile_picture_url || undefined}
-                            fallback={currentUser && currentUser.first_name && currentUser.last_name ? `${currentUser.first_name.charAt(0)}${currentUser.last_name.charAt(0)}`.toUpperCase() : 'U'} 
-                            alt="User" 
+                            fallback={currentUser && currentUser.first_name && currentUser.last_name ? `${currentUser.first_name.charAt(0)}${currentUser.last_name.charAt(0)}`.toUpperCase() : 'U'}
+                            alt="User"
                             className="w-full h-full"
+                            bgOverride="light" // أو "light" أو "dark" أو "auto" (default)
                           />
                         </div>
                         <div className="flex-1">
@@ -831,9 +832,9 @@ export default function ProfilePage() {
                         <h3 className="font-bold mb-2" style={{ fontWeight: 700, fontSize: 30, fontFamily: 'Inter', textAlign: 'center' }}>Recent work</h3>
                         <div className="flex flex-col h-full min-h-[240px]">
                           <div className="flex-1 flex items-center justify-center relative overflow-hidden"
-                            onTouchStart={handleTouchStart}
-                            onTouchMove={handleTouchMove}
-                            onTouchEnd={handleTouchEnd}
+                            onTouchStart={recentWork.length > 0 ? handleTouchStart : undefined}
+                            onTouchMove={recentWork.length > 0 ? handleTouchMove : undefined}
+                            onTouchEnd={recentWork.length > 0 ? handleTouchEnd : undefined}
                           >
                             {recentWork.length > 0 ? (
                               <div className="relative w-full h-[200px] flex items-center justify-center">
@@ -951,16 +952,109 @@ export default function ProfilePage() {
                                 </div>
                               </div>
                             ) : (
-                              <div className="flex items-center justify-center h-[200px] text-white/70">
-                                <p>No recent work available</p>
+                              // Static placeholder boxes when no recent work is available
+                              <div className="relative w-full h-[200px] flex items-center justify-center">
+                                {/* Background placeholder boxes */}
+                                <div className="relative w-full h-full flex items-center justify-center">
+                                  {Array.from({ length: 5 }).map((_, index) => {
+                                    // Static positions for 5 placeholder boxes in same formation
+                                    let scale = 1
+                                    let opacity = 1
+                                    let zIndex = 10
+                                    let translateX = 0
+                                    let translateY = 0
+                                    
+                                    // Position 2 is center (index 2)
+                                    const position = index - 2
+                                    const absPosition = Math.abs(position)
+                                    const isCenter = position === 0
+                                    
+                                    if (isCenter) {
+                                      // Center box - largest and in front
+                                      scale = 1
+                                      opacity = 0.4
+                                      zIndex = 30
+                                      translateX = 0
+                                      translateY = 0
+                                    } else if (absPosition === 1) {
+                                      // First level - medium size, slightly behind
+                                      scale = 0.8
+                                      opacity = 0.4
+                                      zIndex = 20
+                                      translateX = position * 70
+                                      translateY = 15
+                                    } else if (absPosition === 2) {
+                                      // Second level - smaller size, further behind
+                                      scale = 0.8
+                                      opacity = 0.2
+                                      zIndex = 10
+                                      translateX = position * 55
+                                      translateY = 25
+                                    }
+                                    
+                                    return (
+                                      <div
+                                        key={index}
+                                        className="absolute"
+                                        style={{
+                                          transform: `translateX(${translateX}px) translateY(${translateY}px) scale(${scale})`,
+                                          opacity,
+                                          zIndex,
+                                          width: '160px',
+                                          height: '180px',
+                                        }}
+                                      >
+                                        <div 
+                                          className="w-full h-full rounded-lg shadow-lg"
+                                          style={{
+                                            background: 'rgba(255, 255, 255, 0.1)',
+                                            backdropFilter: 'blur(10px)',
+                                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                                            boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+                                          }}
+                                        />
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                                
+                                {/* Text and button overlay */}
+                                <div className="absolute inset-0 flex flex-col items-center justify-center text-center z-50">
+                                  <h3 
+                                    style={{
+                                      color: '#4248FF',
+                                      fontSize: '30px',
+                                      fontWeight: 700,
+                                      marginBottom: '8px'
+                                    }}
+                                  >
+                                    Nothing here yet!
+                                  </h3>
+                                  <button
+                                    onClick={() => router.push('/chat')}
+                                    style={{
+                                      background: 'white',
+                                      color: '#78758E',
+                                      fontSize: '20px',
+                                      fontWeight: 400,
+                                      padding: '8px 24px',
+                                      borderRadius: '32px',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      fontFamily: 'Inter',
+                                    }}
+                                  >
+                                    Start Generating Now
+                                  </button>
+                                </div>
                               </div>
                             )}
                           </div>
-                          {/* Navigation Dots */}
-                          <div className="flex flex-col gap-2 mt-6">
-                            <div className="flex justify-center w-full gap-2">
-                              {recentWork.length > 0 ? (
-                                recentWork.map((_, index) => {
+                          {/* Navigation Dots - Only show when there are actual images */}
+                          {recentWork.length > 0 && (
+                            <div className="flex flex-col gap-2 mt-6">
+                              <div className="flex justify-center w-full gap-2">
+                                {recentWork.map((_, index) => {
                                   const isActive = index === currentSlide
                                   const width = Math.max(15, 80 / Math.max(5, recentWork.length)) // Responsive width
                                   return (
@@ -979,43 +1073,29 @@ export default function ProfilePage() {
                                       }}
                                     />
                                   )
-                                })
-                              ) : (
-                                // Default 5 dots when no data
-                                Array.from({ length: 5 }).map((_, index) => (
-                                  <div
-                                    key={index}
-                                    style={{
-                                      width: '20%',
-                                      height: index === 2 ? '10px' : '8px',
-                                      background: index === 2 ? '#FF4A19' : '#D3E6FC',
-                                      borderRadius: '8px',
-                                      opacity: 1
-                                    }}
-                                  />
-                                ))
-                              )}
+                                })}
+                              </div>
+                              <div className="flex justify-end w-full mt-2">
+                                <Button
+                                  type="button"
+                                  className="shadow-md font-bold"
+                                  style={{
+                                    background: 'white',
+                                    color: '#000',
+                                    borderRadius: '50px',
+                                    border: 'none',
+                                    fontWeight: 700,
+                                    fontSize: '16px',
+                                    padding: '12px 40px',
+                                    marginRight: 0,
+                                    fontFamily: 'inherit',
+                                  }}
+                                >
+                                  See Full
+                                </Button>
+                              </div>
                             </div>
-                            <div className="flex justify-end w-full mt-2">
-                              <Button
-                                type="button"
-                                className="shadow-md font-bold"
-                                style={{
-                                  background: 'white',
-                                  color: '#000',
-                                  borderRadius: '50px',
-                                  border: 'none',
-                                  fontWeight: 700,
-                                  fontSize: '16px',
-                                  padding: '12px 40px',
-                                  marginRight: 0,
-                                  fontFamily: 'inherit',
-                                }}
-                              >
-                                See Full
-                              </Button>
-                            </div>
-                          </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>

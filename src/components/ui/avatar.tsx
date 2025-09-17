@@ -10,6 +10,7 @@ interface AvatarProps {
   fallback?: string
   size?: 'sm' | 'md' | 'lg' | 'xl' | number
   className?: string
+  bgOverride?: 'transparent' | 'light' | 'dark' | 'auto' // Added prop to control background
 }
 
 const sizeClasses = {
@@ -31,9 +32,28 @@ export function Avatar({
   alt = "", 
   fallback, 
   size = 'md',
-  className 
+  className,
+  bgOverride = 'auto'
 }: AvatarProps) {
   const [imageError, setImageError] = React.useState(false)
+  const [isDarkMode, setIsDarkMode] = React.useState(false)
+  
+  // Load dark mode preference from localStorage
+  React.useEffect(() => {
+    const savedDarkMode = localStorage.getItem('darkMode')
+    if (savedDarkMode === 'true') {
+      setIsDarkMode(true)
+    }
+  }, [])
+  
+  // Determine background color based on override prop
+  const getBackgroundColor = () => {
+    if (bgOverride === 'transparent') return 'bg-transparent'
+    if (bgOverride === 'light') return 'bg-white'
+    if (bgOverride === 'dark') return 'bg-black'
+    // Default 'auto' mode
+    return isDarkMode ? 'bg-black' : 'bg-white'
+  }
   
   // Generate fallback from alt text if not provided
   const displayFallback = React.useMemo(() => {
@@ -57,38 +77,47 @@ export function Avatar({
 
   // Support custom pixel size
   const customSize = typeof size === 'number' ? { width: size, height: size, minWidth: size, minHeight: size } : undefined;
+  
   return (
     <div
       className={cn(
-        "relative flex-shrink-0 p-[2px] border-2 border-[#FF4A19] rounded-full bg-white",
+        "relative flex-shrink-0 p-[2px] rounded-full",
         typeof size === 'string' ? sizeClasses[size] : '',
         className
       )}
-      style={customSize}
+      style={{
+        ...customSize,
+        background: ' conic-gradient(from 223.88deg at 50% 50%, #FF4A19 -75.43deg, #FFEB77 6.01deg, #4248FF 92.34deg, #7FCAFE 211.14deg, #FF4A19 284.57deg, #FFEB77 366.01deg)',
+        boxShadow: (bgOverride === 'dark' || (bgOverride === 'auto' && isDarkMode)) 
+          ? '0px 0px 16px 0px #4248ff69' 
+          : '0px 0px 16px 0px rgba(255, 255, 255, 0.75)'
+      }}
     >
-      {showImage ? (
-        <div className="relative w-full h-full overflow-hidden rounded-full">
-          <Image
-            src={src}
-            alt={alt}
-            fill
-            className="object-cover"
-            onError={handleImageError}
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          />
-        </div>
-      ) : (
-        <div 
-          className={cn(
-            "w-full h-full flex items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 font-semibold select-none",
-            typeof size === 'string' ? textSizes[size] : 'text-base'
-          )}
-          role="img"
-          aria-label={alt || "Avatar"}
-        >
-          {displayFallback}
-        </div>
-      )}
+      <div className={`w-full h-full p-[3px] rounded-full ${getBackgroundColor()}`}>
+        {showImage ? (
+          <div className="relative w-full h-full overflow-hidden rounded-full">
+            <Image
+              src={src}
+              alt={alt}
+              fill
+              className="object-cover"
+              onError={handleImageError}
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            />
+          </div>
+        ) : (
+          <div 
+            className={cn(
+              "w-full h-full flex items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 font-semibold select-none",
+              typeof size === 'string' ? textSizes[size] : 'text-base'
+            )}
+            role="img"
+            aria-label={alt || "Avatar"}
+          >
+            {displayFallback}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
