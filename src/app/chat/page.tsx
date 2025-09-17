@@ -27,6 +27,124 @@ import AnimatedBorderWrapper from "@/components/chat/AnimatedBorderWrapper"
 // API Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 
+// Tutorial Card Component
+const TutorialCard = ({ 
+  title, 
+  subtitle, 
+  onNext, 
+  onSkip, 
+  className = "",
+  style = {},
+  borderRadius = "default"
+}: { 
+  title: string
+  subtitle: string
+  onNext: () => void
+  onSkip: () => void
+  className?: string
+  style?: React.CSSProperties
+  borderRadius?: "default" | "second" | "third"
+}) => {
+  // Define different border radius styles
+  const getBorderRadius = () => {
+    switch (borderRadius) {
+      case "second":
+        return {
+          borderTopLeftRadius: '4px',
+          borderTopRightRadius: '20px',
+          borderBottomRightRadius: '20px',
+          borderBottomLeftRadius: '14px',
+        }
+      case "third":
+        return {
+          borderTopLeftRadius: '20px',
+          borderTopRightRadius: '14px',
+          borderBottomRightRadius: '4px',
+          borderBottomLeftRadius: '20px',
+        }
+      default:
+        return {
+          borderTopLeftRadius: '20px',
+          borderTopRightRadius: '4px',
+          borderBottomRightRadius: '14px',
+          borderBottomLeftRadius: '20px',
+        }
+    }
+  }
+
+  return (
+    <div className={`absolute z-50 ${className}`} style={style}>
+      <div
+        className="relative"
+        style={{
+          width: '180px',
+          minHeight: 'auto',
+          background: '#4248FFE0',
+          border: '#7FCAFE 0.5px solid',
+          boxShadow: '0px 0px 8px 0px #7FCAFE73',
+          ...getBorderRadius(),
+        }}
+      >
+        <div className="p-3 flex flex-col">
+          <div className="mb-3">
+            <div 
+              style={{
+                fontSize: '16px',
+                fontWeight: 700,
+                color: 'white',
+                lineHeight: '1.2',
+                marginBottom: '2px',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {title}
+            </div>
+            <div 
+              style={{
+                fontSize: '12px',
+                fontWeight: 300,
+                color: 'white',
+                lineHeight: '1.2',
+                wordWrap: 'break-word'
+              }}
+            >
+              {subtitle}
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={onNext}
+              style={{
+                fontSize: '12px',
+                fontWeight: 300,
+                color: 'white',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              next
+            </button>
+            <button
+              onClick={onSkip}
+              style={{
+                fontSize: '12px',
+                fontWeight: 300,
+                color: 'white',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              skip
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const StableImage = memo(({ src, alt, className, style, onClick }: { src: string, alt: string, className: string, style: React.CSSProperties, onClick?: (e: React.MouseEvent<HTMLImageElement>) => void }) => {
     const [imageError, setImageError] = useState(false);
     const [imageSrc, setImageSrc] = useState('');
@@ -106,6 +224,10 @@ function ChatContent() {
   
   // Animated border state
   const [showAnimatedBorder, setShowAnimatedBorder] = useState(false)
+  
+  // Tutorial state
+  const [showTutorial, setShowTutorial] = useState(false)
+  const [tutorialStep, setTutorialStep] = useState(1)
   
   // AI Chat Session State
   const [sessionId, setSessionId] = useState<string | undefined>(undefined)
@@ -334,11 +456,37 @@ function ChatContent() {
     }
   }, [])
 
+  // Check if user has seen tutorial before
+  useEffect(() => {
+    const hasSeenTutorial = localStorage.getItem('hasSeenChatTutorial')
+    if (!hasSeenTutorial && messages.length === 0) {
+      setShowTutorial(true)
+    }
+  }, [messages.length])
+
   // Save dark mode preference
   const toggleDarkMode = () => {
     const newDarkMode = !isDarkMode
     setIsDarkMode(newDarkMode)
     localStorage.setItem('darkMode', String(newDarkMode))
+  }
+
+  // Tutorial functions
+  const nextTutorialStep = () => {
+    if (tutorialStep < 3) {
+      setTutorialStep(tutorialStep + 1)
+    } else {
+      completeTutorial()
+    }
+  }
+
+  const skipTutorial = () => {
+    completeTutorial()
+  }
+
+  const completeTutorial = () => {
+    setShowTutorial(false)
+    localStorage.setItem('hasSeenChatTutorial', 'true')
   }
 
   // Auto-scroll to bottom when new messages arrive
@@ -1067,7 +1215,7 @@ function ChatContent() {
     <div className={isDarkMode ? 'dark' : ''}>
       <GradientBackground opacity={hasMessages ? 0.6 : 1} isDarkMode={isDarkMode}>
         {/* Desktop Sidebar */}
-        <div className="hidden lg:block">
+        <div className="hidden lg:block relative">
           <Sidebar isOpen={isOpen} onToggle={toggle} isDarkMode={isDarkMode} onDarkModeToggle={toggleDarkMode} />
         </div>
 
@@ -1085,7 +1233,38 @@ function ChatContent() {
         )}
 
         {/* Main Content */}
-        <div className={`h-screen flex flex-col transition-all duration-300 ${isOpen ? 'lg:ml-20' : 'lg:ml-20'}`}>
+        <div className={`h-screen flex flex-col transition-all duration-300 ${isOpen ? 'lg:ml-20' : 'lg:ml-20'} relative`}>
+          
+          {/* Tutorial Cards - All in one place for easy control */}
+          {showTutorial && (
+            <>
+              {/* First Tutorial Card - Step 1 */}
+              {tutorialStep === 1 && (
+                <TutorialCard
+                  title="update your profile"
+                  subtitle="get a customized services!"
+                  onNext={nextTutorialStep}
+                  onSkip={skipTutorial}
+                  className="fixed z-50"
+                  style={{ top: '82px', right: '60px' }}
+                />
+              )}
+              
+              {/* Second Tutorial Card - Step 2 */}
+              {tutorialStep === 2 && (
+                <TutorialCard
+                  title="Start a new Chat"
+                  subtitle="Or See Your recent chats."
+                  onNext={nextTutorialStep}
+                  onSkip={skipTutorial}
+                  className="fixed z-50"
+                  style={{ top: '200px', left: '64px' }}
+                  borderRadius="second"
+                />
+              )}
+            </>
+          )}
+          
           {/* Header - Fixed */}
           <header className="flex-shrink-0 flex items-center justify-between px-6 py-6">
             {/* Mobile Menu Button */}
@@ -1119,7 +1298,7 @@ function ChatContent() {
                 />
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 relative">
               {/* Pro Badge */}
               <Badge 
                 className="text-white border-0"
@@ -1135,10 +1314,12 @@ function ChatContent() {
                 Pro
               </Badge>
               {/* Avatar Dropdown */}
-              <AvatarDropdown 
-                currentUser={currentUser}
-                isDarkMode={isDarkMode}
-              />
+              <div className="relative">
+                <AvatarDropdown 
+                  currentUser={currentUser}
+                  isDarkMode={isDarkMode}
+                />
+              </div>
             </div>
           </header>
 
@@ -1153,8 +1334,22 @@ function ChatContent() {
 {/* Search Input */}
 <div className="w-full max-w-xl sm:max-w-2xl md:max-w-3xl lg:max-w-4xl mb-6 sm:mb-8 lg:mb-10">
   <div
-    className="w-full"
+    className="w-full relative"
   >
+
+    {/* Third Tutorial Card - Step 3 - positioned relative to input container */}
+    {showTutorial && tutorialStep === 3 && (
+      <TutorialCard
+        title="Speak up your ideas"
+        subtitle="Just chat and transform your ideas into a visuals!"
+        onNext={nextTutorialStep}
+        onSkip={skipTutorial}
+        className="absolute z-50"
+        style={{ top: '-90px', left: '-150px' }}
+        borderRadius="third"
+      />
+    )}
+
     <div className="relative p-[2px] backdrop-blur-xl rounded-[50px]" style={{
       background: 'conic-gradient(from -46.15deg at 50.76% 47.25%, #4248FF -40.22deg, #7FCAFE 50.49deg, #FFEB77 104.02deg, #4248FF 158.81deg, #FF4A19 224.78deg, #4248FF 319.78deg, #7FCAFE 410.49deg)',
       boxShadow: isDarkMode ? '0px 0px 12px 0px #4248ff54' : '0px 0px 27px 0px rgba(255, 255, 255, 0.75)'
@@ -1513,10 +1708,10 @@ function ChatContent() {
               </div>
 
 {/* Bottom Input - Fixed at bottom */}
-<div className={`flex-shrink-0 backdrop-blur-sm p-6 pt-0 ${
+<div className={`flex-shrink-0 backdrop-blur-sm p-6 pt-0 relative ${
   isDarkMode ? 'bg-gradient-to-t from-[#181819]/20 to-transparent' : 'bg-gradient-to-t from-white/20 to-transparent'
 }`}>
-  <div className="max-w-4xl mx-auto">
+  <div className="max-w-4xl mx-auto relative">
     <div className="relative p-[2px] backdrop-blur-xl rounded-[50px]" style={{
       background: 'conic-gradient(from -46.15deg at 50.76% 47.25%, #4248FF -40.22deg, #7FCAFE 50.49deg, #FFEB77 104.02deg, #4248FF 158.81deg, #FF4A19 224.78deg, #4248FF 319.78deg, #7FCAFE 410.49deg)',
       boxShadow: isDarkMode ? '0px 0px 12px 0px #4248ff54' : '0px 0px 27px 0px rgba(255, 255, 255, 0.75)'
