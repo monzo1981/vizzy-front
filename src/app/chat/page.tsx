@@ -22,6 +22,23 @@ import { RealtimeChannel } from "@supabase/supabase-js"
 import { useToast, ToastContainer } from "@/components/ui/toast"
 import TypewriterPlaceholder from "@/components/chat/TypewriterPlaceholder"
 import AnimatedBorderWrapper from "@/components/chat/AnimatedBorderWrapper"
+import { 
+  downloadImage, 
+  isBase64Image, 
+  handleImageSelect as handleImageSelectHelper
+} from "@/lib/chat/imageHelpers"
+import {
+  createAIChatSession as createSession,
+  pollForFirstMessage as pollMessage,
+  messagesToChatHistory as convertMessages
+} from "@/lib/chat/sessionHelpers"
+import {
+  startRecording as startVoiceRecording,
+  stopRecording as stopVoiceRecording,
+  cancelRecording as cancelVoiceRecording,
+  toggleRecording as toggleVoiceRecording,
+  type VoiceRecordingHandlers
+} from "@/lib/chat/voiceHelpers"
 
 
 // API Configuration
@@ -252,177 +269,29 @@ function ChatContent() {
   const n8nWebhook = useRef<N8NWebhook | null>(null)
   const { playSound } = useNotificationSound("/vizzy-message.mp3");
 
-  // Function to download image
-  const downloadImage = async (imageUrl: string, fileName?: string) => {
-    try {
-      let blob: Blob
-      
-      // Check if it's a base64 image
-      if (imageUrl.startsWith('data:')) {
-        // Convert base64 to blob
-        const response = await fetch(imageUrl)
-        blob = await response.blob()
-      } else {
-        // For regular URLs, fetch the image
-        const response = await fetch(imageUrl)
-        blob = await response.blob()
-      }
-      
-      // Create a temporary URL for the blob
-      const url = window.URL.createObjectURL(blob)
-      
-      // Create a temporary anchor element and trigger download
-      const link = document.createElement('a')
-      link.href = url
-      link.download = fileName || `vizzy-image-${Date.now()}.png`
-      document.body.appendChild(link)
-      link.click()
-      
-      // Clean up
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-    } catch (error) {
-      console.error('Error downloading image:', error)
-      // Fallback: try to open in new tab if download fails
-      try {
-        window.open(imageUrl, '_blank')
-      } catch (fallbackError) {
-        console.error('Fallback failed too:', fallbackError)
-      }
-    }
-  }
-
-  // Function to create AI chat session
+  // Wrapper for createAIChatSession with required parameters
   const createAIChatSession = async (initialMessage?: string): Promise<string | undefined> => {
-    try {
-      setIsCreatingSession(true)
-      
-      const token = localStorage.getItem('access_token')
-      if (!token) {
-        console.error('No auth token found')
-        return undefined
-      }
-      
-      const response = await fetch(`${API_BASE_URL}/ai-chat-session/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          initial_message: initialMessage || ''
-        })
-      })
-      
-      if (!response.ok) {
-        try {
-          const errorData = await response.json()
-          console.error('Failed to create session:', response.status, errorData)
-          
-          if (response.status === 403) {
-            console.error('Permission denied. User might not be a client or token expired.')
-          }
-        } catch (e) {
-          console.error('Failed to create session:', response.status)
-        }
-        return undefined
-      }
-      
-      const data = await response.json()
-      const newSessionId = data.session_id
-      setSessionId(newSessionId)
-      
-      sessionStorage.setItem('ai_chat_session_id', newSessionId)
-      console.log('🎯 Created new AI chat session:', newSessionId)
-      
-      return newSessionId
-    } catch (error) {
-      console.error('Error creating AI chat session:', error)
-      return undefined
-    } finally {
-      setIsCreatingSession(false)
+    const token = localStorage.getItem('access_token');
+    if (!token || !API_BASE_URL) {
+      console.error('No auth token or API URL found');
+      return undefined;
     }
-  }
 
-  // Polling function for first message (fallback)
+    return await createSession(
+      initialMessage,
+      { apiBaseUrl: API_BASE_URL, token },
+      { setIsCreatingSession, setSessionId }
+    );
+  };
+
+  // Wrapper for pollForFirstMessage with required parameters
   const pollForFirstMessage = useCallback(async (sessionId: string, userMessageId: string) => {
-    let retries = 0;
-    const maxRetries = 10;
-    const interval = 1000; // 1 second
-
-    const poll = async () => {
-      if (retries >= maxRetries) {
-        console.log('⏱️ Polling timeout reached');
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('core_aichatsession')
-          .select('chat_messages')
-          .eq('id', sessionId)
-          .single();
-
-        if (error) {
-          console.error('❌ Error polling for message:', error);
-          retries++;
-          setTimeout(poll, interval);
-          return;
-        }
-
-        const allMessages = data?.chat_messages || [];
-        
-        // Look for new assistant messages after our user message
-        const newAssistantMessages = allMessages.filter((msg: ChatMessageDB, index: number) => {
-          // Generate a unique ID for this message
-          const messageId = `${sessionId}-${index}-${msg.timestamp}`;
-          
-          return msg.role === 'assistant' && 
-                 !processedMessageIds.current.has(messageId) &&
-                 index >= lastProcessedCount.current;
-        });
-
-        if (newAssistantMessages.length > 0) {
-          console.log(`✅ Found ${newAssistantMessages.length} new assistant messages via polling`);
-          
-          // Process new messages
-          const normalizedMessages: ChatMessage[] = newAssistantMessages.map((msg: ChatMessageDB, idx: number) => {
-            const messageIndex = allMessages.indexOf(msg);
-            const messageId = `${sessionId}-${messageIndex}-${msg.timestamp}`;
-            processedMessageIds.current.add(messageId);
-            
-            const normalizer = new ResponseNormalizer(msg.content);
-            const { text, mediaUrl } = normalizer.normalize();
-            
-            return {
-              id: `poll-${Date.now()}-${idx}`,
-              content: text || msg.content,
-              sender: 'assistant' as const,
-              timestamp: new Date(msg.timestamp),
-              visual: mediaUrl || msg.visual,
-              serviceType: msg.service_type,
-              isProcessing: false,
-              isVoice: false
-            };
-          });
-          
-          setMessages(prev => [...prev, ...normalizedMessages]);
-          lastProcessedCount.current = allMessages.length;
-          setIsLoading(false);
-        } else {
-          retries++;
-          setTimeout(poll, interval);
-        }
-      } catch (error) {
-        console.error('❌ Polling error:', error);
-        retries++;
-        setTimeout(poll, interval);
-      }
-    };
-
-    // Start polling
-    poll();
+    await pollMessage(
+      sessionId,
+      userMessageId,
+      { setMessages, setIsLoading },
+      { processedMessageIds, lastProcessedCount }
+    );
   }, []);
 
   // Check for existing session on mount
@@ -834,21 +703,9 @@ function ChatContent() {
     }
   };
 
-  const isBase64Image = (url: string | undefined): boolean => {
-    if (!url) return false
-    return url.startsWith('data:image')
-  }
-
-  // Helper function to convert messages to chat history format
+  // Wrapper for messagesToChatHistory
   const messagesToChatHistory = (messages: ChatMessage[]) => {
-    return messages.map(msg => ({
-      role: msg.sender === 'user' ? 'user' as const : 
-            msg.sender === 'assistant' ? 'assistant' as const : 
-            'system' as const,
-      content: msg.content,
-      timestamp: msg.timestamp.toISOString(),
-      visual: msg.visual
-    }));
+    return convertMessages(messages);
   }
 
   const handleSend = async (message?: string) => {
@@ -921,295 +778,93 @@ function ChatContent() {
     }
   }
 
-  // دالة لضغط وتحويل الصورة إلى PNG
-  const compressAndConvertImage = async (
-    file: File, 
-    maxWidth: number = 1920, 
-    maxHeight: number = 1080, 
-    quality: number = 0.85
-  ): Promise<File> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      
-      reader.onload = (e) => {
-        const img = document.createElement('img');
-        
-        img.onload = () => {
-          // حساب الأبعاد الجديدة مع الحفاظ على النسبة
-          let width = img.width;
-          let height = img.height;
-          
-          // تصغير الصورة إذا كانت أكبر من الحد المسموح
-          if (width > maxWidth || height > maxHeight) {
-            const ratio = Math.min(maxWidth / width, maxHeight / height);
-            width = Math.round(width * ratio);
-            height = Math.round(height * ratio);
-          }
-          
-          // إنشاء canvas للرسم عليه
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          
-          if (!ctx) {
-            reject(new Error('Failed to get canvas context'));
-            return;
-          }
-          
-          // تعيين أبعاد الـ canvas
-          canvas.width = width;
-          canvas.height = height;
-          
-          // تحسين جودة الرسم
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-          
-          // رسم الصورة على الـ canvas
-          ctx.drawImage(img, 0, 0, width, height);
-          
-          // تحويل الـ canvas إلى blob بصيغة PNG
-          canvas.toBlob(
-            (blob) => {
-              if (!blob) {
-                reject(new Error('Failed to convert image'));
-                return;
-              }
-              
-              // إنشاء File object جديد بصيغة PNG
-              const compressedFile = new File(
-                [blob], 
-                file.name.replace(/\.[^/.]+$/, '.png'), // تغيير امتداد الملف إلى .png
-                { 
-                  type: 'image/png',
-                  lastModified: Date.now()
-                }
-              );
-              
-              console.log('Original size:', (file.size / 1024).toFixed(2), 'KB');
-              console.log('Compressed size:', (compressedFile.size / 1024).toFixed(2), 'KB');
-              console.log('Compression ratio:', ((1 - compressedFile.size / file.size) * 100).toFixed(1), '%');
-              
-              resolve(compressedFile);
-            },
-            'image/png',
-            quality // جودة الضغط (0.85 = 85% جودة)
-          );
-        };
-        
-        img.onerror = () => {
-          reject(new Error('Failed to load image'));
-        };
-        
-        img.src = e.target?.result as string;
-      };
-      
-      reader.onerror = () => {
-        reject(new Error('Failed to read file'));
-      };
-      
-      reader.readAsDataURL(file);
-    });
-  };
-
-  // دالة رفع الصورة المحدثة
-  const handleImageUpload = async (file: File): Promise<string | null> => {
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      console.error('No auth token found');
-      return null;
-    }
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/upload/image/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Failed to upload image:', response.status, errorData);
-        return null;
-      }
-
-      const data = await response.json();
-      return data.public_url;
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      return null;
-    }
-  };
-
-  // دالة التعامل مع اختيار الصورة المحدثة
+  // Wrapper function for image selection with correct parameters
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // التحقق من نوع الملف
-      if (!file.type.startsWith('image/')) {
-        toast.error("Please select an image file");
-        return;
-      }
-      
-      // التحقق من حجم الملف الأصلي
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error("Image size must be less than 10MB");
-        return;
-      }
-
-      // بدء الرسوم المتحركة للتحميل
-      setIsImageUploading(true);
-
-      try {
-        // ضغط وتحويل الصورة إلى PNG
-        console.log('Converting and compressing image...');
-        const compressedFile = await compressAndConvertImage(
-          file,
-          1920,  // الحد الأقصى للعرض
-          1080,  // الحد الأقصى للارتفاع
-          0.85   // الجودة (85%)
-        );
-        
-        // رفع الصورة المضغوطة
-        const publicUrl = await handleImageUpload(compressedFile);
-
-        if (publicUrl) {
-          setSelectedImage(publicUrl);
-          toast.success("Image uploaded successfully!");
-        } else {
-          toast.error("Failed to upload image. Please try again.");
-        }
-      } catch (error) {
-        console.error('Error processing image:', error);
-        toast.error("Failed to process image. Please try again.");
-      } finally {
-        // إيقاف الرسوم المتحركة للتحميل
-        setIsImageUploading(false);
-      }
+    const token = localStorage.getItem('access_token');
+    if (!token || !API_BASE_URL) {
+      toast.error("Authentication or configuration error");
+      return;
     }
 
-    // إعادة تعيين قيمة الإدخال
-    if (e.target) {
-      e.target.value = "";
+    await handleImageSelectHelper(
+      e,
+      {
+        setSelectedImage,
+        setIsImageUploading,
+        toast
+      },
+      {
+        token,
+        apiBaseUrl: API_BASE_URL
+      }
+    );
+  };
+
+  // Voice recording callback handlers
+  const handleRecordingComplete = async (base64Audio: string) => {
+    let currentSessionId = sessionId;
+    const isFirstMessage = !currentSessionId;
+    
+    if (isFirstMessage && !isCreatingSession) {
+      currentSessionId = await createAIChatSession('Voice message');
+      if (!currentSessionId) {
+        console.error('Failed to create AI chat session for voice');
+        return;
+      }
+      // Wait for subscription
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    const voiceMessage: ChatMessage = {
+      id: `voice-${Date.now()}`,
+      content: '🎤 Voice message',
+      sender: 'user',
+      timestamp: new Date(),
+      isVoice: true
+    };
+    setMessages(prev => [...prev, voiceMessage]);
+    
+    setIsLoading(true);
+    
+    try {
+      if (n8nWebhook.current) {
+        const chatHistory = messagesToChatHistory(messages);
+        await n8nWebhook.current.sendVoiceMessage(base64Audio, currentSessionId, chatHistory);
+        console.log("🎤 Voice message sent to N8N successfully");
+        
+        // Use polling for first message
+        if (isFirstMessage || !isSubscribed) {
+          console.log("📊 Using polling for voice message");
+          pollForFirstMessage(currentSessionId!, voiceMessage.id);
+        }
+      }
+    } catch (error) {
+      console.error('Error processing voice:', error);
+      const errorMessage: ChatMessage = {
+        id: `error-${Date.now()}`,
+        content: 'Failed to process voice message. Please try again.',
+        sender: 'assistant',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      setIsLoading(false);
     }
   };
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mimeType = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm'
-      const mediaRecorder = new MediaRecorder(stream, { mimeType })
-      
-      audioChunksRef.current = []
-      
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data)
-        }
-      }
-      
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType })
-        if (audioBlob.size > 0) {
-          const reader = new FileReader()
-          
-          reader.onloadend = async () => {
-            const base64AudioWithPrefix = reader.result as string
-            const base64Audio = base64AudioWithPrefix.split(',')[1]
-            
-            let currentSessionId = sessionId
-            const isFirstMessage = !currentSessionId;
-            
-            if (isFirstMessage && !isCreatingSession) {
-              currentSessionId = await createAIChatSession('Voice message')
-              if (!currentSessionId) {
-                console.error('Failed to create AI chat session for voice')
-                return
-              }
-              // Wait for subscription
-              await new Promise(resolve => setTimeout(resolve, 500));
-            }
-            
-            const voiceMessage: ChatMessage = {
-              id: `voice-${Date.now()}`,
-              content: '🎤 Voice message',
-              sender: 'user',
-              timestamp: new Date(),
-              isVoice: true
-            }
-            setMessages(prev => [...prev, voiceMessage])
-            
-            setIsLoading(true)
-            
-            try {
-              if (n8nWebhook.current) {
-                const chatHistory = messagesToChatHistory(messages);
-                await n8nWebhook.current.sendVoiceMessage(base64Audio, currentSessionId, chatHistory)
-                console.log("🎤 Voice message sent to N8N successfully");
-                
-                // Use polling for first message
-                if (isFirstMessage || !isSubscribed) {
-                  console.log("📊 Using polling for voice message");
-                  pollForFirstMessage(currentSessionId!, voiceMessage.id);
-                }
-              }
-            } catch (error) {
-              console.error('Error processing voice:', error)
-              const errorMessage: ChatMessage = {
-                id: `error-${Date.now()}`,
-                content: 'Failed to process voice message. Please try again.',
-                sender: 'assistant',
-                timestamp: new Date()
-              }
-              setMessages(prev => [...prev, errorMessage])
-              setIsLoading(false)
-            }
-          }
-          
-          reader.readAsDataURL(audioBlob)
-        }
-        
-        stream.getTracks().forEach(track => track.stop())
-      }
-      
-      mediaRecorderRef.current = mediaRecorder
-      mediaRecorder.start()
-      setIsRecording(true)
-    } catch (error) {
-      console.error("Error accessing microphone:", error)
-      toast.error("Could not access microphone. Please check permissions.")
-    }
-  }
+  const voiceHandlers: VoiceRecordingHandlers = {
+    mediaRecorderRef,
+    audioChunksRef,
+    isRecording,
+    setIsRecording,
+    onRecordingComplete: handleRecordingComplete,
+    onError: (error: string) => toast.error(error)
+  };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop()
-      setIsRecording(false)
-    }
-  }
-
-  const cancelRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.onstop = () => { 
-        console.log("Recording cancelled.");
-        mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
-      };
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      audioChunksRef.current = [];
-    }
-  }
-
-  const toggleRecording = () => {
-    if (isRecording) {
-      stopRecording()
-    } else {
-      startRecording()
-    }
-  }
+  // Voice recording wrapper functions
+  const startRecording = () => startVoiceRecording(voiceHandlers);
+  const stopRecording = () => stopVoiceRecording(voiceHandlers);
+  const cancelRecording = () => cancelVoiceRecording(voiceHandlers);
+  const toggleRecording = () => toggleVoiceRecording(voiceHandlers);
 
   return (
     <div className={isDarkMode ? 'dark' : ''}>

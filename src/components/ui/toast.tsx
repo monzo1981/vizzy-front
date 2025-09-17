@@ -14,7 +14,7 @@ interface ToastProps extends Toast {
   onRemove: (id: string) => void
 }
 
-const Toast: React.FC<ToastProps> = ({ id, type, title, description, duration = 5000, onRemove }) => {
+const Toast: React.FC<ToastProps> = ({ id, type, title, description, duration = 3000, onRemove }) => {
   const [isVisible, setIsVisible] = useState(false)
   const [isLeaving, setIsLeaving] = useState(false)
 
