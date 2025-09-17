@@ -1514,11 +1514,6 @@ function ChatContent() {
                 isDarkMode ? 'bg-gradient-to-t from-[#181819]/20 to-transparent' : 'bg-gradient-to-t from-white/20 to-transparent'
               }`}>
                 <div className="max-w-4xl mx-auto">
-                  <AnimatedBorderWrapper
-                    isAnimating={showAnimatedBorder}
-                    className="w-full"
-                    isDarkMode={isDarkMode}
-                  >
                     <div className={`relative backdrop-blur-xl border px-8 py-7 transition-all duration-500 ease-in-out ${
                       isDarkMode 
                         ? 'bg-[#181819] border-white/30' 
@@ -1690,7 +1685,6 @@ function ChatContent() {
                   </div>
                   
                   </div>
-                </AnimatedBorderWrapper>
                 </div>
               </div>
             </div>

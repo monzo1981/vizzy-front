@@ -52,6 +52,11 @@ export default function ProfilePage() {
   // UserLimits type is extended in n8n-webhook.ts to include max_images, max_videos
   const [progressPercent, setProgressPercent] = useState<number>(0);
   const [remainingCredits, setRemainingCredits] = useState<number | string>('-');
+  const [uploadedAssets, setUploadedAssets] = useState<Record<string, {file_id: string | null, file_url: string | null}>>({
+    brand_manual: { file_id: null, file_url: null },
+    company_profile: { file_id: null, file_url: null },
+    document: { file_id: null, file_url: null }
+  });
   const router = useRouter();
   // Fetch user limits and calculate progress
   useEffect(() => {
@@ -214,9 +219,24 @@ export default function ProfilePage() {
       const profile = webhook.getCompanyProfile()
       if (profile) {
         setCompanyProfile(profile)
+        // Update uploaded assets from cached profile
+        setUploadedAssets({
+          brand_manual: profile.brand_manual || { file_id: null, file_url: null },
+          company_profile: profile.company_profile_file || { file_id: null, file_url: null },
+          document: profile.document || { file_id: null, file_url: null }
+        })
       } else {
         webhook.refreshCompanyProfile().then(() => {
-          setCompanyProfile(webhook.getCompanyProfile())
+          const updatedProfile = webhook.getCompanyProfile()
+          if (updatedProfile) {
+            setCompanyProfile(updatedProfile)
+            // Update uploaded assets from refreshed profile
+            setUploadedAssets({
+              brand_manual: updatedProfile.brand_manual || { file_id: null, file_url: null },
+              company_profile: updatedProfile.company_profile_file || { file_id: null, file_url: null },
+              document: updatedProfile.document || { file_id: null, file_url: null }
+            })
+          }
         })
       }
     }
@@ -265,6 +285,10 @@ export default function ProfilePage() {
           logo_url: updatedCompanyData.logo_url || null,
           industry: updatedCompanyData.industry || companyProfile?.industry || null,
           job_title: updatedCompanyData.job_title || companyProfile?.job_title || null,
+          // Keep existing asset files
+          brand_manual: companyProfile?.brand_manual || null,
+          company_profile_file: companyProfile?.company_profile_file || null,
+          document: companyProfile?.document || null,
         }
         
         const webhook = new N8NWebhook()
@@ -284,6 +308,114 @@ export default function ProfilePage() {
       toast.error('Error updating logo')
     }
   }
+
+  // Get asset label from field name
+  const getAssetLabel = (field: string) => {
+    const assets = [
+      { icon: '/manual.svg', label: 'Brand Manual', field: 'brand_manual' },
+      { icon: '/profile.svg', label: 'Company Profile', field: 'company_profile' },
+      { icon: '/document.svg', label: 'Document', field: 'document' },
+    ];
+    return assets.find(asset => asset.field === field)?.label || field;
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, field: string) => {
+    if (!event.target.files || event.target.files.length === 0) {
+      toast.error('No file selected.');
+      return;
+    }
+
+    const file = event.target.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('field_name', field);
+
+    try {
+      const token = localStorage.getItem('access_token'); // استخدام access_token بدلاً من token
+      if (!token) {
+        toast.error('Please login again');
+        return;
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/client/files/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        toast.error('File upload failed. Please check the server response.');
+        return;
+      }
+
+      const data = await response.json();
+      toast.success(`${getAssetLabel(field)} uploaded successfully.`);
+      
+      // Update uploaded assets state with the new file info
+      if (data && data.data) {
+        setUploadedAssets((prev) => ({
+          ...prev,
+          [field]: {
+            file_id: data.data.file_id,
+            file_url: data.data.public_url
+          }
+        }));
+        
+        // Also refresh the N8N cache
+        const webhook = new N8NWebhook();
+        webhook.refreshCompanyProfile();
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast.error('An error occurred during file upload.');
+    }
+  };
+
+  const handleRemoveFile = async (field: string) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        toast.error('Please login again');
+        return;
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/client/files/`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ field_name: field }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        toast.error('File removal failed.');
+        return;
+      }
+
+      toast.success(`${getAssetLabel(field)} removed successfully.`);
+      
+      // Update uploaded assets state
+      setUploadedAssets((prev) => ({
+        ...prev,
+        [field]: { file_id: null, file_url: null }
+      }));
+      
+      // Also refresh the N8N cache
+      const webhook = new N8NWebhook();
+      webhook.refreshCompanyProfile();
+      
+    } catch (error) {
+      console.error('Error removing file:', error);
+      toast.error('An error occurred during file removal.');
+    }
+  };
 
   return (
     <GradientBackground isDarkMode={isDarkMode}>
@@ -1089,18 +1221,45 @@ export default function ProfilePage() {
                     <CardContent className="space-y-3">
                       {/* Asset Items - All identical, background #D3E6FC */}
                       {[
-                        { icon: '/manual.svg', label: 'Brand Manual' },
-                        { icon: '/profile.svg', label: 'Company Profile' },
-                        { icon: '/document.svg', label: 'Document 1' },
-                        { icon: '/document.svg', label: 'Document 2' },
+                        { icon: '/manual.svg', label: 'Brand Manual', field: 'brand_manual' },
+                        { icon: '/profile.svg', label: 'Company Profile', field: 'company_profile' },
+                        { icon: '/document.svg', label: 'Document', field: 'document' },
                       ].map((asset, i) => (
                         <div key={i} className="flex items-center justify-between p-3" style={{ background: '#D3E6FC', borderRadius: 20 }}>
                           <div className="flex items-center gap-3">
-                            <div className="bg-white flex items-center justify-center" style={{ width: 64, height: 64, padding: 8, borderRadius: 12, boxShadow: '0 0 2px 0 rgba(0, 0, 0, 0.25)' }}>
-                              <Image src={asset.icon} alt="Asset Icon" width={48} height={48} />
+                            <div
+                              className="bg-white flex items-center justify-center"
+                              style={{
+                                width: 64,
+                                height: 64,
+                                padding: 8,
+                                borderRadius: 12,
+                                boxShadow: '0 0 2px 0 rgba(0, 0, 0, 0.25)',
+                              }}
+                            >
+                              <Image
+                                src={asset.icon}
+                                alt="Asset Icon"
+                                width={48}
+                                height={48}
+                                style={{ 
+                                  filter: uploadedAssets[asset.field]?.file_id 
+                                    ? 'invert(47%) sepia(88%) saturate(6151%) hue-rotate(11deg) brightness(95%) contrast(102%)' // #FF4A19 filter
+                                    : 'brightness(0) saturate(100%) invert(85%) sepia(1%) saturate(0%) hue-rotate(314deg) brightness(91%) contrast(88%)' // #D9D9D9 filter
+                                }}
+                              />
                             </div>
                             <div>
-                              <p className="font-medium" style={{ color: '#11002E', fontSize: 16, fontWeight: 600 }}>{asset.label}</p>
+                              <p
+                                className="font-medium"
+                                style={{
+                                  color: uploadedAssets[asset.field]?.file_id ? '#000000' : '#B4B3BE',
+                                  fontSize: 16,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {asset.label}
+                              </p>
                               <div>
                                 <p className="text-xs text-gray-500" style={{ fontWeight: 200 }}>Description:</p>
                                 <p className="text-xs text-gray-500" style={{ fontWeight: 200 }}>Logo - Stock images ..</p>
@@ -1112,17 +1271,51 @@ export default function ProfilePage() {
                               type="button"
                               className="flex items-center gap-2"
                               style={{ background: 'none', border: 'none', color: '#78758E', fontWeight: 300, fontSize: 14, padding: 0, cursor: 'pointer', marginBottom: 4 }}
+                              onClick={() => {
+                                // TODO: Add edit name functionality
+                                console.log('Edit name clicked for:', asset.field);
+                              }}
                             >
                               <Image src="/edit.svg" alt="Edit" width={14} height={14} style={{ filter: 'invert(47%) sepia(8%) saturate(756%) hue-rotate(210deg) brightness(95%) contrast(84%)' }} />
                               <span style={{ color: '#78758E' }}>Edit name</span>
                             </button>
-                            <Button 
-                              size="sm" 
-                              className="text-white text-xs"
-                              style={{ background: '#7FCAFE', borderRadius: 36, fontWeight: 600 }}
-                            >
-                              See Details
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              {uploadedAssets[asset.field]?.file_id ? (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    className="text-white text-xs"
+                                    style={{ background: '#7FCAFE', borderRadius: 36, fontWeight: 600 }}
+                                    onClick={() => handleRemoveFile(asset.field)}
+                                  >
+                                    Remove
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    className="text-white text-xs"
+                                    style={{ background: '#7FCAFE', borderRadius: 36, fontWeight: 600 }}
+                                    onClick={() => document.getElementById(`${asset.field}-upload`)?.click()}
+                                  >
+                                    Update
+                                  </Button>
+                                </>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  className="text-white text-xs px-6"
+                                  style={{ background: '#FF4A19', borderRadius: 36, fontWeight: 600, minWidth: '80px' }}
+                                  onClick={() => document.getElementById(`${asset.field}-upload`)?.click()}
+                                >
+                                  Upload
+                                </Button>
+                              )}
+                            </div>
+                            <input
+                              type="file"
+                              id={`${asset.field}-upload`}
+                              style={{ display: 'none' }}
+                              onChange={(e) => handleFileUpload(e, asset.field)}
+                            />
                           </div>
                         </div>
                       ))}
