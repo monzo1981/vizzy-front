@@ -309,6 +309,10 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate, o
           logo_url: updatedCompanyData.logo_url || null,
           industry: updatedCompanyData.industry || null,
           job_title: updatedCompanyData.job_title || null,
+          // Include required asset files from existing profile or set to null
+          brand_manual: updatedCompanyData.brand_manual || null,
+          company_profile_file: updatedCompanyData.company_profile_file || null,
+          document: updatedCompanyData.document || null,
         }
         
         const webhook = new N8NWebhook()
