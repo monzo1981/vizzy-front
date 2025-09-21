@@ -31,9 +31,11 @@ import { N8NWebhook } from "@/lib/n8n-webhook"
 import { GradientBackground } from "@/components/gradient-background"
 import { ProfileEditModal } from "@/components/profile-edit-modal"
 import { useToast, ToastContainer } from "@/components/ui/toast"
+import { useLanguage } from "@/contexts/LanguageContext"
 
 export default function ProfilePage() {
   const { toasts, toast, removeToast } = useToast()
+  const { createLocalizedPath } = useLanguage()
   const [sidebarExpanded, setSidebarExpanded] = useState(false)
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -426,7 +428,7 @@ export default function ProfilePage() {
             {/* Logo - NO TOGGLE HERE */}
             <div 
               className="flex items-center gap-2 ml-16 cursor-pointer" 
-              onClick={() => router.push('/chat')}
+              onClick={() => router.push(createLocalizedPath('chat'))}
               title="Go to Chat"
             >
               <Image 

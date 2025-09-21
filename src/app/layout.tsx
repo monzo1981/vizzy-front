@@ -5,6 +5,7 @@ import { Inter } from "next/font/google";
 import { Noto_Sans_Arabic } from "next/font/google";
 import "./globals.css";
 import { useEffect } from "react";
+import { LanguageProvider } from "../contexts/LanguageContext";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -107,7 +108,9 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${notoSansArabic.variable} antialiased`}
       >
-        {children}
+        <LanguageProvider>
+          {children}
+        </LanguageProvider>
       </body>
     </html>
   );

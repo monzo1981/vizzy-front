@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Avatar } from "@/components/ui/avatar"
 import { type User, updateUser } from "@/lib/auth"
 import { N8NWebhook } from "@/lib/n8n-webhook"
+import { useLanguage } from "../contexts/LanguageContext"
 
 // Custom styles for consistent focus
 const inputStyles = {
@@ -45,32 +46,32 @@ const scrollbarStyles = `
 
 // Industry options for dropdown
 const INDUSTRY_OPTIONS = [
-  { value: "", label: "Select Industry" },
-  { value: "Food and Beverage", label: "Food and Beverage" },
-  { value: "Fashion", label: "Fashion" },
-  { value: "Beauty and Personal Care", label: "Beauty and Personal Care" },
-  { value: "Health and Wellness", label: "Health and Wellness" },
-  { value: "Education", label: "Education" },
-  { value: "Technology and Software", label: "Technology and Software" },
-  { value: "Home and Décor", label: "Home and Décor" },
-  { value: "Automotive and Transportation", label: "Automotive and Transportation" },
-  { value: "Sports and Fitness", label: "Sports and Fitness" },
-  { value: "Travel and Tourism", label: "Travel and Tourism" },
-  { value: "Finance Services", label: "Finance Services" },
-  { value: "Real Estate", label: "Real Estate" },
-  { value: "Entertainment", label: "Entertainment" },
-  { value: "Media & Publishing", label: "Media & Publishing" },
-  { value: "Government & NGOs", label: "Government & NGOs" },
-  { value: "Energy & Utilities", label: "Energy & Utilities" },
-  { value: "Retail & E-Commerce", label: "Retail & E-Commerce" },
-  { value: "Hospitality", label: "Hospitality" },
-  { value: "Pharmaceuticals & Medical Devices", label: "Pharmaceuticals & Medical Devices" },
-  { value: "Gaming & Esports", label: "Gaming & Esports" },
-  { value: "Agriculture & Food Tech", label: "Agriculture & Food Tech" },
-  { value: "Legal Services", label: "Legal Services" },
-  { value: "Construction & Architecture", label: "Construction & Architecture" },
-  { value: "Luxury Goods", label: "Luxury Goods" },
-  { value: "Pet Industry", label: "Pet Industry" }
+  { value: "", label: { en: "Select Industry", ar: "اختر المجال" } },
+  { value: "Food and Beverage", label: { en: "Food and Beverage", ar: "الأغذية والمشروبات" } },
+  { value: "Fashion", label: { en: "Fashion", ar: "الموضة والأزياء" } },
+  { value: "Beauty and Personal Care", label: { en: "Beauty and Personal Care", ar: "التجميل والعناية الشخصية" } },
+  { value: "Health and Wellness", label: { en: "Health and Wellness", ar: "الصحة" } },
+  { value: "Education", label: { en: "Education", ar: "التعليم" } },
+  { value: "Technology and Software", label: { en: "Technology and Software", ar: "التكنولوجيا والبرمجيات" } },
+  { value: "Home and Décor", label: { en: "Home and Décor", ar: "المنزل والديكور" } },
+  { value: "Automotive and Transportation", label: { en: "Automotive and Transportation", ar: "السيارات والنقل" } },
+  { value: "Sports and Fitness", label: { en: "Sports and Fitness", ar: "الرياضة واللياقة البدنية" } },
+  { value: "Travel and Tourism", label: { en: "Travel and Tourism", ar: "السفر والسياحة" } },
+  { value: "Finance Services", label: { en: "Finance Services", ar: "الخدمات المالية" } },
+  { value: "Real Estate", label: { en: "Real Estate", ar: "العقارات" } },
+  { value: "Entertainment", label: { en: "Entertainment", ar: "الترفيه" } },
+  { value: "Media & Publishing", label: { en: "Media & Publishing", ar: "الإعلام والنشر" } },
+  { value: "Government & NGOs", label: { en: "Government & NGOs", ar: "الحكومة والمنظمات غير الحكومية" } },
+  { value: "Energy & Utilities", label: { en: "Energy & Utilities", ar: "الطاقة والمرافق" } },
+  { value: "Retail & E-Commerce", label: { en: "Retail & E-Commerce", ar: "التجزئة والتجارة الإلكترونية" } },
+  { value: "Hospitality", label: { en: "Hospitality", ar: "الضيافة" } },
+  { value: "Pharmaceuticals & Medical Devices", label: { en: "Pharmaceuticals & Medical Devices", ar: "الأدوية والمستلزمات الطبية" } },
+  { value: "Gaming & Esports", label: { en: "Gaming & Esports", ar: "الألعاب والرياضات الإلكترونية" } },
+  { value: "Agriculture & Food Tech", label: { en: "Agriculture & Food Tech", ar: "الزراعة والتكنولوجيا الغذائية" } },
+  { value: "Legal Services", label: { en: "Legal Services", ar: "الخدمات القانونية" } },
+  { value: "Construction & Architecture", label: { en: "Construction & Architecture", ar: "البناء والعمارة" } },
+  { value: "Luxury Goods", label: { en: "Luxury Goods", ar: "السلع الفاخرة" } },
+  { value: "Pet Industry", label: { en: "Pet Industry", ar: "الحيوانات الأليفة ومستلزماتها" } }
 ]
 
 interface ProfileEditModalProps {
@@ -98,6 +99,7 @@ interface CompanyProfileData {
 }
 
 export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate, onToast }: ProfileEditModalProps) {
+  const { language } = useLanguage()
   const [activeTab, setActiveTab] = useState<'personal' | 'company'>('personal')
   const [isLoading, setIsLoading] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
@@ -105,6 +107,15 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate, o
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 })
   const industryDropdownRef = useRef<HTMLDivElement>(null)
   const industryButtonRef = useRef<HTMLButtonElement>(null)
+
+  // Helper function to get industry label
+  const getIndustryLabel = (industry: string) => {
+    if (!industry) {
+      return language === 'ar' ? 'اختر المجال' : 'Select Industry'
+    }
+    const option = INDUSTRY_OPTIONS.find(opt => opt.value === industry)
+    return option ? option.label[language as 'en' | 'ar'] : industry
+  }
   
   // Personal Info State
   const [userProfile, setUserProfile] = useState<UserProfileData>({
@@ -581,7 +592,7 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate, o
                         onBlur={(e) => e.target.style.borderColor = 'transparent'}
                       >
                         <span>
-                          {companyProfile.industry || "Select Industry"}
+                          {getIndustryLabel(companyProfile.industry)}
                         </span>
                         <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isIndustryDropdownOpen ? 'rotate-180' : ''}`} />
                       </button>
@@ -636,7 +647,7 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate, o
                                   e.currentTarget.style.color = '#111'
                                 }}
                               >
-                                {option.label}
+                                {option.label[language as 'en' | 'ar']}
                               </button>
                             ))}
                           </div>

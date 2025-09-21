@@ -13,6 +13,7 @@ import { Sidebar, useSidebar } from "../../components/sidebar"
 import Image from "next/image"
 import { isAuthenticated, getUser, type User } from "@/lib/auth"
 import { N8NWebhook } from "@/lib/n8n-webhook"
+import { useLanguage } from "../../contexts/LanguageContext"
 import { ResponseNormalizer } from "@/lib/response-normalizer"
 import { isVideoUrl, getVideoMimeType } from "@/lib/videoUtils"
 import { TextDirectionHandler } from "@/lib/text-direction-handler"
@@ -225,6 +226,7 @@ function ChatContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { isOpen, toggle } = useSidebar()
+  const { t, createLocalizedPath } = useLanguage()
   
   // State Management
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -943,13 +945,16 @@ function ChatContent() {
             <div className="hidden lg:block w-8" />
             
             <div className="flex justify-center mb-2">
-              <div className="relative">
+              <div 
+                onClick={() => router.push(createLocalizedPath(''))}
+                className="relative cursor-pointer"
+              >
                 <Image 
                   src={isDarkMode ? "/vizzy-logo-dark.svg" : "/vizzy-logo.svg"} 
                   alt="Vizzy Logo" 
                   width={220}
                   height={200}
-                  className="w-48 h-auto lg:w-[220px]"
+                  className="w-48 h-auto lg:w-[220px] hover:opacity-80 transition-opacity"
                 />
               </div>
             </div>
@@ -983,7 +988,7 @@ function ChatContent() {
             // Initial State - Welcome Screen
             <main className="flex-1 flex flex-col items-center justify-center px-6 pb-8">
               <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-[57px] font-medium text-center leading-none mb-8 sm:mb-12 lg:mb-16 ${isDarkMode ? 'text-white' : 'text-[#11002E]'}`}>
-                {"What's on your agenda today?"}
+                {t('chat.agenda')}
               </h1>
 
 {/* Search Input */}

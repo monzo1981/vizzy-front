@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { Search } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useLanguage } from '../contexts/LanguageContext'
 
 // CSS for custom scrollbar
 const customScrollbarStyles = `
@@ -61,6 +62,7 @@ interface SidebarProps {
 
 export function Sidebar({ onToggle, isDarkMode = false, onDarkModeToggle, isMobile = false, onNewChatCreated }: SidebarProps) {
   const router = useRouter()
+  const { language, changeLanguage, isHydrated } = useLanguage()
   const [isExpanded, setIsExpanded] = useState(isMobile)
   const [isPinned, setIsPinned] = useState(isMobile)
   const [chatHistory, setChatHistory] = useState<ChatSession[]>([])
@@ -244,6 +246,32 @@ export function Sidebar({ onToggle, isDarkMode = false, onDarkModeToggle, isMobi
                     fill={isDarkMode ? '#ffffff' : '#4B5563'}
                   />
                 </svg>
+              </button>
+            </div>
+
+            {/* Language Toggle */}
+            <div className={`flex items-start mb-4 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+              showExpanded ? 'justify-start' : 'justify-center'
+            }`}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  changeLanguage(language === 'en' ? 'ar' : 'en');
+                }}
+                className={`p-2 transition-all duration-300 ease-out rounded-lg group ${
+                  isDarkMode 
+                    ? 'hover:bg-white/10' 
+                    : 'hover:bg-white/40'
+                } flex items-center gap-2`}
+                aria-label="Toggle language"
+              >
+                <span 
+                  className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-[#11002E]'}`} 
+                  style={{ fontFamily: "'Noto Sans Arabic', var(--font-inter), Inter, sans-serif" }}
+                  data-font-applied="arabic"
+                >
+                  {!isHydrated ? 'عربي' : (language === 'en' ? 'عربي' : 'English')}
+                </span>
               </button>
             </div>
 

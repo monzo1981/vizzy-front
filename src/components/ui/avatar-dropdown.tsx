@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { ChevronRight, Settings, HelpCircle, Zap, MessageSquare, UserIcon, LogOut } from "lucide-react"
 import { Avatar } from "@/components/ui/avatar"
 import { logout, type User } from "@/lib/auth"
+import { useLanguage } from "../../contexts/LanguageContext"
 
 interface AvatarDropdownProps {
   currentUser: User | null
@@ -15,6 +16,7 @@ interface AvatarDropdownProps {
 
 export function AvatarDropdown({ currentUser, isDarkMode = false, onUserUpdate, className }: AvatarDropdownProps) {
   const router = useRouter()
+  const { createLocalizedPath } = useLanguage()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isLargeScreen, setIsLargeScreen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -92,7 +94,7 @@ export function AvatarDropdown({ currentUser, isDarkMode = false, onUserUpdate, 
           {/* User Email - Clickable to Profile */}
           <button
             onClick={() => {
-              router.push('/profile');
+              router.push(createLocalizedPath('profile'));
               setIsDropdownOpen(false);
             }}
             className={`w-full px-3 py-2 text-left transition-colors duration-150 flex items-center gap-2 border-b rounded-t-[16px] ${
