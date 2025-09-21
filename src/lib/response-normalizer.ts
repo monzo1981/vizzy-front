@@ -1,4 +1,4 @@
-// lib/response-normalizer.ts - Fixed version with proper URL extraction including spaces
+// lib/response-normalizer.ts - Updated version with bold text support
 
 interface NormalizedResponse {
   text: string;
@@ -30,6 +30,37 @@ export class ResponseTextCleaner {
   }
   
   /**
+   * Format text with bold markers for UI rendering
+   */
+  static formatBoldText(text: string): { formatted: boolean; parts: Array<{text: string, bold: boolean}> } {
+    if (!text || !text.includes('**')) {
+      return { formatted: false, parts: [{text, bold: false}] };
+    }
+    
+    const parts: Array<{text: string, bold: boolean}> = [];
+    const regex = /\*\*([^*]+)\*\*/g;
+    let lastIndex = 0;
+    let match;
+    
+    while ((match = regex.exec(text)) !== null) {
+      // Add text before the match
+      if (match.index > lastIndex) {
+        parts.push({text: text.slice(lastIndex, match.index), bold: false});
+      }
+      // Add the bold text
+      parts.push({text: match[1], bold: true});
+      lastIndex = regex.lastIndex;
+    }
+    
+    // Add remaining text
+    if (lastIndex < text.length) {
+      parts.push({text: text.slice(lastIndex), bold: false});
+    }
+    
+    return { formatted: true, parts };
+  }
+  
+  /**
    * تحسين النص للعرض مع تحسينات خاصة
    */
   static improveDisplayText(text: string): string {
@@ -43,6 +74,8 @@ export class ResponseTextCleaner {
     
     // تحسين عبارات أخرى شائعة
     improved = improved.replace(/([أ-ي])\s+([A-Za-z])\s+([أ-ي])/g, '$1 $2 $3');
+    
+    // Note: We don't convert ** here anymore, we handle it in UI
     
     return improved;
   }

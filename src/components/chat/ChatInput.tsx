@@ -1,11 +1,18 @@
 "use client"
 
-import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Plus, MicOff, X, Mic, Send } from 'lucide-react'
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
+import { Plus, MicOff, X } from 'lucide-react'
 import Image from 'next/image'
 import TypewriterPlaceholder from '@/components/chat/TypewriterPlaceholder'
+import TutorialCard from '@/components/chat/TutorialCard'
+import { handleImageSelect as uploadImage } from '@/lib/chat/imageHelpers'
 
 // Types
+export interface ChatInputHandle {
+  isInputFocused: () => boolean
+  focusAndInsertText: (text: string) => void
+}
+
 interface ChatInputProps {
   mode: 'initial' | 'compact'
   isDarkMode: boolean
@@ -19,122 +26,6 @@ interface ChatInputProps {
   onTutorialSkip?: () => void
 }
 
-// Tutorial Card Component (internal)
-const TutorialCard = ({ 
-  title, 
-  subtitle, 
-  onNext, 
-  onSkip, 
-  className = "",
-  style = {},
-  borderRadius = "default"
-}: { 
-  title: string
-  subtitle: string
-  onNext: () => void
-  onSkip: () => void
-  className?: string
-  style?: React.CSSProperties
-  borderRadius?: "default" | "second" | "third"
-}) => {
-  const getBorderRadius = () => {
-    switch (borderRadius) {
-      case "second":
-        return {
-          borderTopLeftRadius: '4px',
-          borderTopRightRadius: '20px',
-          borderBottomRightRadius: '20px',
-          borderBottomLeftRadius: '14px',
-        }
-      case "third":
-        return {
-          borderTopLeftRadius: '20px',
-          borderTopRightRadius: '14px',
-          borderBottomRightRadius: '4px',
-          borderBottomLeftRadius: '20px',
-        }
-      default:
-        return {
-          borderTopLeftRadius: '20px',
-          borderTopRightRadius: '4px',
-          borderBottomRightRadius: '14px',
-          borderBottomLeftRadius: '20px',
-        }
-    }
-  }
-
-  return (
-    <div className={`absolute z-50 ${className}`} style={style}>
-      <div
-        className="relative"
-        style={{
-          width: '180px',
-          minHeight: 'auto',
-          background: '#4248FFE0',
-          border: '#7FCAFE 0.5px solid',
-          boxShadow: '0px 0px 8px 0px #7FCAFE73',
-          ...getBorderRadius(),
-        }}
-      >
-        <div className="p-3 flex flex-col">
-          <div className="mb-3">
-            <div 
-              style={{
-                fontSize: '16px',
-                fontWeight: 700,
-                color: 'white',
-                lineHeight: '1.2',
-                marginBottom: '2px',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {title}
-            </div>
-            <div 
-              style={{
-                fontSize: '12px',
-                fontWeight: 300,
-                color: 'white',
-                lineHeight: '1.2',
-                wordWrap: 'break-word'
-              }}
-            >
-              {subtitle}
-            </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <button
-              onClick={onNext}
-              style={{
-                fontSize: '12px',
-                fontWeight: 300,
-                color: 'white',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              next
-            </button>
-            <button
-              onClick={onSkip}
-              style={{
-                fontSize: '12px',
-                fontWeight: 300,
-                color: 'white',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              skip
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // Image Upload Loader Component (internal)
 const ImageUploadLoader = ({ isDarkMode }: { isDarkMode: boolean }) => {
@@ -163,7 +54,7 @@ const ImageUploadLoader = ({ isDarkMode }: { isDarkMode: boolean }) => {
 }
 
 // Main ChatInput Component
-const ChatInput: React.FC<ChatInputProps> = ({
+const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
   mode,
   isDarkMode,
   isLoading,
@@ -174,7 +65,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   tutorialStep = 1,
   onTutorialNext,
   onTutorialSkip
-}) => {
+}, ref) => {
   // State
   const [inputValue, setInputValue] = useState("")
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
@@ -188,6 +79,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
+  const isCancelledRef = useRef<boolean>(false) // New ref to track cancellation
 
   // Auto-expand input when there's content
   useEffect(() => {
@@ -205,6 +97,30 @@ const ChatInput: React.FC<ChatInputProps> = ({
     }
   }, [mode])
 
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    isInputFocused: () => {
+      const activeElement = document.activeElement
+      return activeElement === inputRef.current || activeElement === compactInputRef.current
+    },
+    focusAndInsertText: (text: string) => {
+      const currentInput = mode === 'initial' ? inputRef.current : compactInputRef.current
+      if (currentInput) {
+        currentInput.focus()
+        const currentValue = inputValue
+        const cursorPosition = currentInput.selectionStart || currentValue.length
+        const newValue = currentValue.slice(0, cursorPosition) + text + currentValue.slice(cursorPosition)
+        setInputValue(newValue)
+        
+        // Set cursor position after the inserted text
+        setTimeout(() => {
+          const newCursorPosition = cursorPosition + text.length
+          currentInput.setSelectionRange(newCursorPosition, newCursorPosition)
+        }, 0)
+      }
+    }
+  }), [mode, inputValue])
+
   // Handle sending message
   const handleSend = async () => {
     if (isLoading || isCreatingSession) return
@@ -212,36 +128,43 @@ const ChatInput: React.FC<ChatInputProps> = ({
     
     if (!messageToSend && !selectedImage) return
 
-    await onSend(messageToSend, selectedImage)
-    
-    // Clear state after sending
+    // Clear state immediately before sending
     setInputValue("")
     setSelectedImage(null)
     setIsInputExpanded(false)
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
+    
+    // Send message after clearing (no await to avoid blocking)
+    onSend(messageToSend, selectedImage)
   }
 
   // Handle image selection
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    setIsImageUploading(true)
+    const token = localStorage.getItem('access_token')
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
     
-    // Here you would normally upload to your backend
-    // For now, we'll use FileReader for local preview
-    const reader = new FileReader()
-    reader.onload = () => {
-      setSelectedImage(reader.result as string)
-      setIsImageUploading(false)
+    if (!token || !apiBaseUrl) {
+      console.error('No auth token or API URL found')
+      return
     }
-    reader.onerror = () => {
-      setIsImageUploading(false)
-      console.error('Failed to read file')
-    }
-    reader.readAsDataURL(file)
+
+    await uploadImage(
+      e,
+      {
+        setSelectedImage,
+        setIsImageUploading,
+        toast: {
+          success: (msg) => console.log('Success:', msg),
+          error: (msg) => console.error('Error:', msg)
+        }
+      },
+      {
+        token,
+        apiBaseUrl
+      }
+    )
   }
 
   // Remove selected image
@@ -252,13 +175,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
     }
   }
 
-  // Voice Recording Functions
+  // Voice Recording Functions - FIXED VERSION
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const mediaRecorder = new MediaRecorder(stream)
       mediaRecorderRef.current = mediaRecorder
       audioChunksRef.current = []
+      isCancelledRef.current = false // Reset cancelled flag when starting new recording
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -267,18 +191,28 @@ const ChatInput: React.FC<ChatInputProps> = ({
       }
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
-        const reader = new FileReader()
-        reader.onloadend = async () => {
-          const base64Audio = reader.result?.toString().split(',')[1]
-          if (base64Audio) {
-            await onVoiceMessage(base64Audio)
-          }
-        }
-        reader.readAsDataURL(audioBlob)
-        
-        // Clean up
+        // Clean up the stream first
         stream.getTracks().forEach(track => track.stop())
+        
+        // Check if recording was cancelled
+        if (isCancelledRef.current) {
+          console.log("Recording cancelled - not processing audio")
+          audioChunksRef.current = [] // Clear audio chunks
+          return // Exit without processing
+        }
+        
+        // Only process if not cancelled
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        if (audioBlob.size > 0) {
+          const reader = new FileReader()
+          reader.onloadend = async () => {
+            const base64Audio = reader.result?.toString().split(',')[1]
+            if (base64Audio) {
+              await onVoiceMessage(base64Audio)
+            }
+          }
+          reader.readAsDataURL(audioBlob)
+        }
       }
 
       mediaRecorder.start()
@@ -290,6 +224,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
+      isCancelledRef.current = false // Not cancelled, normal stop
       mediaRecorderRef.current.stop()
       setIsRecording(false)
     }
@@ -297,11 +232,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   const cancelRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
+      isCancelledRef.current = true // Set cancelled flag BEFORE stopping
       mediaRecorderRef.current.stop()
-      const stream = mediaRecorderRef.current.stream
-      stream.getTracks().forEach(track => track.stop())
-      audioChunksRef.current = []
       setIsRecording(false)
+      audioChunksRef.current = [] // Clear chunks immediately
+      console.log("Recording cancelled")
     }
   }
 
@@ -462,8 +397,19 @@ const ChatInput: React.FC<ChatInputProps> = ({
                       className="hover:scale-105 transition-transform cursor-pointer"
                       title="Send"
                     >
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                        <Send size={20} className="sm:w-6 sm:h-6 text-white" />
+                      <div
+                        className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center ${
+                          isDarkMode ? 'bg-[#4248FF]' : 'bg-[#D3E6FC4D]'
+                        }`}
+                      >
+                        <img
+                          src="/SendVector.svg"
+                          alt="Send"
+                          className="w-5 h-5 sm:w-6 sm:h-6"
+                          style={{
+                            filter: isDarkMode ? 'brightness(0) invert(1)' : 'brightness(0) saturate(100%) invert(27%) sepia(89%) saturate(2394%) hue-rotate(227deg) brightness(103%) contrast(101%)'
+                          }}
+                        />
                       </div>
                     </button>
                   ) : (
@@ -583,7 +529,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                         }
                       }}
                       placeholder=""
-                      className={`w-full text-[24px] font-thin border-none bg-transparent px-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto no-scrollbar relative z-10 transition-all duration-300 ease-in-out ${
+                      className={`w-full text-[20px] font-thin border-none bg-transparent px-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto no-scrollbar relative z-10 transition-all duration-300 ease-in-out ${
                         isDarkMode ? 'text-white' : 'text-black'
                       }`}
                       rows={1}
@@ -642,8 +588,19 @@ const ChatInput: React.FC<ChatInputProps> = ({
                         className={`hover:scale-105 transition-transform cursor-pointer ${isLoading || isCreatingSession ? 'opacity-50' : ''}`}
                         title="Send"
                       >
-                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                          <Send size={16} className="text-white" />
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                            isDarkMode ? 'bg-[#4248FF]' : 'bg-[#D3E6FC4D]'
+                          }`}
+                        >
+                          <img
+                            src="/SendVector.svg"
+                            alt="Send"
+                            className="w-3 h-3 sm:w-6 sm:h-4"
+                            style={{
+                              filter: isDarkMode ? 'brightness(0) invert(1)' : 'brightness(0) saturate(100%) invert(27%) sepia(89%) saturate(2394%) hue-rotate(227deg) brightness(103%) contrast(101%)'
+                            }}
+                          />
                         </div>
                       </button>
                     ) : (
@@ -792,8 +749,19 @@ const ChatInput: React.FC<ChatInputProps> = ({
                         className={`hover:scale-105 transition-transform cursor-pointer ${isLoading || isCreatingSession ? 'opacity-50' : ''}`}
                         title="Send"
                       >
-                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                          <Send size={16} className="text-white" />
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                            isDarkMode ? 'bg-[#4248FF]' : 'bg-[#D3E6FC4D]'
+                          }`}
+                        >
+                          <img
+                            src="/SendVector.svg"
+                            alt="Send"
+                            className="w-3 h-3 sm:w-6 sm:h-4"
+                            style={{
+                              filter: isDarkMode ? 'brightness(0) invert(1)' : 'brightness(0) saturate(100%) invert(27%) sepia(89%) saturate(2394%) hue-rotate(227deg) brightness(103%) contrast(101%)'
+                            }}
+                          />
                         </div>
                       </button>
                     ) : (
@@ -830,6 +798,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
       </div>
     </div>
   )
-}
+})
+
+ChatInput.displayName = 'ChatInput'
 
 export default ChatInput
