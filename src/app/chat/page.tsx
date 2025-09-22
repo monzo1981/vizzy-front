@@ -26,6 +26,7 @@ import ChatInput from '@/components/chat/ChatInput'
 import type { ChatInputHandle } from '@/components/chat/ChatInput'
 import TutorialCard from '@/components/chat/TutorialCard'
 import MessagesContainer from '@/components/chat/MessagesContainer'
+import { CompanyInfoModal } from '@/components/CompanyInfoModal'
 
 // API Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
@@ -93,6 +94,8 @@ function ChatContent() {
   const [sessionId, setSessionId] = useState<string | undefined>(undefined)
   const [isCreatingSession, setIsCreatingSession] = useState(false)
   const [isSubscribed, setIsSubscribed] = useState(false)
+  const [showCompanyInfoModal, setShowCompanyInfoModal] = useState(false)
+  const [companyProfileChecked, setCompanyProfileChecked] = useState(false)
   
   // Refs
   const processedMessageIds = useRef<Set<string>>(new Set())
@@ -215,6 +218,37 @@ function ChatContent() {
     localStorage.setItem('hasSeenChatTutorial', 'true')
   }
 
+  // Function to check company profile
+  const checkCompanyProfile = async () => {
+    if (companyProfileChecked) return
+
+    try {
+      const webhook = new N8NWebhook()
+      let profile = webhook.getCompanyProfile()
+      
+      if (!profile) {
+        // If not cached, fetch from API
+        await webhook.refreshCompanyProfile()
+        profile = webhook.getCompanyProfile()
+      }
+      
+      // Check if BOTH company_name AND industry are missing
+      const needsCompanyInfo = !profile?.company_name && !profile?.industry
+      
+      if (needsCompanyInfo && !showCompanyInfoModal) {
+        // Small delay to let the page load smoothly before showing modal
+        setTimeout(() => {
+          setShowCompanyInfoModal(true)
+        }, 1000)
+      }
+      
+      setCompanyProfileChecked(true)
+    } catch (error) {
+      console.error('Error checking company profile:', error)
+      setCompanyProfileChecked(true)
+    }
+  }
+
   // Initialize auth and N8N
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -232,6 +266,9 @@ function ChatContent() {
         user?.email
       )
     }
+
+    // Check company profile and show modal if needed
+    checkCompanyProfile()
   }, [router])
 
   // Initialize session and load existing messages
@@ -666,6 +703,25 @@ function ChatContent() {
           )}
         </div>
       </GradientBackground>
+      
+      {/* Company Info Modal */}
+      <CompanyInfoModal
+        isOpen={showCompanyInfoModal}
+        onClose={() => setShowCompanyInfoModal(false)}
+        onSuccess={() => {
+          // Modal was saved successfully, can refresh profile if needed
+          if (n8nWebhook.current) {
+            n8nWebhook.current.refreshCompanyProfile()
+          }
+        }}
+        onToast={(type, message) => {
+          if (type === 'success') {
+            toast.success(message)
+          } else {
+            toast.error(message)
+          }
+        }}
+      />
       
       {/* Toast Container */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />

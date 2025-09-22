@@ -6,6 +6,15 @@ interface LoginCredentials {
   password: string;
 }
 
+interface RegisterData {
+  first_name: string;
+  last_name: string;
+  email: string;
+  password: string;
+  company_name: string;
+  industry: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -15,9 +24,15 @@ export interface User {
   email_verified: boolean;
   phone_number?: string | null;
   profile_picture_url?: string | null;
+  company_profile?: {
+    company_name: string;
+    industry: string;
+    company_website_url: string;
+    job_title: string;
+  } | null;
 }
 
-interface LoginResponse {
+interface AuthResponse {
   success: boolean;
   data?: {
     user: User;
@@ -206,7 +221,7 @@ class TokenRefreshManager {
 // Create singleton instance
 const tokenRefreshManager = new TokenRefreshManager();
 
-export const login = async (credentials: LoginCredentials): Promise<LoginResponse> => {
+export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/login/`, {
       method: 'POST',
@@ -237,13 +252,13 @@ export const login = async (credentials: LoginCredentials): Promise<LoginRespons
   }
 };
 
-export const register = async (userData: {
-  first_name: string;
-  last_name: string;
-  email: string;
-  password: string;
-}) => {
+export const register = async (userData: RegisterData): Promise<AuthResponse> => {
   try {
+    console.log('[Register] Sending registration data:', {
+      ...userData,
+      password: '[HIDDEN]' // Don't log the password
+    });
+
     const response = await fetch(`${API_BASE_URL}/auth/register/`, {
       method: 'POST',
       headers: {
@@ -253,6 +268,13 @@ export const register = async (userData: {
     });
 
     const data = await response.json();
+    console.log('[Register] Response received:', {
+      ...data,
+      data: data.data ? {
+        ...data.data,
+        tokens: data.data.tokens ? { access: '[HIDDEN]', refresh: '[HIDDEN]' } : undefined
+      } : undefined
+    });
 
     if (response.ok && data.success) {
       // Store tokens in localStorage
@@ -263,9 +285,11 @@ export const register = async (userData: {
       // Start automatic refresh cycle
       tokenRefreshManager.scheduleRefresh(data.data.tokens.access);
       
+      console.log('[Register] Registration successful, tokens stored');
       return { success: true, data: data.data };
     } else {
-      return { success: false, error: data.message || 'Registration failed' };
+      console.error('[Register] Registration failed:', data);
+      return { success: false, error: data.message || data.errors || 'Registration failed' };
     }
   } catch (error) {
     console.error('[Register] Network error:', error);
@@ -368,7 +392,7 @@ export const refreshToken = async (): Promise<boolean> => {
 };
 
 // Google OAuth login function
-export const googleLogin = async (googleToken: string): Promise<LoginResponse> => {
+export const googleLogin = async (googleToken: string): Promise<AuthResponse> => {
   try {
     console.log('[GoogleLogin] Sending token to backend:', googleToken.substring(0, 50) + '...');
     console.log('[GoogleLogin] API URL:', `${API_BASE_URL}/auth/google/`);
