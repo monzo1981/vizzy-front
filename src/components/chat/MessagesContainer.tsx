@@ -6,6 +6,7 @@ import { X, Mic } from 'lucide-react'
 import { TextDirectionHandler } from '@/lib/text-direction-handler'
 import { ResponseTextCleaner } from '@/lib/response-normalizer'
 import { isVideoUrl, getVideoMimeType } from '@/lib/videoUtils'
+import { downloadMedia, isVideoUrl as isVideoUrlHelper } from '@/lib/chat/imageHelpers'
 import type { ChatMessage } from '@/lib/supabase-client'
 
 // FormattedText Component for rendering bold text
@@ -66,12 +67,40 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 }) => {
   const isUserMessage = message.sender === 'user';
   const isAssistant = message.sender === 'assistant' || message.sender === 'system';
+  const [isDownloading, setIsDownloading] = useState(false);
   
   // Adjusted responsiveMediaStyle to fix type error
   const responsiveMediaStyle = {
     maxWidth: '100%' as const,
     height: 'auto' as const,
     objectFit: 'contain' as const,
+  };
+
+  // Handle media download
+  const handleDownload = async (mediaUrl: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the image click
+    
+    if (isDownloading) return;
+    
+    setIsDownloading(true);
+    try {
+      // Get the original URL if it's a proxied URL
+      let originalUrl = mediaUrl;
+      if (mediaUrl.includes('/api/image-proxy?imageUrl=') || mediaUrl.includes('/api/video-proxy?videoUrl=')) {
+        // Extract original URL from proxy
+        const urlMatch = mediaUrl.match(/[?&](imageUrl|videoUrl)=([^&]+)/);
+        if (urlMatch && urlMatch[2]) {
+          originalUrl = decodeURIComponent(urlMatch[2]);
+        }
+      }
+      
+      await downloadMedia(originalUrl); // Use the original URL for download
+      console.log('Media downloaded successfully');
+    } catch (error) {
+      console.error('Failed to download media:', error);
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   if (isUserMessage) {
@@ -167,30 +196,47 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               }}
               onClick={() => onImageClick && onImageClick(message.visual || '')}
             >
-              {isVideoUrl(message.visual) ? (
-                <video 
-                  controls 
-                  preload="metadata"
-                  playsInline
-                  muted={false}
-                  className="rounded-lg"
-                  style={responsiveMediaStyle}
-                  crossOrigin="anonymous"
+              <div className="relative">
+                {isVideoUrl(message.visual) ? (
+                  <video 
+                    controls 
+                    preload="metadata"
+                    playsInline
+                    muted={false}
+                    className="rounded-lg"
+                    style={responsiveMediaStyle}
+                    crossOrigin="anonymous"
+                  >
+                    <source src={`/api/video-proxy?videoUrl=${encodeURIComponent(message.visual)}`} 
+                            type={getVideoMimeType(message.visual)} />
+                    <source src={`/api/video-proxy?videoUrl=${encodeURIComponent(message.visual)}`} 
+                            type="video/mp4" />
+                    Your browser does not support the video tag.
+                  </video>
+                ) : (
+                  <StableImage
+                    src={`/api/image-proxy?imageUrl=${encodeURIComponent(message.visual)}`}
+                    alt="Generated visual content"
+                    className="rounded-lg"
+                    style={responsiveMediaStyle}
+                  />
+                )}
+
+                {/* Download button - positioned over the media */}
+                <button
+                  onClick={(e) => handleDownload(message.visual!, e)}
+                  disabled={isDownloading}
+                  className="absolute top-2 right-2 transition-opacity duration-200 disabled:opacity-50 z-20"
+                  title={isVideoUrl(message.visual) ? "Download Video" : "Download Image"}
                 >
-                  <source src={`/api/video-proxy?videoUrl=${encodeURIComponent(message.visual)}`} 
-                          type={getVideoMimeType(message.visual)} />
-                  <source src={`/api/video-proxy?videoUrl=${encodeURIComponent(message.visual)}`} 
-                          type="video/mp4" />
-                  Your browser does not support the video tag.
-                </video>
-              ) : (
-                <StableImage
-                  src={`/api/image-proxy?imageUrl=${encodeURIComponent(message.visual)}`}
-                  alt="Generated visual content"
-                  className="rounded-lg"
-                  style={responsiveMediaStyle}
-                />
-              )}
+                  <Image
+                    src="/download.svg"
+                    alt="Download"
+                    width={24}
+                    height={24}
+                  />
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -253,6 +299,33 @@ const ExpandedImageModal: React.FC<ExpandedImageModalProps> = ({
   onClose,
   StableImage 
 }) => {
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  // Handle media download in modal
+  const handleModalDownload = async () => {
+    if (!imageUrl || isDownloading) return;
+    
+    setIsDownloading(true);
+    try {
+      // Get the original URL if it's a proxied URL  
+      let originalUrl = imageUrl;
+      if (imageUrl.includes('/api/image-proxy?imageUrl=') || imageUrl.includes('/api/video-proxy?videoUrl=')) {
+        // Extract original URL from proxy
+        const urlMatch = imageUrl.match(/[?&](imageUrl|videoUrl)=([^&]+)/);
+        if (urlMatch && urlMatch[2]) {
+          originalUrl = decodeURIComponent(urlMatch[2]);
+        }
+      }
+      
+      await downloadMedia(originalUrl);
+      console.log('Media downloaded successfully from modal');
+    } catch (error) {
+      console.error('Failed to download media from modal:', error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   if (!imageUrl) return null;
 
   return (
@@ -261,12 +334,28 @@ const ExpandedImageModal: React.FC<ExpandedImageModalProps> = ({
       onClick={onClose}
     >
       <div className="relative max-w-4xl max-h-[90vh]">
+        {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 bg-white/20 backdrop-blur-sm rounded-full p-2 hover:bg-white/30 transition-colors"
+          className="absolute top-4 right-4 bg-white/20 backdrop-blur-sm rounded-full p-2 hover:bg-white/30 transition-colors z-10"
           aria-label="Close image"
         >
           <X size={24} className="text-white" />
+        </button>
+
+        {/* Download button */}
+        <button
+          onClick={handleModalDownload}
+          disabled={isDownloading}
+          className="absolute top-4 right-16 transition-opacity z-10 disabled:opacity-50"
+          title={isVideoUrl(imageUrl) ? "Download Video" : "Download Image"}
+        >
+          <Image
+            src="/download.svg"
+            alt="Download"
+            width={32}
+            height={32}
+          />
         </button>
 
         {isVideoUrl(imageUrl) ? (

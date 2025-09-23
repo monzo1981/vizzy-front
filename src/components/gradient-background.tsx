@@ -1,4 +1,6 @@
-import React from 'react';
+"use client"
+
+import React, { useEffect, useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 
 export function GradientBackground({ 
@@ -9,8 +11,14 @@ export function GradientBackground({
   opacity?: number;
 }) {
   const { isDarkMode } = useTheme();
-  // If dark mode is enabled, render a solid dark background
-  if (isDarkMode) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // If dark mode is enabled and component is mounted, render a solid dark background
+  if (mounted && isDarkMode) {
     return (
       <div className="min-h-screen w-full relative overflow-hidden" style={{ background: 'rgba(24, 24, 25, 1)' }}>
         {/* Content */}
@@ -21,7 +29,7 @@ export function GradientBackground({
     );
   }
 
-  // Light mode gradient (original implementation)
+  // Light mode gradient (original implementation) - render this by default during SSR and initial render
   return (
     <div className="min-h-screen w-full relative overflow-hidden">
       {/* CSS Animations */}

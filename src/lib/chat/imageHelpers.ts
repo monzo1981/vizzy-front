@@ -28,15 +28,27 @@ export interface ImageUploadConfig {
 export const downloadImage = async (imageUrl: string, fileName?: string): Promise<void> => {
   try {
     let blob: Blob
+    let finalUrl: string
     
     // Check if it's a base64 image
     if (imageUrl.startsWith('data:')) {
-      // Convert base64 to blob
+      // Convert base64 to blob directly
       const response = await fetch(imageUrl)
       blob = await response.blob()
     } else {
-      // For regular URLs, fetch the image
-      const response = await fetch(imageUrl)
+      // For external URLs (like Azure blob storage), use the image proxy
+      if (imageUrl.includes('blob.core.windows.net') || imageUrl.includes('http')) {
+        // Use the image proxy to bypass CORS
+        finalUrl = `/api/image-proxy?imageUrl=${encodeURIComponent(imageUrl)}`
+      } else {
+        finalUrl = imageUrl
+      }
+      
+      // Fetch through proxy or directly
+      const response = await fetch(finalUrl)
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`)
+      }
       blob = await response.blob()
     }
     
@@ -60,9 +72,110 @@ export const downloadImage = async (imageUrl: string, fileName?: string): Promis
       window.open(imageUrl, '_blank')
     } catch (fallbackError) {
       console.error('Fallback failed too:', fallbackError)
-      throw new Error('Failed to download or open image')
     }
   }
+}
+
+// Function to download video from URL
+export const downloadVideo = async (videoUrl: string, fileName?: string): Promise<void> => {
+  try {
+    let finalUrl: string
+    
+    // For external URLs (like Azure blob storage), use the video proxy
+    if (videoUrl.includes('blob.core.windows.net') || videoUrl.includes('http')) {
+      // Use the video proxy to bypass CORS
+      finalUrl = `/api/video-proxy?videoUrl=${encodeURIComponent(videoUrl)}`
+    } else {
+      finalUrl = videoUrl
+    }
+    
+    // Fetch through proxy or directly
+    const response = await fetch(finalUrl)
+    if (!response.ok) {
+      throw new Error(`Failed to fetch video: ${response.status}`)
+    }
+    const blob = await response.blob()
+    
+    // Create a temporary URL for the blob
+    const url = window.URL.createObjectURL(blob)
+    
+    // Determine file extension from the blob type or use default
+    let fileExtension = 'mp4' // default
+    if (blob.type.includes('webm')) {
+      fileExtension = 'webm'
+    } else if (blob.type.includes('mov')) {
+      fileExtension = 'mov'
+    } else if (blob.type.includes('avi')) {
+      fileExtension = 'avi'
+    }
+    
+    // Create a temporary anchor element and trigger download
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName || `vizzy-video-${Date.now()}.mp4` // Always use provided fileName or default with .mp4
+    document.body.appendChild(link)
+    link.click()
+    
+    // Clean up
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('Error downloading video:', error)
+    // Fallback: try to open in new tab if download fails
+    try {
+      window.open(videoUrl, '_blank')
+    } catch (fallbackError) {
+      console.error('Fallback failed too:', fallbackError)
+    }
+  }
+}
+
+// Function to download media (image or video) based on URL
+export const downloadMedia = async (mediaUrl: string, fileName?: string): Promise<void> => {
+  // Check if it's a video URL
+  const isVideo = isVideoUrl(mediaUrl)
+  
+  if (isVideo) {
+    // For videos, determine extension from URL or use mp4 as default
+    let videoExtension = 'mp4'
+    if (mediaUrl.includes('.webm')) videoExtension = 'webm'
+    else if (mediaUrl.includes('.mov')) videoExtension = 'mov'
+    else if (mediaUrl.includes('.avi')) videoExtension = 'avi'
+    
+    const videoFileName = fileName || `vizzy-video-${Date.now()}.${videoExtension}`
+    await downloadVideo(mediaUrl, videoFileName)
+  } else {
+    // For images, use png as default
+    const imageFileName = fileName || `vizzy-image-${Date.now()}.png`
+    await downloadImage(mediaUrl, imageFileName)
+  }
+}
+
+// Function to check if a URL is a video
+export const isVideoUrl = (url: string | undefined): boolean => {
+  if (!url) return false
+  
+  // Check for video file extensions
+  const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv', '.flv', '.wmv']
+  const lowerUrl = url.toLowerCase()
+  
+  for (const ext of videoExtensions) {
+    if (lowerUrl.includes(ext)) {
+      return true
+    }
+  }
+  
+  // Check for video MIME types in data URLs
+  if (url.startsWith('data:video')) {
+    return true
+  }
+  
+  // Check for video proxy URLs
+  if (url.includes('/api/video-proxy')) {
+    return true
+  }
+  
+  return false
 }
 
 // Function to check if a URL is a base64 image
