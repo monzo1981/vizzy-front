@@ -265,7 +265,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
   // Render Initial Mode (Welcome Screen Input)
   if (mode === 'initial') {
     return (
-      <div className="w-full max-w-xl sm:max-w-2xl md:max-w-3xl lg:max-w-4xl mb-6 sm:mb-8 lg:mb-10">
+      <div className="w-full max-w-xl sm:max-w-2xl md:max-w-3xl lg:max-w-4xl mb-6 sm:mb-6 lg:mb-8">
         <div className="w-full relative">
           {/* Tutorial Card for Initial Mode */}
           {showTutorial && tutorialStep === 3 && onTutorialNext && onTutorialSkip && (
@@ -358,7 +358,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                   />
                   <Plus 
                     size={24} 
-                    className={`sm:w-6 sm:h-6 lg:w-8 lg:h-8 cursor-pointer hover:opacity-80 transition-opacity ${
+                    className={`sm:w-4 sm:h-4 lg:w-6 lg:h-6 cursor-pointer hover:opacity-80 transition-opacity ${
                       isDarkMode ? 'text-white' : 'text-[#4248FF]'
                     }`}
                     onClick={() => fileInputRef.current?.click()}
@@ -371,7 +371,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                       alt="Tool Icon" 
                       width={24} 
                       height={24} 
-                      className="w-6 h-6 lg:w-8 lg:h-8"
+                      className="w-4 h-4 lg:w-6 lg:h-6"
                       style={{ filter: isDarkMode ? 'brightness(0) invert(1)' : 'none' }}
                     />
                   </div>
@@ -398,14 +398,14 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                       title="Send"
                     >
                       <div
-                        className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center ${
+                        className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${
                           isDarkMode ? 'bg-[#4248FF]' : 'bg-[#D3E6FC4D]'
                         }`}
                       >
                         <img
                           src="/SendVector.svg"
                           alt="Send"
-                          className="w-5 h-5 sm:w-6 sm:h-6"
+                          className="w-3 h-3 sm:w-4 sm:h-4"
                           style={{
                             filter: isDarkMode ? 'brightness(0) invert(1)' : 'brightness(0) saturate(100%) invert(27%) sepia(89%) saturate(2394%) hue-rotate(227deg) brightness(103%) contrast(101%)'
                           }}
@@ -424,16 +424,13 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                           <MicOff size={20} className="sm:w-6 sm:h-6 text-white" />
                         </div>
                       ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" className="sm:w-12 sm:h-12" viewBox="0 0 58 53" fill="none">
-                          <g clipPath="url(#clip0_489_1814)">
-                            <path fillRule="evenodd" clipRule="evenodd" d="M37.8361 1.58398C39.0162 1.58398 39.9729 2.54065 39.9729 3.72074V49.3048C39.9729 50.4848 39.0162 51.4415 37.8361 51.4415C36.6561 51.4415 35.6994 50.4848 35.6994 49.3048V3.72074C35.6994 2.54065 36.6561 1.58398 37.8361 1.58398ZM29.2891 10.131C30.4692 10.131 31.4259 11.0877 31.4259 12.2677V40.7578C31.4259 41.9378 30.4692 42.8945 29.2891 42.8945C28.109 42.8945 27.1523 41.9378 27.1523 40.7578V12.2677C27.1523 11.0877 28.109 10.131 29.2891 10.131ZM12.1951 12.98C13.3752 12.98 14.3318 13.9367 14.3318 15.1167V37.9088C14.3318 39.0888 13.3752 40.0455 12.1951 40.0455C11.015 40.0455 10.0583 39.0888 10.0583 37.9088V15.1167C10.0583 13.9367 11.015 12.98 12.1951 12.98ZM46.3831 15.829C47.5632 15.829 48.5199 16.7857 48.5199 17.9658V35.0598C48.5199 36.2398 47.5632 37.1965 46.3831 37.1965C45.2031 37.1965 44.2464 36.2398 44.2464 35.0598V17.9658C44.2464 16.7857 45.2031 15.829 46.3831 15.829ZM20.7421 18.678C21.9222 18.678 22.8788 19.6347 22.8788 20.8148V32.2108C22.8788 33.3908 21.9222 34.3475 20.7421 34.3475C19.562 34.3475 18.6053 33.3908 18.6053 32.2108V20.8148C18.6053 19.6347 19.562 18.678 20.7421 18.678ZM3.64807 21.527C4.82816 21.527 5.78483 22.4837 5.78483 23.6638V29.3618C5.78483 30.5418 4.82816 31.4985 3.64807 31.4985C2.46799 31.4985 1.51132 30.5418 1.51132 29.3618V23.6638C1.51132 22.4837 2.46799 21.527 3.64807 21.527ZM54.9301 21.527C56.1102 21.527 57.0669 22.4837 57.0669 23.6638V29.3618C57.0669 30.5418 56.1102 31.4985 54.9301 31.4985C53.7501 31.4985 52.7934 30.5418 52.7934 29.3618V23.6638C52.7934 22.4837 53.7501 21.527 54.9301 21.527Z" fill={isDarkMode ? "#FFFFFF" : "#4248FF"}/>
-                          </g>
-                          <defs>
-                            <clipPath id="clip0_489_1814">
-                              <rect width="56.9801" height="51.2821" fill="white" transform="translate(0.799072 0.87207)"/>
-                            </clipPath>
-                          </defs>
-                        </svg>
+                          <Image 
+                            src="/MIC.svg" 
+                            alt="MIC Icon" 
+                            width={16}
+                            height={16}
+                            style={{ filter: isDarkMode ? 'brightness(0) invert(1)' : 'none' }} 
+                          />
                       )}
                     </button>
                   )}
@@ -615,16 +612,13 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                             <MicOff size={16} className="text-white" />
                           </div>
                         ) : (
-                          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 58 53" fill="none">
-                            <g clipPath="url(#clip0_489_1814)">
-                              <path fillRule="evenodd" clipRule="evenodd" d="M37.8361 1.58398C39.0162 1.58398 39.9729 2.54065 39.9729 3.72074V49.3048C39.9729 50.4848 39.0162 51.4415 37.8361 51.4415C36.6561 51.4415 35.6994 50.4848 35.6994 49.3048V3.72074C35.6994 2.54065 36.6561 1.58398 37.8361 1.58398ZM29.2891 10.131C30.4692 10.131 31.4259 11.0877 31.4259 12.2677V40.7578C31.4259 41.9378 30.4692 42.8945 29.2891 42.8945C28.109 42.8945 27.1523 41.9378 27.1523 40.7578V12.2677C27.1523 11.0877 28.109 10.131 29.2891 10.131ZM12.1951 12.98C13.3752 12.98 14.3318 13.9367 14.3318 15.1167V37.9088C14.3318 39.0888 13.3752 40.0455 12.1951 40.0455C11.015 40.0455 10.0583 39.0888 10.0583 37.9088V15.1167C10.0583 13.9367 11.015 12.98 12.1951 12.98ZM46.3831 15.829C47.5632 15.829 48.5199 16.7857 48.5199 17.9658V35.0598C48.5199 36.2398 47.5632 37.1965 46.3831 37.1965C45.2031 37.1965 44.2464 36.2398 44.2464 35.0598V17.9658C44.2464 16.7857 45.2031 15.829 46.3831 15.829ZM20.7421 18.678C21.9222 18.678 22.8788 19.6347 22.8788 20.8148V32.2108C22.8788 33.3908 21.9222 34.3475 20.7421 34.3475C19.562 34.3475 18.6053 33.3908 18.6053 32.2108V20.8148C18.6053 19.6347 19.562 18.678 20.7421 18.678ZM3.64807 21.527C4.82816 21.527 5.78483 22.4837 5.78483 23.6638V29.3618C5.78483 30.5418 4.82816 31.4985 3.64807 31.4985C2.46799 31.4985 1.51132 30.5418 1.51132 29.3618V23.6638C1.51132 22.4837 2.46799 21.527 3.64807 21.527ZM54.9301 21.527C56.1102 21.527 57.0669 22.4837 57.0669 23.6638V29.3618C57.0669 30.5418 56.1102 31.4985 54.9301 31.4985C53.7501 31.4985 52.7934 30.5418 52.7934 29.3618V23.6638C52.7934 22.4837 53.7501 21.527 54.9301 21.527Z" fill={isDarkMode ? "#FFFFFF" : "#4248FF"}/>
-                            </g>
-                            <defs>
-                              <clipPath id="clip0_489_1814">
-                                <rect width="56.9801" height="51.2821" fill="white" transform="translate(0.799072 0.87207)"/>
-                              </clipPath>
-                            </defs>
-                          </svg>
+                          <Image 
+                            src="/MIC.svg" 
+                            alt="MIC Icon" 
+                            width={16}
+                            height={16}
+                            style={{ filter: isDarkMode ? 'brightness(0) invert(1)' : 'none' }} 
+                          />
                         )}
                       </button>
                     )}
@@ -776,16 +770,13 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                             <MicOff size={16} className="text-white" />
                           </div>
                         ) : (
-                          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 58 53" fill="none">
-                            <g clipPath="url(#clip0_489_1814)">
-                              <path fillRule="evenodd" clipRule="evenodd" d="M37.8361 1.58398C39.0162 1.58398 39.9729 2.54065 39.9729 3.72074V49.3048C39.9729 50.4848 39.0162 51.4415 37.8361 51.4415C36.6561 51.4415 35.6994 50.4848 35.6994 49.3048V3.72074C35.6994 2.54065 36.6561 1.58398 37.8361 1.58398ZM29.2891 10.131C30.4692 10.131 31.4259 11.0877 31.4259 12.2677V40.7578C31.4259 41.9378 30.4692 42.8945 29.2891 42.8945C28.109 42.8945 27.1523 41.9378 27.1523 40.7578V12.2677C27.1523 11.0877 28.109 10.131 29.2891 10.131ZM12.1951 12.98C13.3752 12.98 14.3318 13.9367 14.3318 15.1167V37.9088C14.3318 39.0888 13.3752 40.0455 12.1951 40.0455C11.015 40.0455 10.0583 39.0888 10.0583 37.9088V15.1167C10.0583 13.9367 11.015 12.98 12.1951 12.98ZM46.3831 15.829C47.5632 15.829 48.5199 16.7857 48.5199 17.9658V35.0598C48.5199 36.2398 47.5632 37.1965 46.3831 37.1965C45.2031 37.1965 44.2464 36.2398 44.2464 35.0598V17.9658C44.2464 16.7857 45.2031 15.829 46.3831 15.829ZM20.7421 18.678C21.9222 18.678 22.8788 19.6347 22.8788 20.8148V32.2108C22.8788 33.3908 21.9222 34.3475 20.7421 34.3475C19.562 34.3475 18.6053 33.3908 18.6053 32.2108V20.8148C18.6053 19.6347 19.562 18.678 20.7421 18.678ZM3.64807 21.527C4.82816 21.527 5.78483 22.4837 5.78483 23.6638V29.3618C5.78483 30.5418 4.82816 31.4985 3.64807 31.4985C2.46799 31.4985 1.51132 30.5418 1.51132 29.3618V23.6638C1.51132 22.4837 2.46799 21.527 3.64807 21.527ZM54.9301 21.527C56.1102 21.527 57.0669 22.4837 57.0669 23.6638V29.3618C57.0669 30.5418 56.1102 31.4985 54.9301 31.4985C53.7501 31.4985 52.7934 30.5418 52.7934 29.3618V23.6638C52.7934 22.4837 53.7501 21.527 54.9301 21.527Z" fill={isDarkMode ? "#FFFFFF" : "#4248FF"}/>
-                            </g>
-                            <defs>
-                              <clipPath id="clip0_489_1814">
-                                <rect width="56.9801" height="51.2821" fill="white" transform="translate(0.799072 0.87207)"/>
-                              </clipPath>
-                            </defs>
-                          </svg>
+                          <Image 
+                            src="/MIC.svg" 
+                            alt="MIC Icon" 
+                            width={14}
+                            height={14}
+                            style={{ filter: isDarkMode ? 'brightness(0) invert(1)' : 'none' }} 
+                          />
                         )}
                       </button>
                     )}

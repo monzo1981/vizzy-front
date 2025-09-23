@@ -27,6 +27,7 @@ import type { ChatInputHandle } from '@/components/chat/ChatInput'
 import TutorialCard from '@/components/chat/TutorialCard'
 import MessagesContainer from '@/components/chat/MessagesContainer'
 import { CompanyInfoModal } from '@/components/CompanyInfoModal'
+import { ServicesCarousel } from '@/components/chat/ServicesCarousel'
 
 // API Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
@@ -621,15 +622,14 @@ function ChatContent() {
             
             <div className="flex justify-center mb-2">
               <div 
-                onClick={() => router.push(createLocalizedPath(''))}
-                className="relative cursor-pointer"
+                className="relative"
               >
                 <Image 
                   src={isDarkMode ? "/vizzy-logo-dark.svg" : "/vizzy-logo.svg"} 
                   alt="Vizzy Logo" 
                   width={220}
                   height={200}
-                  className="w-48 h-auto lg:w-[220px] hover:opacity-80 transition-opacity"
+                  className="w-48 h-auto lg:w-[220px] transition-opacity"
                 />
               </div>
             </div>
@@ -657,28 +657,48 @@ function ChatContent() {
             </div>
           </header>
 
+
           {/* Main Content Area */}
           {!hasMessages ? (
-            <main className="flex-1 flex flex-col items-center justify-center px-6 pb-8">
-              <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-[57px] font-medium text-center leading-none mb-8 sm:mb-12 lg:mb-16 ${
-                isDarkMode ? 'text-white' : 'text-[#11002E]'
-              }`}>
-                {t('chat.agenda')}
-              </h1>
+            <main className="flex-1 flex flex-col px-6 pb-6">
+              {/* Spacer to push content to center */}
+              <div className="flex-1 min-h-0" />
+              
+              {/* Center Content: Title and Carousel */}
+              <div className="flex flex-col items-center">
+                <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-[57px] font-bold text-center leading-none mb-4 sm:mb-4 lg:mb-8`} style={{
+                  background: 'linear-gradient(90.57deg, #FFEB77 2.54%, #FF4A19 37.91%, #4248FF 90.32%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
+                }}>
+                  {t('chat.agenda')}
+                </h1>
 
-              <ChatInput
-                ref={chatInputRef}
-                mode="initial"
-                isDarkMode={isDarkMode}
-                isLoading={isLoading}
-                isCreatingSession={isCreatingSession}
-                onSend={handleSend}
-                onVoiceMessage={handleVoiceMessage}
-                showTutorial={showTutorial}
-                tutorialStep={tutorialStep}
-                onTutorialNext={nextTutorialStep}
-                onTutorialSkip={skipTutorial}
-              />
+                {/* Services Carousel */}
+                <div className="w-full mb-8 sm:mb-12">
+                  <ServicesCarousel isDarkMode={isDarkMode} />
+                </div>
+              </div>
+
+              {/* Spacer to push input to bottom */}
+              <div className="flex-1 min-h-0" />
+              
+              {/* Bottom Input Box */}
+              <div className="w-full flex justify-center">
+                <ChatInput
+                  ref={chatInputRef}
+                  mode="initial"
+                  isDarkMode={isDarkMode}
+                  isLoading={isLoading}
+                  isCreatingSession={isCreatingSession}
+                  onSend={handleSend}
+                  onVoiceMessage={handleVoiceMessage}
+                  showTutorial={showTutorial}
+                  tutorialStep={tutorialStep}
+                  onTutorialNext={nextTutorialStep}
+                  onTutorialSkip={skipTutorial}
+                />
+              </div>
             </main>
           ) : (
             <div className="flex-1 flex flex-col overflow-hidden">

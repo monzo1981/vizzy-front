@@ -28,7 +28,7 @@ const translations = {
       newChat: "New Chat",
       loading: "Loading...",
       typing: "Typing...",
-      agenda: "What's on your agenda today?"
+      agenda: "What's Hot today?"
     }
   },
   ar: {
@@ -43,7 +43,7 @@ const translations = {
       newChat: "محادثة جديدة",
       loading: "جارٍ التحميل...",
       typing: "يكتب...",
-      agenda: "ما هو الموجود في جدول أعمالك؟"
+      agenda: "جرّب  الجديد أول بأول"
     }
   }
 };
