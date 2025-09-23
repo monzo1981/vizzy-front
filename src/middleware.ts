@@ -14,7 +14,7 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/ar/chat', request.url));
     } else {
       // Redirect unauthenticated users to Arabic signin
-      return NextResponse.redirect(new URL('/ar/signin', request.url));
+      return NextResponse.redirect(new URL('/', request.url));
     }
   }
   

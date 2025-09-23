@@ -6,7 +6,6 @@ import { X, Mic } from 'lucide-react'
 import { TextDirectionHandler } from '@/lib/text-direction-handler'
 import { ResponseTextCleaner } from '@/lib/response-normalizer'
 import { isVideoUrl, getVideoMimeType } from '@/lib/videoUtils'
-import { downloadImage, isBase64Image } from '@/lib/chat/imageHelpers'
 import type { ChatMessage } from '@/lib/supabase-client'
 
 // FormattedText Component for rendering bold text
@@ -65,9 +64,16 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   onImageClick,
   StableImage 
 }) => {
-  const isUserMessage = message.sender === 'user'
-  const isAssistant = message.sender === 'assistant' || message.sender === 'system'
+  const isUserMessage = message.sender === 'user';
+  const isAssistant = message.sender === 'assistant' || message.sender === 'system';
   
+  // Adjusted responsiveMediaStyle to fix type error
+  const responsiveMediaStyle = {
+    maxWidth: '100%' as const,
+    height: 'auto' as const,
+    objectFit: 'contain' as const,
+  };
+
   if (isUserMessage) {
     return (
       <div className="flex justify-end">
@@ -78,7 +84,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               background: 'linear-gradient(90.26deg, rgba(255, 255, 255, 0.65) -46.71%, rgba(127, 202, 254, 0.65) 145.13%)',
               backdropFilter: 'blur(16px)',
               boxShadow: '0px 0px 10px 0px rgba(0, 0, 0, 0.2)',
-              borderRadius: '25px 25px 4px 25px'
+              borderRadius: '25px 25px 4px 25px',
             }}
           >
             {message.isVoice ? (
@@ -98,27 +104,29 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                   textAlign: 'start', 
                   unicodeBidi: 'plaintext', 
                   wordBreak: 'break-word', 
-                  whiteSpace: 'pre-wrap' 
+                  whiteSpace: 'pre-wrap',
                 }}
               />
             )}
-            
+
             {message.visual && (
               <div className="mt-3 relative">
-                <img 
+                <Image 
                   src={message.visual} 
                   alt="Uploaded image" 
-                  className="rounded-lg max-w-full"
-                  style={{ maxWidth: '200px', height: 'auto' }}
+                  className="rounded-lg"
+                  style={responsiveMediaStyle}
+                  width={200}
+                  height={200}
                 />
               </div>
             )}
           </div>
         </div>
       </div>
-    )
+    );
   }
-  
+
   if (isAssistant) {
     return (
       <div className="flex items-start space-x-4">
@@ -129,7 +137,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             width={24}
             height={24}
             style={isDarkMode ? { 
-              filter: 'invert(87%) sepia(13%) saturate(1042%) hue-rotate(176deg) brightness(104%) contrast(97%)' 
+              filter: 'invert(87%) sepia(13%) saturate(1042%) hue-rotate(176deg) brightness(104%) contrast(97%)',
             } : {}}
           />
         </div>
@@ -142,19 +150,20 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             style={{
               textAlign: 'start',
               unicodeBidi: 'plaintext',
-              wordBreak: 'break-word'
+              wordBreak: 'break-word',
             }}
           />
-          
+
           {message.visual && (
             <div 
               className="mt-4 backdrop-blur-xl rounded-3xl p-6 flex items-center justify-center cursor-pointer relative" 
               style={{ 
-                width: '370px', 
+                width: '100%',
+                maxWidth: '370px',
                 background: isDarkMode 
                   ? 'linear-gradient(109.03deg, rgba(190, 220, 255, 0.1) -35.22%, rgba(255, 255, 255, 0.05) 17.04%, rgba(255, 232, 228, 0.05) 57.59%, rgba(190, 220, 255, 0.1) 97.57%)'
                   : 'linear-gradient(109.03deg, #BEDCFF -35.22%, rgba(255, 255, 255, 0.9) 17.04%, rgba(255, 232, 228, 0.4) 57.59%, #BEDCFF 97.57%)',
-                boxShadow: '0px 0px 6px 0px rgba(0, 0, 0, 0.2)'
+                boxShadow: '0px 0px 6px 0px rgba(0, 0, 0, 0.2)',
               }}
               onClick={() => onImageClick && onImageClick(message.visual || '')}
             >
@@ -164,8 +173,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                   preload="metadata"
                   playsInline
                   muted={false}
-                  className="max-w-full max-h-full rounded-lg object-contain"
-                  style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }}
+                  className="rounded-lg"
+                  style={responsiveMediaStyle}
                   crossOrigin="anonymous"
                 >
                   <source src={`/api/video-proxy?videoUrl=${encodeURIComponent(message.visual)}`} 
@@ -174,63 +183,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                           type="video/mp4" />
                   Your browser does not support the video tag.
                 </video>
-              ) : isBase64Image(message.visual) ? (
-                <div className="relative inline-block">
-                  <img 
-                    src={message.visual} 
-                    alt="Generated visual content" 
-                    className="rounded-lg max-w-full max-h-full object-contain"
-                    style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }}
-                    onError={(e) => {
-                      console.error('Image failed to load:', message.visual);
-                      (e.currentTarget as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      downloadImage(message.visual!, `vizzy-image-${Date.now()}.png`)
-                    }}
-                    className="absolute transition-all duration-200 transform hover:scale-110 z-10"
-                    style={{ top: '8px', right: '8px' }}
-                    title="Download image"
-                  >
-                    <Image 
-                      src="/download.svg" 
-                      alt="Download" 
-                      width={20} 
-                      height={20} 
-                      className="text-gray-700" 
-                    />
-                  </button>
-                </div>
               ) : (
-                <div className="relative inline-block">
-                  <StableImage
-                    src={`/api/image-proxy?imageUrl=${encodeURIComponent(message.visual)}`}
-                    alt="Generated visual content"
-                    className="rounded-lg max-w-full max-h-full object-contain"
-                    style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }}
-                  />
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      downloadImage(`/api/image-proxy?imageUrl=${encodeURIComponent(message.visual!)}`, 
-                                   `vizzy-image-${Date.now()}.png`)
-                    }}
-                    className="cursor-pointer absolute transition-all duration-200 transform hover:scale-110 z-10"
-                    style={{ top: '8px', right: '8px' }}
-                    title="Download image"
-                  >
-                    <Image 
-                      src="/download.svg" 
-                      alt="Download" 
-                      width={20} 
-                      height={20} 
-                      className="text-gray-700" 
-                    />
-                  </button>
-                </div>
+                <StableImage
+                  src={`/api/image-proxy?imageUrl=${encodeURIComponent(message.visual)}`}
+                  alt="Generated visual content"
+                  className="rounded-lg"
+                  style={responsiveMediaStyle}
+                />
               )}
             </div>
           )}
@@ -294,8 +253,8 @@ const ExpandedImageModal: React.FC<ExpandedImageModalProps> = ({
   onClose,
   StableImage 
 }) => {
-  if (!imageUrl) return null
-  
+  if (!imageUrl) return null;
+
   return (
     <div
       className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
@@ -309,7 +268,7 @@ const ExpandedImageModal: React.FC<ExpandedImageModalProps> = ({
         >
           <X size={24} className="text-white" />
         </button>
-        
+
         {isVideoUrl(imageUrl) ? (
           <video 
             controls 
@@ -323,25 +282,19 @@ const ExpandedImageModal: React.FC<ExpandedImageModalProps> = ({
             />
             Your browser does not support the video tag.
           </video>
-        ) : isBase64Image(imageUrl) ? (
-          <img 
-            src={imageUrl} 
-            alt="Expanded view" 
-            className="max-w-full max-h-[90vh] rounded-lg object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
         ) : (
-          <StableImage
-            src={`/api/image-proxy?imageUrl=${encodeURIComponent(imageUrl)}`}
+          <Image
+            src={imageUrl}
             alt="Expanded view"
             className="max-w-full max-h-[90vh] rounded-lg object-contain"
-            style={{}}
+            width={800}
+            height={600}
             onClick={(e) => e.stopPropagation()}
           />
         )}
       </div>
     </div>
-  )
+  );
 }
 
 // Main MessagesContainer Component
@@ -355,7 +308,6 @@ interface MessagesContainerProps {
     alt: string
     className: string
     style: React.CSSProperties
-    onClick?: (e: React.MouseEvent<HTMLImageElement>) => void
   }>
 }
 
@@ -366,19 +318,19 @@ const MessagesContainer: React.FC<MessagesContainerProps> = ({
   isDarkMode,
   StableImage
 }) => {
-  const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [expandedImage, setExpandedImage] = useState<string | null>(null)
-  
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [expandedImage, setExpandedImage] = useState<string | null>(null);
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ 
         behavior: 'smooth',
         block: 'end'
-      })
+      });
     }
-  }, [messages])
+  }, [messages]);
 
   // Ensure proper scroll on initial render with messages
   useEffect(() => {
@@ -388,12 +340,12 @@ const MessagesContainer: React.FC<MessagesContainerProps> = ({
           messagesEndRef.current.scrollIntoView({ 
             behavior: 'auto',
             block: 'end'
-          })
+          });
         }
-      }, 100)
+      }, 100);
     }
-  }, [messages.length])
-  
+  }, [messages.length]);
+
   return (
     <>
       <div 
@@ -412,18 +364,18 @@ const MessagesContainer: React.FC<MessagesContainerProps> = ({
                 />
               </div>
             ))}
-            
+
             {/* Loading Animation */}
             {(isLoading || isCreatingSession) && (
               <LoadingIndicator isDarkMode={isDarkMode} />
             )}
-            
+
             {/* Invisible element for scrolling reference */}
             <div ref={messagesEndRef} />
           </div>
         </div>
       </div>
-      
+
       {/* Expanded Image Modal */}
       <ExpandedImageModal
         imageUrl={expandedImage}
@@ -431,7 +383,7 @@ const MessagesContainer: React.FC<MessagesContainerProps> = ({
         StableImage={StableImage}
       />
     </>
-  )
+  );
 }
 
 export default MessagesContainer

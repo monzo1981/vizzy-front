@@ -1,7 +1,8 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface ServiceCard {
   id: string
@@ -20,68 +21,69 @@ interface ServicesCarouselProps {
 export function ServicesCarousel({ isDarkMode = false, className = "" }: ServicesCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const carouselRef = useRef<HTMLDivElement>(null)
+  const { language } = useLanguage()
 
-  const services: ServiceCard[] = [
+  const services: ServiceCard[] = useMemo(() => [
     {
       id: "card1",
       title: "Service 1",
-      image: "/cards/card1.png",
+      image: language === 'ar' ? "/cards/card1-ar.png" : "/cards/card1.png",
       onClick: () => console.log("Card 1 clicked"),
     },
     {
       id: "card2",
       title: "Service 2",
-      image: "/cards/card2.png",
-      cardTitle: "Professional Budgeting, & Targeting assuring best results",
+      image: language === 'ar' ? "/cards/card2-ar.png" : "/cards/card2.png",
+      cardTitle: language === 'ar' ? "خطة احترافية متكاملة لحملاتك الاعلانية للحصول على أفضل  النتائج" : "Professional Budgeting, & Targeting assuring best results",
       onClick: () => console.log("Card 2 clicked"),
     },
     {
       id: "card3",
       title: "Service 3",
-      image: "/cards/card3.png",
+      image: language === 'ar' ? "/cards/card3-ar.png" : "/cards/card3.png",
       onClick: () => console.log("Card 3 clicked"),
     },
     {
       id: "card4",
       title: "Service 4",
-      image: "/cards/card4.png",
+      image: language === 'ar' ? "/cards/card4-ar.png" : "/cards/card4.png",
       onClick: () => console.log("Card 4 clicked"),
     },
     {
       id: "card5",
       title: "Service 5",
-      image: "/cards/card5.png",
-      cardTitle: "Instant UGC!",
-      subtitle: "Create a preview video For your products",
+      image: language === 'ar' ? "/cards/card5-ar.png" : "/cards/card5.png",
+      cardTitle: language === 'ar' ? "فيديو مراجعة لمنتجك" : "Instant UGC!",
+      subtitle: language === 'ar' ? "اشرح ميزات منتجك بفيديو .. فقط من صورة المنتج!" : "Create a preview video For your products",
       onClick: () => console.log("Card 5 clicked"),
     },
     {
       id: "card6",
       title: "Service 6",
-      image: "/cards/card6.png",
+      image: language === 'ar' ? "/cards/card6-ar.png" : "/cards/card6.png",
       onClick: () => console.log("Card 6 clicked"),
     },
     {
       id: "card7",
       title: "Service 7",
-      image: "/cards/card7.png",
+      image: language === 'ar' ? "/cards/card7-ar.png" : "/cards/card7.png",
       onClick: () => console.log("Card 7 clicked"),
     },
     {
       id: "card8",
       title: "Service 8",
-      image: "/cards/card8.png",
+      image: language === 'ar' ? "/cards/card8-ar.png" : "/cards/card8.png",
       onClick: () => console.log("Card 8 clicked"),
     },
     {
       id: "card9",
       title: "Service 9",
-      image: "/cards/card9.png",
-      cardTitle: "Imagine Your Website",
-      subtitle: "Professional website layout with just a chat",
+      image: language === 'ar' ? "/cards/card9-ar.png" : "/cards/card9.png",
+      cardTitle: language === 'ar' ? "تخيل موقعك الإلكتروني" : "Imagine Your Website",
+      subtitle: language === 'ar' ? "تصميم احترافي لموقعك مناسب لمشروعك" : "Professional website layout with just a chat",
       onClick: () => console.log("Card 9 clicked"),
     }
-  ]
+  ], [language])
 
   // Get visible cards based on screen size
   const getVisibleCards = () => {

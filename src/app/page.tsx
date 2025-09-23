@@ -11,61 +11,95 @@ import { Card } from '@/components/ui/card';
 import Image from 'next/image';
 import { login, isAuthenticated, User } from '@/lib/auth';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
+import Lottie from 'lottie-react';
 
 const Login = () => {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [animationData, setAnimationData] = useState(null);
+  const [isDark, setIsDark] = useState(false);
   const [btnBg, setBtnBg] = useState('linear-gradient(92.09deg, #7FCBFD -17.23%, #4248FF 107.78%)');
 
   useEffect(() => {
-    // If user is already authenticated, redirect to chat
+    // Fetch animation data
+    fetch('/logo-motion.json')
+      .then(res => res.json())
+      .then(setAnimationData)
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    // Read dark mode from localStorage
+    const saved = localStorage.getItem('darkMode');
+    setIsDark(saved === 'true');
+  }, []);
+
+  useEffect(() => {
+    // Check if user is already authenticated
     if (isAuthenticated()) {
       router.push('/chat');
+    } else {
+      setIsCheckingAuth(false);
     }
   }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
     const result = await login({ email, password });
     if (result.success) {
       router.push('/chat');
     } else {
       setError(result.error || 'An unexpected error occurred.');
     }
+    setIsLoading(false);
   };
 
   return (
-    <div 
-      className="min-h-screen relative"
-      style={{
-        backgroundImage: `url('/e143461c99c47a62e2341cde65ee15e7f8c9903f.png')`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
-      }}
-    >
-      {/* Full screen overlay */}
-      <div className="absolute inset-0 bg-black/40"></div>
-      
-      {/* Main Layout Container */}
-      <div className="min-h-screen flex flex-col lg:flex-row relative z-10">
+    <>
+      {isCheckingAuth ? (
+        <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: isDark ? '#181819' : 'white' }}>
+          {animationData ? (
+            <Lottie animationData={animationData} loop={true} style={{ height: 400, width: 400 }} />
+          ) : (
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+          )}
+        </div>
+      ) : (
+        <div 
+          className="min-h-screen relative"
+          style={{
+            backgroundImage: `url('/e143461c99c47a62e2341cde65ee15e7f8c9903f.png')`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+          }}
+        >
+          {/* Full screen overlay */}
+          <div className="absolute inset-0 bg-black/40"></div>
+          
+          {/* Main Layout Container */}
+          <div className="min-h-screen flex flex-col lg:flex-row relative z-10">
         {/* Left side - Text Content */}
-        <div className="flex-1 lg:flex-[2] flex items-center justify-center px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16 py-8 lg:py-0">
-          <div className="w-full max-w-[90%] sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl">
+        <div className="flex-1 lg:flex-[1.5] xl:flex-[2] flex items-center justify-center px-4 sm:px-6 md:px-8 lg:px-6 xl:px-12 py-8 lg:py-0">
+          <div className="w-full max-w-[90%] sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl text-center">
             {/* Arabic text */}
-            <div className="mb-6 sm:mb-8 md:mb-10 lg:mb-12">
+            <div className="mb-4 sm:mb-6 md:mb-8 lg:mb-10">
               <p
                 dir="rtl"
-                className="text-white leading-relaxed font-arabic text-center lg:text-right"
+                className="text-white leading-relaxed font-arabic"
                 style={{
-                  fontSize: 'clamp(24px, 5vw, 60px)',
+                  fontSize: 'clamp(22px, 3.5vw + 0.5rem, 60px)',
                   fontWeight: 700,
                   lineHeight: '1.3',
                   textShadow: '0px 4px 55px #000000',
-                  margin: 0
+                  margin: 0,
+                  textAlign: 'center'
                 }}
               >
                 أنا <span style={{ 
@@ -73,30 +107,31 @@ const Login = () => {
                   fontFamily: 'var(--font-inter), Inter', 
                   fontWeight: 900 
                 }}>VIZZY</span> أول مساعد شخصي
-                <br className="hidden sm:block" />
-                <span className="block sm:inline"> للتسويق بالذكــاء الاصطــناعي</span>
+                <br />
+                للتسويق بالذكــاء الاصطــناعي
               </p>
             </div>
             
             {/* English text */}
             <div>
               <h1
-                className="text-white leading-tight text-center lg:text-left"
+                className="text-white leading-tight"
                 style={{
-                  fontSize: 'clamp(28px, 5.5vw, 64px)',
+                  fontSize: 'clamp(24px, 4vw + 0.5rem, 64px)',
                   lineHeight: '1.1',
                   letterSpacing: '-0.02em',
                   fontWeight: 700,
                   margin: 0,
-                  textShadow: '0px 0px 30px #000000'
+                  textShadow: '0px 0px 30px #000000',
+                  textAlign: 'center'
                 }}
               >
                 <span style={{ 
                   color: '#FF4A19', 
                   fontWeight: 900 
                 }}>Join Now</span> & lets elevate
-                <br className="hidden sm:block" />
-                <span className="block sm:inline"> your brand together</span>
+                <br />
+                your brand together
               </h1>
             </div>
           </div>
@@ -107,8 +142,9 @@ const Login = () => {
           <Card 
             className="border-0 flex flex-col justify-center w-full"
             style={{
-              maxWidth: '585px',
+              maxWidth: 'min(585px, 90vw)',
               width: '100%',
+              minWidth: '300px',
               minHeight: '500px',
               height: 'auto',
               opacity: 1,
@@ -187,15 +223,23 @@ const Login = () => {
 
               <Button
                 type="submit"
-                className="cursor-pointer w-full h-12 sm:h-13 lg:h-14 text-white rounded-full font-medium text-sm sm:text-base"
+                disabled={isLoading}
+                className={`cursor-pointer w-full h-12 sm:h-13 lg:h-14 text-white rounded-full font-medium text-sm sm:text-base ${isLoading ? 'animate-pulse scale-95' : ''} transition-transform duration-150`}
                 style={{ 
                   background: btnBg, 
                   transition: 'background 0.3s' 
                 }}
-                onMouseEnter={() => setBtnBg('linear-gradient(92.09deg, #6ec5ffff -17.23%, #3138ffff 107.78%)')}
-                onMouseLeave={() => setBtnBg('linear-gradient(92.09deg, #7FCBFD -17.23%, #4248FF 107.78%)')}
+                onMouseEnter={() => !isLoading && setBtnBg('linear-gradient(92.09deg, #6ec5ffff -17.23%, #3138ffff 107.78%)')}
+                onMouseLeave={() => !isLoading && setBtnBg('linear-gradient(92.09deg, #7FCBFD -17.23%, #4248FF 107.78%)')}
               >
-                Sign In
+                {isLoading ? (
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Signing In...</span>
+                  </div>
+                ) : (
+                  'Sign In'
+                )}
               </Button>
             </form>
 
@@ -260,6 +304,8 @@ const Login = () => {
         </div>
       </div>
     </div>
+      )}
+    </>
   );
 };
 

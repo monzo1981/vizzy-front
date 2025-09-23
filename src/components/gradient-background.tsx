@@ -1,14 +1,14 @@
 import React from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 
 export function GradientBackground({ 
   children, 
-  opacity = 1, 
-  isDarkMode = false 
+  opacity = 1
 }: { 
   children: React.ReactNode; 
   opacity?: number;
-  isDarkMode?: boolean;
 }) {
+  const { isDarkMode } = useTheme();
   // If dark mode is enabled, render a solid dark background
   if (isDarkMode) {
     return (

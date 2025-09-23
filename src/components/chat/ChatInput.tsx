@@ -280,14 +280,16 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
             />
           )}
 
-          <div className="relative p-[2px] backdrop-blur-xl rounded-[50px]" style={{
+          <div className="relative p-[2px] backdrop-blur-xl" style={{
+            borderRadius: 'clamp(30px, 7vw, 50px)',
             background: 'conic-gradient(from -46.15deg at 50.76% 47.25%, #4248FF -40.22deg, #7FCAFE 50.49deg, #FFEB77 104.02deg, #4248FF 158.81deg, #FF4A19 224.78deg, #4248FF 319.78deg, #7FCAFE 410.49deg)',
             boxShadow: isDarkMode ? '0px 0px 12px 0px #4248ff54' : '0px 0px 27px 0px rgba(255, 255, 255, 0.75)'
           }}>
-            <div className={`relative rounded-[48px] px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 ${
+            <div className={`relative px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 ${
               isDarkMode ? 'bg-[#181819]' : 'bg-white'
             }`} style={{ 
-              backgroundColor: isDarkMode ? '#181819' : '#ffffff'
+              backgroundColor: isDarkMode ? '#181819' : '#ffffff',
+              borderRadius: 'clamp(28px, 6.8vw, 48px)'
             }}>
               
               {/* Selected Image Preview */}
@@ -297,7 +299,13 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                     <ImageUploadLoader isDarkMode={isDarkMode} />
                   ) : (
                     <>
-                      <img src={selectedImage!} alt="Selected" className="h-20 rounded-lg" width={80} height={80} />
+                      <Image 
+                        src={selectedImage!} 
+                        alt="Selected" 
+                        className="h-20 rounded-lg" 
+                        width={80} 
+                        height={80} 
+                      />
                       <button
                         onClick={handleRemoveImage}
                         className={`absolute -top-2 -right-2 rounded-full p-1 ${
@@ -402,13 +410,12 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                           isDarkMode ? 'bg-[#4248FF]' : 'bg-[#D3E6FC4D]'
                         }`}
                       >
-                        <img
+                        <Image
                           src="/SendVector.svg"
                           alt="Send"
                           className="w-3 h-3 sm:w-4 sm:h-4"
-                          style={{
-                            filter: isDarkMode ? 'brightness(0) invert(1)' : 'brightness(0) saturate(100%) invert(27%) sepia(89%) saturate(2394%) hue-rotate(227deg) brightness(103%) contrast(101%)'
-                          }}
+                          width={24}
+                          height={24}
                         />
                       </div>
                     </button>
@@ -449,7 +456,8 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
       isDarkMode ? 'bg-gradient-to-t from-[#181819]/20 to-transparent' : 'bg-gradient-to-t from-white/20 to-transparent'
     }`}>
       <div className="max-w-4xl mx-auto relative">
-        <div className="relative p-[2px] backdrop-blur-xl rounded-[50px]" style={{
+        <div className="relative p-[2px] backdrop-blur-xl" style={{
+          borderRadius: 'clamp(30px, 7vw, 50px)',
           background: 'conic-gradient(from -46.15deg at 50.76% 47.25%, #4248FF -40.22deg, #7FCAFE 50.49deg, #FFEB77 104.02deg, #4248FF 158.81deg, #FF4A19 224.78deg, #4248FF 319.78deg, #7FCAFE 410.49deg)',
           boxShadow: isDarkMode ? '0px 0px 12px 0px #4248ff54' : '0px 0px 27px 0px rgba(255, 255, 255, 0.75)'
         }}>
@@ -457,6 +465,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
             isDarkMode ? 'bg-[#181819]' : 'bg-white'
           }`} style={{ 
             backgroundColor: isDarkMode ? '#181819' : '#ffffff',
+            borderRadius: 'clamp(28px, 6.8vw, 48px)',
             padding: isInputExpanded ? '32px' : '16px 32px',
             paddingTop: isInputExpanded ? '28px' : '16px',
             paddingBottom: isInputExpanded ? '28px' : '16px'
@@ -470,7 +479,13 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                   <ImageUploadLoader isDarkMode={isDarkMode} />
                 ) : (
                   <>
-                    <img src={selectedImage!} alt="Selected" className="h-16 rounded-lg" width={64} height={64} />
+                    <Image 
+                      src={selectedImage!} 
+                      alt="Selected" 
+                      className="h-16 rounded-lg" 
+                      width={64} 
+                      height={64} 
+                    />
                     <button
                       onClick={handleRemoveImage}
                       className={`absolute -top-1 -right-1 rounded-full p-0.5 ${
@@ -590,13 +605,12 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                             isDarkMode ? 'bg-[#4248FF]' : 'bg-[#D3E6FC4D]'
                           }`}
                         >
-                          <img
+                          <Image
                             src="/SendVector.svg"
                             alt="Send"
                             className="w-3 h-3 sm:w-6 sm:h-4"
-                            style={{
-                              filter: isDarkMode ? 'brightness(0) invert(1)' : 'brightness(0) saturate(100%) invert(27%) sepia(89%) saturate(2394%) hue-rotate(227deg) brightness(103%) contrast(101%)'
-                            }}
+                            width={24}
+                            height={24}
                           />
                         </div>
                       </button>
@@ -639,7 +653,13 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                       </div>
                     ) : (
                       <>
-                        <img src={selectedImage!} alt="Selected" className="h-12 w-12 rounded-lg object-cover" />
+                        <Image 
+                          src={selectedImage!} 
+                          alt="Selected" 
+                          className="h-12 w-12 rounded-lg object-cover" 
+                          width={48}
+                          height={48}
+                        />
                         <span className={`text-sm flex-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                           Image ready to send
                         </span>
@@ -748,13 +768,12 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                             isDarkMode ? 'bg-[#4248FF]' : 'bg-[#D3E6FC4D]'
                           }`}
                         >
-                          <img
+                          <Image
                             src="/SendVector.svg"
                             alt="Send"
                             className="w-3 h-3 sm:w-6 sm:h-4"
-                            style={{
-                              filter: isDarkMode ? 'brightness(0) invert(1)' : 'brightness(0) saturate(100%) invert(27%) sepia(89%) saturate(2394%) hue-rotate(227deg) brightness(103%) contrast(101%)'
-                            }}
+                            width={24}
+                            height={24}
                           />
                         </div>
                       </button>

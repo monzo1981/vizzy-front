@@ -12,6 +12,7 @@ import Image from "next/image"
 import { isAuthenticated, getUser, type User } from "@/lib/auth"
 import { N8NWebhook } from "@/lib/n8n-webhook"
 import { useLanguage } from "../../contexts/LanguageContext"
+import { useTheme } from "../../contexts/ThemeContext"
 import { ResponseNormalizer } from "@/lib/response-normalizer"
 import { useNotificationSound } from "@/lib/useNotificationSound"
 import { supabase, type ChatMessage, type ChatMessageDB } from "@/lib/supabase-client"
@@ -83,12 +84,12 @@ function ChatContent() {
   const searchParams = useSearchParams()
   const { isOpen, toggle } = useSidebar()
   const { t, createLocalizedPath } = useLanguage()
+  const { isDarkMode, toggleDarkMode } = useTheme()
   
   // State Management
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
-  const [isDarkMode, setIsDarkMode] = useState(false)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [showTutorial, setShowTutorial] = useState(false)
   const [tutorialStep, setTutorialStep] = useState(1)
@@ -178,14 +179,6 @@ function ChatContent() {
     }
   }, [currentUser, searchParams])
 
-  // Load dark mode preference
-  useEffect(() => {
-    const savedDarkMode = localStorage.getItem('darkMode')
-    if (savedDarkMode === 'true') {
-      setIsDarkMode(true)
-    }
-  }, [])
-
   // Check if user has seen tutorial
   useEffect(() => {
     const hasSeenTutorial = localStorage.getItem('hasSeenChatTutorial')
@@ -193,13 +186,6 @@ function ChatContent() {
       setShowTutorial(true)
     }
   }, [messages.length])
-
-  // Toggle dark mode
-  const toggleDarkMode = () => {
-    const newDarkMode = !isDarkMode
-    setIsDarkMode(newDarkMode)
-    localStorage.setItem('darkMode', String(newDarkMode))
-  }
 
   // Tutorial functions
   const nextTutorialStep = () => {
@@ -541,7 +527,7 @@ function ChatContent() {
 
   return (
     <div className={isDarkMode ? 'dark' : ''}>
-      <GradientBackground opacity={hasMessages ? 0.6 : 1} isDarkMode={isDarkMode}>
+      <GradientBackground opacity={hasMessages ? 0.6 : 1}>
         {/* Desktop Sidebar */}
         <div className="hidden lg:block relative">
           <Sidebar 
@@ -567,7 +553,7 @@ function ChatContent() {
 
         {/* Main Content */}
         <div className={`h-screen flex flex-col transition-all duration-300 ${
-          isOpen ? 'lg:ml-20' : 'lg:ml-20'
+          isOpen ? 'lg:ml-15' : 'lg:ml-15'
         } relative`}>
           
           {/* Tutorial Cards */}
@@ -599,7 +585,7 @@ function ChatContent() {
           )}
           
           {/* Header */}
-          <header className="flex-shrink-0 flex items-center justify-between px-6 py-6">
+          <header className="flex-shrink-0 flex items-center justify-between px-4 sm:px-6 py-4 sm:py-6">
             {/* Mobile Menu Button */}
             <div className="lg:hidden">
               <button
@@ -610,11 +596,14 @@ function ChatContent() {
                     : 'hover:bg-gray-100 text-gray-600'
                 }`}
               >
-                <Image 
+                <img 
                   src="/side-bar.svg" 
                   alt="Menu" 
-                  width={24}
-                  height={24}
+                  style={{ 
+                    filter: isDarkMode ? 'brightness(0) invert(1)' : 'none',
+                    minWidth: '24px',
+                    minHeight: '24px'
+                  }}
                 />
               </button>
             </div>
@@ -629,12 +618,12 @@ function ChatContent() {
                   alt="Vizzy Logo" 
                   width={220}
                   height={200}
-                  className="w-48 h-auto lg:w-[220px] transition-opacity"
+                  className="w-32 sm:w-40 md:w-48 lg:w-[220px] h-auto transition-opacity"
                 />
               </div>
             </div>
             
-            <div className="flex items-center gap-4 relative">
+            <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 relative">
               <Badge 
                 className="text-white border-0"
                 style={{
@@ -642,8 +631,8 @@ function ChatContent() {
                   borderRadius: '18px',
                   fontWeight: 900,
                   fontStyle: 'italic',
-                  fontSize: '16px',
-                  padding: '4px 12px'
+                  fontSize: 'clamp(12px, 2vw, 16px)',
+                  padding: '3px 8px'
                 }}
               >
                 Pro
@@ -660,13 +649,13 @@ function ChatContent() {
 
           {/* Main Content Area */}
           {!hasMessages ? (
-            <main className="flex-1 flex flex-col px-6 pb-6">
+            <main className="flex-1 flex flex-col px-4 sm:px-6 pb-6">
               {/* Spacer to push content to center */}
               <div className="flex-1 min-h-0" />
               
               {/* Center Content: Title and Carousel */}
               <div className="flex flex-col items-center">
-                <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-[57px] font-bold text-center leading-none mb-4 sm:mb-4 lg:mb-8`} style={{
+                <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-[57px] font-bold text-center leading-none mb-4 pt-1 sm:mb-4 lg:mb-6 lg:pb-2 lg:pt-2.5`} style={{
                   background: 'linear-gradient(90.57deg, #FFEB77 2.54%, #FF4A19 37.91%, #4248FF 90.32%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent'

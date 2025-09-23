@@ -180,7 +180,6 @@ export class GoogleAuthService {
       text: 'continue_with',
       shape: 'rectangular',
       logo_alignment: 'left',
-      width: '100%',
       ...config,
     };
 

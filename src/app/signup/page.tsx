@@ -52,6 +52,8 @@ const SignUp = () => {
   const [error, setError] = useState('');
   const [isIndustryDropdownOpen, setIsIndustryDropdownOpen] = useState(false);
   const [language] = useState<'en' | 'ar'>('en'); // Default to English, can be changed later
+  const [isLoading, setIsLoading] = useState(false);
+  const [btnBg, setBtnBg] = useState('linear-gradient(92.09deg, #7FCBFD -17.23%, #4248FF 107.78%)');
   
   const industryDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -95,25 +97,30 @@ const SignUp = () => {
 
   const handleSubmit = async () => {
     setError('');
+    setIsLoading(true);
 
     if (!firstName || !lastName || !email || !password || !companyName || !industry) {
       setError('All fields are required.');
+      setIsLoading(false);
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError('Please enter a valid email address.');
+      setIsLoading(false);
       return;
     }
 
     if (password.length < 8) {
       setError('Password must be at least 8 characters long.');
+      setIsLoading(false);
       return;
     }
 
     if (companyName.length < 2) {
       setError('Company name must be at least 2 characters long.');
+      setIsLoading(false);
       return;
     }
 
@@ -132,6 +139,7 @@ const SignUp = () => {
     } else {
       setError(result.error || 'An unexpected error occurred.');
     }
+    setIsLoading(false);
   };
 
   // Custom scrollbar styles
@@ -173,45 +181,54 @@ const SignUp = () => {
         {/* Full screen overlay */}
         <div className="absolute inset-0 bg-black/40"></div>
 
-        {/* Desktop Layout */}
-        <div className="hidden lg:flex min-h-screen">
-          {/* Left side - Text */}
-          <div className="flex-[2] flex items-center justify-center relative z-10">
-            <div className="w-full max-w-4xl flex flex-col items-center justify-center text-center">
-              {/* Arabic text at top */}
-              <div className="mb-12 w-full flex justify-center">
+        {/* Main Layout Container */}
+        <div className="min-h-screen flex flex-col lg:flex-row relative z-10">
+          {/* Left side - Text Content */}
+          <div className="flex-1 lg:flex-[1.5] xl:flex-[2] flex items-center justify-center px-4 sm:px-6 md:px-8 lg:px-6 xl:px-12 py-8 lg:py-0">
+            <div className="w-full max-w-[90%] sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl text-center">
+              {/* Arabic text */}
+              <div className="mb-4 sm:mb-6 md:mb-8 lg:mb-10">
                 <p
                   dir="rtl"
-                  className="text-white leading-relaxed"
+                  className="text-white leading-relaxed font-arabic"
                   style={{
-                    fontFamily: 'Noto Sans Arabic',
-                    fontSize: '60px',
+                    fontSize: 'clamp(22px, 3.5vw + 0.5rem, 60px)',
                     fontWeight: 700,
                     lineHeight: '1.3',
                     textShadow: '0px 4px 55px #000000',
                     margin: 0,
-                    textAlign: 'right'
+                    textAlign: 'center'
                   }}
                 >
-                  أنا <span style={{ color: '#7FCAFE', fontFamily: 'inter', fontWeight: 900 }}>VIZZY</span> أول مساعد شخصي<br />
-                  للتسويق بالذكاء الاصطناعي
+                  أنا <span style={{ 
+                    color: '#7FCAFE', 
+                    fontFamily: 'var(--font-inter), Inter', 
+                    fontWeight: 900 
+                  }}>VIZZY</span> أول مساعد شخصي
+                  <br />
+                  للتسويق بالذكــاء الاصطــناعي
                 </p>
               </div>
-              {/* Main English text */}
-              <div className="w-full flex justify-center">
+              
+              {/* English text */}
+              <div>
                 <h1
                   className="text-white leading-tight"
                   style={{
-                    fontSize: '64px',
+                    fontSize: 'clamp(24px, 4vw + 0.5rem, 64px)',
                     lineHeight: '1.1',
                     letterSpacing: '-0.02em',
                     fontWeight: 700,
                     margin: 0,
                     textShadow: '0px 0px 30px #000000',
-                    textAlign: 'left'
+                    textAlign: 'center'
                   }}
                 >
-                  <span style={{ color: '#FF4A19', fontWeight: 900 }}>Join Now</span> & lets elevate<br />
+                  <span style={{ 
+                    color: '#FF4A19', 
+                    fontWeight: 900 
+                  }}>Join Now</span> & lets elevate
+                  <br />
                   your brand together
                 </h1>
               </div>
@@ -219,37 +236,51 @@ const SignUp = () => {
           </div>
 
           {/* Right side - Sign Up Form */}
-          <div className="flex-[1] flex items-center justify-end relative z-10 p-12 md:p-16 pr-12 md:pr-16 lg:pr-24 xl:pr-32 2xl:pr-40">
+          <div className="flex-1 lg:flex-[1] flex items-center justify-center px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16 2xl:px-24 pb-8 lg:pb-0">
             <Card
-              className="border-0 flex flex-col justify-center"
+              className="border-0 flex flex-col justify-center w-full"
               style={{
-                width: 'clamp(350px, 500px, 585px)',
-                height: 'clamp(750px, 90vh, 900px)', // Increased height for new fields
+                maxWidth: 'min(585px, 90vw)',
+                width: '100%',
+                minWidth: '300px',
+                minHeight: '600px',
+                height: 'auto',
                 opacity: 1,
-                borderRadius: '88px',
+                borderRadius: 'clamp(32px, 6vw, 88px)',
                 background: 'linear-gradient(92.9deg, rgba(211, 230, 252, 1) -14.33%, rgba(127, 202, 254, 1) 111.43%)',
-                padding: '50px'
+                padding: 'clamp(20px, 3vw, 50px)'
               }}
             >
               <div className="text-center">
-                  {/* Logo */}
-                  <div className="flex justify-center mb-2">
-                    <div className="relative">
-                        <Image
-                        src="/vizzy-logo.svg"
-                        alt="Vizzy Logo"
-                        width={280}
-                        height={280}
+                {/* Logo */}
+                <div className="flex justify-center mb-2">
+                  <div className="relative">
+                    <Image
+                      src="/vizzy-logo.svg"
+                      alt="Vizzy Logo"
+                      width={280}
+                      height={280}
+                      className="w-[120px] sm:w-[180px] md:w-[220px] lg:w-[280px] h-auto"
                     />
-                    </div>
                   </div>
-                <p className="mb-6" style={{ fontWeight: 500, fontSize: '22px', color: '#4248FF' }}>Your Personal Agency!</p>
+                </div>
+                <p 
+                  className="mb-4 lg:mb-6" 
+                  style={{ 
+                    fontWeight: 500, 
+                    fontSize: 'clamp(14px, 2.5vw, 22px)', 
+                    color: '#4248FF' 
+                  }}
+                >
+                  Your Personal Agency!
+                </p>
               </div>
 
-              <div className="space-y-5">
-                <div className="flex flex-col lg:flex-row lg:gap-4">
+              <div className="space-y-3 sm:space-y-4 lg:space-y-5">
+                {/* First Name and Last Name Row */}
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                   <div
-                    className="rounded-full p-[1px] w-full lg:w-1/2 mb-5 lg:mb-0"
+                    className="rounded-full p-[1px] w-full sm:w-1/2"
                     style={{
                       background: 'linear-gradient(91.52deg, #4248FF -19.2%, #7FCBFD 119.88%)'
                     }}
@@ -259,11 +290,11 @@ const SignUp = () => {
                       placeholder="First Name"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
-                      className="w-full h-12 bg-white rounded-full px-6 text-gray-700 placeholder:text-gray-400 border-0 focus:outline-none focus:ring-0 focus:border-0"
+                      className="w-full h-10 sm:h-11 lg:h-12 bg-white rounded-full px-4 sm:px-5 lg:px-6 text-gray-700 placeholder:text-gray-400 border-0 focus:outline-none focus:ring-0 focus:border-0 text-sm sm:text-base"
                     />
                   </div>
                   <div
-                    className="rounded-full p-[1px] w-full lg:w-1/2"
+                    className="rounded-full p-[1px] w-full sm:w-1/2"
                     style={{
                       background: 'linear-gradient(91.52deg, #4248FF -19.2%, #7FCBFD 119.88%)'
                     }}
@@ -273,11 +304,12 @@ const SignUp = () => {
                       placeholder="Last Name"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
-                      className="w-full h-12 bg-white rounded-full px-6 text-gray-700 placeholder:text-gray-400 border-0 focus:outline-none focus:ring-0 focus:border-0"
+                      className="w-full h-10 sm:h-11 lg:h-12 bg-white rounded-full px-4 sm:px-5 lg:px-6 text-gray-700 placeholder:text-gray-400 border-0 focus:outline-none focus:ring-0 focus:border-0 text-sm sm:text-base"
                     />
                   </div>
                 </div>
 
+                {/* Email */}
                 <div>
                   <div
                     className="rounded-full p-[1px]"
@@ -290,11 +322,12 @@ const SignUp = () => {
                       placeholder="Email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full h-12 bg-white rounded-full px-6 text-gray-700 placeholder:text-gray-400 border-0 focus:outline-none focus:ring-0 focus:border-0"
+                      className="w-full h-10 sm:h-11 lg:h-12 bg-white rounded-full px-4 sm:px-5 lg:px-6 text-gray-700 placeholder:text-gray-400 border-0 focus:outline-none focus:ring-0 focus:border-0 text-sm sm:text-base"
                     />
                   </div>
                 </div>
 
+                {/* Password */}
                 <div>
                   <div
                     className="rounded-full p-[1px]"
@@ -307,12 +340,12 @@ const SignUp = () => {
                       placeholder="Password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full h-12 bg-white rounded-full px-6 text-gray-700 placeholder:text-gray-400 border-0 focus:outline-none focus:ring-0 focus:border-0"
+                      className="w-full h-10 sm:h-11 lg:h-12 bg-white rounded-full px-4 sm:px-5 lg:px-6 text-gray-700 placeholder:text-gray-400 border-0 focus:outline-none focus:ring-0 focus:border-0 text-sm sm:text-base"
                     />
                   </div>
                 </div>
 
-                {/* NEW: Company Name Field */}
+                {/* Company Name */}
                 <div>
                   <div
                     className="rounded-full p-[1px]"
@@ -325,13 +358,13 @@ const SignUp = () => {
                       placeholder="Company Name"
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
-                      className="w-full h-12 bg-white rounded-full px-6 text-gray-700 placeholder:text-gray-400 border-0 focus:outline-none focus:ring-0 focus:border-0"
+                      className="w-full h-10 sm:h-11 lg:h-12 bg-white rounded-full px-4 sm:px-5 lg:px-6 text-gray-700 placeholder:text-gray-400 border-0 focus:outline-none focus:ring-0 focus:border-0 text-sm sm:text-base"
                     />
                   </div>
                 </div>
 
-                {/* NEW: Industry Dropdown */}
-                <div className="relative">
+                {/* Industry Dropdown */}
+                <div className="relative" ref={industryDropdownRef}>
                   <div
                     className="rounded-full p-[1px]"
                     style={{
@@ -341,257 +374,15 @@ const SignUp = () => {
                     <button
                       type="button"
                       onClick={() => setIsIndustryDropdownOpen(!isIndustryDropdownOpen)}
-                      className="w-full h-12 bg-white rounded-full px-6 text-gray-700 flex items-center justify-between focus:outline-none focus:ring-0 focus:border-0"
+                      className="w-full h-10 sm:h-11 lg:h-12 bg-white rounded-full px-4 sm:px-5 lg:px-6 text-gray-700 flex items-center justify-between focus:outline-none focus:ring-0 focus:border-0 text-sm sm:text-base"
                     >
                       <span className={!industry ? 'text-gray-400' : ''}>
                         {getIndustryLabel(industry)}
                       </span>
-                      <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isIndustryDropdownOpen ? 'rotate-180' : ''}`} />
+                      <ChevronDown className={`w-4 h-4 sm:w-5 sm:h-5 text-gray-400 transition-transform ${isIndustryDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
 
                     {/* Industry Dropdown Menu */}
-                    {isIndustryDropdownOpen && (
-                      <div 
-                        className="absolute top-full left-0 right-0 bg-white z-50 mt-1"
-                        style={{ 
-                          borderRadius: 20,
-                          maxHeight: '200px',
-                          overflow: 'hidden',
-                          boxShadow: 'rgba(17, 0, 46, 0.1) 0px 0px 20px 2px, rgba(66, 72, 255, 0.1) 0px 1.5px 6px'
-                        }}
-                        ref={industryDropdownRef}
-                      >
-                        <div 
-                          className="custom-scrollbar overflow-y-auto" 
-                          style={{ 
-                            maxHeight: '200px',
-                          }}
-                        >
-                          {INDUSTRY_OPTIONS.map((option, index) => (
-                            <div
-                              key={`${option.value}-${index}`}
-                              data-dropdown-item="true"
-                              onClick={() => {
-                                console.log('Industry clicked:', option.value, option.label[language]);
-                                setIndustry(option.value);
-                                setIsIndustryDropdownOpen(false);
-                              }}
-                              className="w-full px-6 py-3 text-left text-sm transition-all duration-200 cursor-pointer"
-                              style={{
-                                background: industry === option.value ? 'linear-gradient(272deg, #FFF -1.67%, #7FCAFE 99.45%)' : 'transparent',
-                                color: '#111',
-                                borderBottom: index < INDUSTRY_OPTIONS.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none'
-                              }}
-                              onMouseEnter={(e) => {
-                                if (industry !== option.value) {
-                                  e.currentTarget.style.background = 'rgba(127, 202, 254, 0.2)';
-                                }
-                              }}
-                              onMouseLeave={(e) => {
-                                if (industry !== option.value) {
-                                  e.currentTarget.style.background = 'transparent';
-                                }
-                              }}
-                            >
-                              {option.label[language]}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {error && <p className="text-red-500 text-center mb-4">{error}</p>}
-
-                <Button
-                  onClick={handleSubmit}
-                  className="cursor-pointer w-full h-12 text-white rounded-full font-medium text-base"
-                  style={{ background: 'linear-gradient(92.09deg, #7FCBFD -17.23%, #4248FF 107.78%)' }}
-                >
-                  Sign Up
-                </Button>
-              </div>
-
-              <div className="mt-4">
-                <p className="text-center mb-4 max-w-[300px] mx-auto" style={{ fontWeight: 400, fontSize: '14px', color: '#6B7280' }}>
-                  By continuing, you agree to our Terms and acknowledge our{' '}
-                  <Link href="/" className="hover:underline" style={{ color: '#4248FF' }}>Privacy Policy</Link>
-                </p>
-
-                  {/* Divider */}
-                  <div className="flex items-center my-4">
-                    <div className="flex-1 border-t border-gray-300"></div>
-                    <span className="px-4 text-gray-500 text-sm">OR</span>
-                    <div className="flex-1 border-t border-gray-300"></div>
-                  </div>
-
-                  {/* Google Sign-In */}
-                  <div className="mb-4">
-                    <GoogleSignInButton
-                      text="continue_with"
-                      onSuccess={(user: User) => {
-                        console.log('Google sign-in successful:', user);
-                      }}
-                      onError={(error: string) => {
-                        setError(error);
-                      }}
-                      className="w-full"
-                    />
-                  </div>
-
-                <p className="text-sm text-center mt-4" style={{ fontWeight: 400, color: '#6B7280' }}>
-                  Already have an account?{' '}
-                  <Link href="/" className="hover:underline" style={{ color: '#4248FF', fontWeight: 400 }}>
-                    Sign in
-                  </Link>
-                </p>
-              </div>
-            </Card>
-          </div>
-        </div>
-
-        {/* Mobile Layout */}
-        <div className="lg:hidden min-h-screen flex flex-col relative z-10">
-          {/* Top - Text */}
-          <div className="flex-1 flex items-center justify-center p-8">
-            <div className="text-center">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-tight" style={{ fontSize: 'clamp(2rem, 6vw, 3.75rem)' }}>
-                Sign up and gets<br />
-                all your solutions
-              </h1>
-            </div>
-          </div>
-
-          {/* Bottom - Sign Up Form */}
-          <div className="flex-1 flex items-center justify-center p-6 pt-0">
-            <Card
-              className="border-0 flex flex-col justify-center"
-              style={{
-                width: 'clamp(280px, 90vw, 400px)',
-                height: 'clamp(700px, 90vh, 800px)', // Increased height
-                opacity: 1,
-                borderRadius: 'clamp(32px, 8vw, 88px)',
-                background: 'linear-gradient(92.9deg, rgba(211, 230, 252, 1) -14.33%, rgba(127, 202, 254, 1) 111.43%)',
-                padding: 'clamp(20px, 5vw, 30px)'
-              }}
-            >
-              <div className="text-center">
-                  {/* Logo */}
-                  <div className="flex justify-center mb-2">
-                      <div className="relative">
-                          <Image
-                          src="/vizzy-logo.svg"
-                          alt="Vizzy Logo"
-                          width={140}
-                          height={140}
-                          />
-                      </div>
-                  </div>
-                <p className="mb-4" style={{ fontWeight: 500, fontSize: 'clamp(16px, 4vw, 20px)', color: '#4248FF' }}>Your Personal Agency!</p>
-              </div>
-
-              <div className="space-y-3">
-                <div
-                  className="rounded-full p-[1px]"
-                  style={{
-                    background: 'linear-gradient(91.52deg, #4248FF -19.2%, #7FCBFD 119.88%)'
-                  }}
-                >
-                  <Input
-                    type="text"
-                    placeholder="First Name"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full h-10 bg-white rounded-full px-5 text-gray-700 placeholder:text-gray-400 border-0 focus:outline-none focus:ring-0 focus:border-0 text-sm"
-                  />
-                </div>
-                <div
-                  className="rounded-full p-[1px]"
-                  style={{
-                    background: 'linear-gradient(91.52deg, #4248FF -19.2%, #7FCBFD 119.88%)'
-                  }}
-                >
-                  <Input
-                    type="text"
-                    placeholder="Last Name"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    className="w-full h-10 bg-white rounded-full px-5 text-gray-700 placeholder:text-gray-400 border-0 focus:outline-none focus:ring-0 focus:border-0 text-sm"
-                  />
-                </div>
-                <div>
-                  <div
-                    className="rounded-full p-[1px]"
-                    style={{
-                      background: 'linear-gradient(91.52deg, #4248FF -19.2%, #7FCBFD 119.88%)'
-                    }}
-                  >
-                    <Input
-                      type="email"
-                      placeholder="Email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full h-10 bg-white rounded-full px-5 text-gray-700 placeholder:text-gray-400 border-0 focus:outline-none focus:ring-0 focus:border-0 text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div
-                    className="rounded-full p-[1px]"
-                    style={{
-                      background: 'linear-gradient(91.52deg, #4248FF -19.2%, #7FCBFD 119.88%)'
-                    }}
-                  >
-                    <Input
-                      type="password"
-                      placeholder="Password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full h-10 bg-white rounded-full px-5 text-gray-700 placeholder:text-gray-400 border-0 focus:outline-none focus:ring-0 focus:border-0 text-sm"
-                    />
-                  </div>
-                </div>
-
-                {/* NEW: Company Name Field - Mobile */}
-                <div>
-                  <div
-                    className="rounded-full p-[1px]"
-                    style={{
-                      background: 'linear-gradient(91.52deg, #4248FF -19.2%, #7FCBFD 119.88%)'
-                    }}
-                  >
-                    <Input
-                      type="text"
-                      placeholder="Company Name"
-                      value={companyName}
-                      onChange={(e) => setCompanyName(e.target.value)}
-                      className="w-full h-10 bg-white rounded-full px-5 text-gray-700 placeholder:text-gray-400 border-0 focus:outline-none focus:ring-0 focus:border-0 text-sm"
-                    />
-                  </div>
-                </div>
-
-                {/* NEW: Industry Dropdown - Mobile */}
-                <div className="relative">
-                  <div
-                    className="rounded-full p-[1px]"
-                    style={{
-                      background: 'linear-gradient(91.52deg, #4248FF -19.2%, #7FCBFD 119.88%)'
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setIsIndustryDropdownOpen(!isIndustryDropdownOpen)}
-                      className="w-full h-10 bg-white rounded-full px-5 text-gray-700 flex items-center justify-between focus:outline-none focus:ring-0 focus:border-0 text-sm"
-                    >
-                      <span className={!industry ? 'text-gray-400' : ''}>
-                        {getIndustryLabel(industry)}
-                      </span>
-                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isIndustryDropdownOpen ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    {/* Industry Dropdown Menu - Mobile */}
                     {isIndustryDropdownOpen && (
                       <div 
                         className="absolute top-full left-0 right-0 bg-white z-50 mt-1"
@@ -601,7 +392,6 @@ const SignUp = () => {
                           overflow: 'hidden',
                           boxShadow: 'rgba(17, 0, 46, 0.1) 0px 0px 20px 2px, rgba(66, 72, 255, 0.1) 0px 1.5px 6px'
                         }}
-                        ref={industryDropdownRef}
                       >
                         <div 
                           className="custom-scrollbar overflow-y-auto" 
@@ -611,14 +401,13 @@ const SignUp = () => {
                         >
                           {INDUSTRY_OPTIONS.map((option, index) => (
                             <div
-                              key={`mobile-${option.value}-${index}`}
+                              key={`${option.value}-${index}`}
                               data-dropdown-item="true"
                               onClick={() => {
-                                console.log('Mobile industry clicked:', option.value, option.label[language]);
                                 setIndustry(option.value);
                                 setIsIndustryDropdownOpen(false);
                               }}
-                              className="w-full px-4 py-2 text-left text-xs transition-all duration-200 cursor-pointer"
+                              className="w-full px-4 sm:px-5 lg:px-6 py-2 sm:py-2.5 lg:py-3 text-left text-xs sm:text-sm transition-all duration-200 cursor-pointer"
                               style={{
                                 background: industry === option.value ? 'linear-gradient(272deg, #FFF -1.67%, #7FCAFE 99.45%)' : 'transparent',
                                 color: '#111',
@@ -644,22 +433,60 @@ const SignUp = () => {
                   </div>
                 </div>
 
-                {error && <p className="text-red-500 text-center mb-3 text-sm">{error}</p>}
+                {error && (
+                  <p className="text-red-500 text-center text-xs sm:text-sm">
+                    {error}
+                  </p>
+                )}
 
                 <Button
                   onClick={handleSubmit}
-                  className="w-full h-10 text-white rounded-full font-medium text-sm"
-                  style={{ background: 'linear-gradient(92.09deg, #7FCBFD -17.23%, #4248FF 107.78%)' }}
+                  disabled={isLoading}
+                  className={`cursor-pointer w-full h-10 sm:h-11 lg:h-12 text-white rounded-full font-medium text-sm sm:text-base ${isLoading ? 'animate-pulse scale-95' : ''} transition-transform duration-150`}
+                  style={{ 
+                    background: btnBg, 
+                    transition: 'background 0.3s' 
+                  }}
+                  onMouseEnter={() => !isLoading && setBtnBg('linear-gradient(92.09deg, #6ec5ffff -17.23%, #3138ffff 107.78%)')}
+                  onMouseLeave={() => !isLoading && setBtnBg('linear-gradient(92.09deg, #7FCBFD -17.23%, #4248FF 107.78%)')}
                 >
-                  Sign Up
+                  {isLoading ? (
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Signing Up...</span>
+                    </div>
+                  ) : (
+                    'Sign Up'
+                  )}
                 </Button>
               </div>
 
-              <div className="mt-3">
-                {/* Google Sign-Up */}
-                <div className="mb-3">
+              <div className="mt-3 sm:mt-4 lg:mt-5">
+                <p 
+                  className="text-center mb-3 sm:mb-4 lg:mb-5 max-w-[260px] sm:max-w-[280px] lg:max-w-[300px] mx-auto" 
+                  style={{ 
+                    fontWeight: 400, 
+                    fontSize: 'clamp(11px, 1.8vw, 14px)', 
+                    color: '#6B7280' 
+                  }}
+                >
+                  By continuing, you agree to our Terms and acknowledge our{' '}
+                  <Link href="/" className="hover:underline" style={{ color: '#4248FF' }}>
+                    Privacy Policy
+                  </Link>
+                </p>
+
+                {/* Divider */}
+                <div className="flex items-center my-3 sm:my-4 lg:my-5">
+                  <div className="flex-1 border-t border-gray-300"></div>
+                  <span className="px-3 sm:px-4 text-gray-500 text-xs sm:text-sm">OR</span>
+                  <div className="flex-1 border-t border-gray-300"></div>
+                </div>
+
+                {/* Google Sign-In */}
+                <div className="mb-3 sm:mb-4 lg:mb-5">
                   <GoogleSignInButton
-                    text="sign_up_with"
+                    text="continue_with"
                     onSuccess={(user: User) => {
                       console.log('Google sign-up successful:', user);
                     }}
@@ -670,21 +497,23 @@ const SignUp = () => {
                   />
                 </div>
 
-                {/* Divider */}
-                <div className="flex items-center my-3">
-                  <div className="flex-1 border-t border-gray-300"></div>
-                  <span className="px-3 text-gray-500 text-xs">OR</span>
-                  <div className="flex-1 border-t border-gray-300"></div>
-                </div>
-
-                <p className="text-center mb-3 max-w-[280px] mx-auto" style={{ fontWeight: 400, fontSize: '12px', color: '#6B7280' }}>
-                  By continuing, you agree to our Terms and acknowledge our{' '}
-                  <Link href="/" className="hover:underline" style={{ color: '#4248FF' }}>Privacy Policy</Link>
-                </p>
-
-                <p className="text-xs text-center mt-3" style={{ fontWeight: 400, color: '#6B7280' }}>
+                <p 
+                  className="text-center" 
+                  style={{ 
+                    fontWeight: 400, 
+                    fontSize: 'clamp(11px, 1.8vw, 14px)',
+                    color: '#6B7280' 
+                  }}
+                >
                   Already have an account?{' '}
-                  <Link href="/" className="hover:underline" style={{ color: '#4248FF', fontWeight: 400 }}>
+                  <Link 
+                    href="/" 
+                    className="hover:underline" 
+                    style={{ 
+                      color: '#4248FF', 
+                      fontWeight: 400 
+                    }}
+                  >
                     Sign in
                   </Link>
                 </p>

@@ -32,15 +32,16 @@ import { GradientBackground } from "@/components/gradient-background"
 import { ProfileEditModal } from "@/components/profile-edit-modal"
 import { useToast, ToastContainer } from "@/components/ui/toast"
 import { useLanguage } from "@/contexts/LanguageContext"
+import { useTheme } from "@/contexts/ThemeContext"
 
 export default function ProfilePage() {
   const { toasts, toast, removeToast } = useToast()
   const { createLocalizedPath } = useLanguage()
+  const { isDarkMode } = useTheme()
   const [sidebarExpanded, setSidebarExpanded] = useState(false)
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [companyProfile, setCompanyProfile] = useState<any | null>(null)
-  const [isDarkMode, setIsDarkMode] = useState(false)
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
   const [recentWork, setRecentWork] = useState<Array<{
     id: string;
@@ -143,31 +144,6 @@ export default function ProfilePage() {
     }
   }, [])
 
-  // Function to fetch all recent work (for browsing)
-  const fetchAllRecentWork = async () => {
-    try {
-      const token = localStorage.getItem('access_token')
-      if (!token) return []
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/recent-work/?limit=all`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success && data.data) {
-          return data.data
-        }
-      }
-      return []
-    } catch (error) {
-      console.error('Error fetching all recent work:', error)
-      return []
-    }
-  }
 
   // Auto-slide effect - Continuous movement
   useEffect(() => {
@@ -202,13 +178,6 @@ export default function ProfilePage() {
       setCurrentSlide(prev => prev === 0 ? recentWork.length - 1 : prev - 1)
     }
   }
-
-  useEffect(() => {
-    const savedDarkMode = localStorage.getItem('darkMode')
-    if (savedDarkMode === 'true') {
-      setIsDarkMode(true)
-    }
-  }, [])
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -420,7 +389,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <GradientBackground isDarkMode={isDarkMode}>
+    <GradientBackground>
       {/* Fixed Header/Navbar - PURE WHITE */}
   <header className={`fixed top-0 left-0 right-0 shadow-md px-6 py-4 z-50 ${isDarkMode ? 'bg-[#0E0E10]' : 'bg-white'}`}>
         <div className="flex items-center justify-between">
@@ -618,7 +587,9 @@ export default function ProfilePage() {
                           className="rounded-full overflow-hidden flex-shrink-0"
                           style={{ 
                             width: '126px', 
-                            height: '126px'
+                            height: '126px',
+                            // Reduce size for mobile
+                            ...(window.innerWidth < 768 && { width: '80px', height: '80px' })
                           }}
                         >
                           <Avatar 
@@ -626,14 +597,14 @@ export default function ProfilePage() {
                             fallback={currentUser && currentUser.first_name && currentUser.last_name ? `${currentUser.first_name.charAt(0)}${currentUser.last_name.charAt(0)}`.toUpperCase() : 'U'}
                             alt="User"
                             className="w-full h-full"
-                            bgOverride="light" // أو "light" أو "dark" أو "auto" (default)
+                            bgOverride="light"
                           />
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
                             <h2 style={{
                               fontWeight: 700,
-                              fontSize: '40px',
+                              fontSize: window.innerWidth < 768 ? '24px' : '40px', // Adjust font size for mobile
                               color: '#4248FF'
                             }}>
                               {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Vizzy User'}
@@ -645,7 +616,7 @@ export default function ProfilePage() {
                                 borderRadius: '18px',
                                 fontWeight: 900,
                                 fontStyle: 'italic',
-                                fontSize: '20px',
+                                fontSize: window.innerWidth < 768 ? '14px' : '20px', // Adjust font size for mobile
                                 padding: '6px 16px'
                               }}
                             >
@@ -1308,12 +1279,12 @@ export default function ProfilePage() {
                         { icon: '/document.svg', label: 'Document', field: 'document' },
                       ].map((asset, i) => (
                         <div key={i} className="flex items-center justify-between p-3" style={{ background: '#D3E6FC', borderRadius: 20 }}>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2 md:gap-3">
                             <div
                               className="bg-white flex items-center justify-center"
                               style={{
-                                width: 64,
-                                height: 64,
+                                width: window.innerWidth < 768 ? 48 : 64,
+                                height: window.innerWidth < 768 ? 48 : 64,
                                 padding: 8,
                                 borderRadius: 12,
                                 boxShadow: '0 0 2px 0 rgba(0, 0, 0, 0.25)',
@@ -1322,8 +1293,8 @@ export default function ProfilePage() {
                               <Image
                                 src={asset.icon}
                                 alt="Asset Icon"
-                                width={48}
-                                height={48}
+                                width={window.innerWidth < 768 ? 32 : 48}
+                                height={window.innerWidth < 768 ? 32 : 48}
                                 style={{ 
                                   filter: uploadedAssets[asset.field]?.file_id 
                                     ? 'invert(47%) sepia(88%) saturate(6151%) hue-rotate(11deg) brightness(95%) contrast(102%)' // #FF4A19 filter
@@ -1348,7 +1319,7 @@ export default function ProfilePage() {
                               </div>
                             </div>
                           </div>
-                          <div className="flex flex-col items-end gap-1 ml-2">
+                          <div className="flex flex-col items-end gap-1 ml-1 md:ml-2">
                             <button
                               type="button"
                               className="flex items-center gap-2"
@@ -1361,21 +1332,21 @@ export default function ProfilePage() {
                               <Image src="/edit.svg" alt="Edit" width={14} height={14} style={{ filter: 'invert(47%) sepia(8%) saturate(756%) hue-rotate(210deg) brightness(95%) contrast(84%)' }} />
                               <span style={{ color: '#78758E' }}>Edit name</span>
                             </button>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 md:gap-2">
                               {uploadedAssets[asset.field]?.file_id ? (
                                 <>
                                   <Button
                                     size="sm"
-                                    className="text-white text-xs"
-                                    style={{ background: '#7FCAFE', borderRadius: 36, fontWeight: 600 }}
+                                    className="text-white text-xs px-2 md:px-4"
+                                    style={{ background: '#7FCAFE', borderRadius: 36, fontWeight: 600, fontSize: window.innerWidth < 768 ? '10px' : '12px' }}
                                     onClick={() => handleRemoveFile(asset.field)}
                                   >
                                     Remove
                                   </Button>
                                   <Button
                                     size="sm"
-                                    className="text-white text-xs"
-                                    style={{ background: '#7FCAFE', borderRadius: 36, fontWeight: 600 }}
+                                    className="text-white text-xs px-2 md:px-4"
+                                    style={{ background: '#7FCAFE', borderRadius: 36, fontWeight: 600, fontSize: window.innerWidth < 768 ? '10px' : '12px' }}
                                     onClick={() => document.getElementById(`${asset.field}-upload`)?.click()}
                                   >
                                     Update
@@ -1384,8 +1355,8 @@ export default function ProfilePage() {
                               ) : (
                                 <Button
                                   size="sm"
-                                  className="text-white text-xs px-6"
-                                  style={{ background: '#FF4A19', borderRadius: 36, fontWeight: 600, minWidth: '80px' }}
+                                  className="text-white text-xs px-4 md:px-6"
+                                  style={{ background: '#FF4A19', borderRadius: 36, fontWeight: 600, minWidth: '60px', fontSize: window.innerWidth < 768 ? '10px' : '12px' }}
                                   onClick={() => document.getElementById(`${asset.field}-upload`)?.click()}
                                 >
                                   Upload

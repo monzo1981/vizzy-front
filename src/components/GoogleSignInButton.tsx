@@ -24,6 +24,7 @@ const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [googleButtonRendered, setGoogleButtonRendered] = useState(false);
 
   const handleGoogleSuccess = useCallback(async (payload: GoogleTokenPayload & { credential: string }) => {
     if (isLoading) return;
@@ -73,9 +74,9 @@ const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
               text,
               shape: 'rectangular',
               logo_alignment: 'left',
-              width: '100%',
             }
           );
+          setGoogleButtonRendered(true);
         }
       } catch (error) {
         console.error('Failed to initialize Google Auth:', error);
@@ -121,11 +122,10 @@ const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
       <div 
         ref={buttonRef} 
         className={disabled ? 'opacity-50 pointer-events-none' : ''}
-        style={{ width: '100%' }}
       />
       
       {/* Fallback button (hidden by default, shown if Google button fails to render) */}
-      {!buttonRef.current?.hasChildNodes() && (
+      {!googleButtonRendered && (
         <button
           onClick={handleFallbackClick}
           disabled={disabled || isLoading}
