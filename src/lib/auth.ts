@@ -31,6 +31,7 @@ export interface User {
     company_website_url: string;
     job_title: string;
   } | null;
+  has_sent_first_message?: boolean;
 }
 
 interface AuthResponse {

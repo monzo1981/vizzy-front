@@ -426,63 +426,106 @@ function ChatContent() {
     }
   }, [sessionId, playSound])
 
-  const handleSend = async (messageToSend: string, imageToSend?: string | null) => {
-    if (isLoading || isCreatingSession) return
-    if (!messageToSend && !imageToSend) return
-    if (!n8nWebhook.current) return
+// في page.tsx - تحديث handleSend function
 
-    let currentSessionId = sessionId
-    const isFirstMessage = !currentSessionId
-    
-    if (isFirstMessage && !isCreatingSession) {
-      currentSessionId = await createAIChatSession(messageToSend)
-      if (!currentSessionId) {
-        console.error('Failed to create AI chat session')
-        setMessages(prev => [...prev, {
-          id: `error-${Date.now()}`,
-          content: 'Failed to start chat session. Please try again.',
-          sender: 'system',
-          timestamp: new Date()
-        }])
-        return
-      }
-      await new Promise(resolve => setTimeout(resolve, 500))
-    }
+const handleSend = async (messageToSend: string, imageToSend?: string | null) => {
+  if (isLoading || isCreatingSession) return
+  if (!messageToSend && !imageToSend) return
+  if (!n8nWebhook.current) return
 
-    const userMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
-      content: messageToSend || (imageToSend ? 'Sent an image' : ''),
-      sender: 'user',
-      timestamp: new Date(),
-      visual: imageToSend || undefined
-    }
-    setMessages(prev => [...prev, userMessage])
-    setIsLoading(true)
-
-    try {
-      const chatHistory = convertMessages(messages)
-      
-      if (imageToSend) {
-        await n8nWebhook.current.sendImageMessage(imageToSend, messageToSend, currentSessionId, chatHistory)
-      } else {
-        await n8nWebhook.current.sendMessage(messageToSend, currentSessionId, chatHistory)
-      }
-      
-      if (isFirstMessage || !isSubscribed) {
-        pollForFirstMessage(currentSessionId!, userMessage.id)
-      }
-    } catch (error) {
-      console.error('Error sending message to N8N:', error)
-      const errorMessage: ChatMessage = {
+  let currentSessionId = sessionId
+  const isFirstMessage = !currentSessionId
+  
+  // Check if this is user's VERY FIRST message ever
+  const userData = localStorage.getItem('user')
+  const user = userData ? JSON.parse(userData) : null
+  const isFirstTimeUser = user && !user.has_sent_first_message
+  
+  if (isFirstMessage && !isCreatingSession) {
+    currentSessionId = await createAIChatSession(messageToSend)
+    if (!currentSessionId) {
+      console.error('Failed to create AI chat session')
+      setMessages(prev => [...prev, {
         id: `error-${Date.now()}`,
-        content: 'Sorry, something went wrong. Please try again.',
-        sender: 'assistant',
+        content: 'Failed to start chat session. Please try again.',
+        sender: 'system',
         timestamp: new Date()
-      }
-      setMessages(prev => [...prev, errorMessage])
-      setIsLoading(false)
+      }])
+      return
     }
+    await new Promise(resolve => setTimeout(resolve, 500))
   }
+
+  const userMessage: ChatMessage = {
+    id: `user-${Date.now()}`,
+    content: messageToSend || (imageToSend ? 'Sent an image' : ''),
+    sender: 'user',
+    timestamp: new Date(),
+    visual: imageToSend || undefined
+  }
+  setMessages(prev => [...prev, userMessage])
+  setIsLoading(true)
+
+  try {
+    const chatHistory = convertMessages(messages)
+    
+    // Send message to N8N (N8N will get is_first_time_user = true for first message)
+    if (imageToSend) {
+      await n8nWebhook.current.sendImageMessage(imageToSend, messageToSend, currentSessionId, chatHistory)
+    } else {
+      await n8nWebhook.current.sendMessage(messageToSend, currentSessionId, chatHistory)
+    }
+    
+    // Mark first message as sent if this was the user's first message
+    if (isFirstTimeUser) {
+      await markFirstMessageSent()
+    }
+    
+    if (isFirstMessage || !isSubscribed) {
+      pollForFirstMessage(currentSessionId!, userMessage.id)
+    }
+  } catch (error) {
+    console.error('Error sending message to N8N:', error)
+    const errorMessage: ChatMessage = {
+      id: `error-${Date.now()}`,
+      content: 'Sorry, something went wrong. Please try again.',
+      sender: 'assistant',
+      timestamp: new Date()
+    }
+    setMessages(prev => [...prev, errorMessage])
+    setIsLoading(false)
+  }
+}
+
+// Helper function to mark first message sent
+const markFirstMessageSent = async () => {
+  try {
+    const token = localStorage.getItem('access_token')
+    if (!token) return
+    
+    const response = await fetch(`${API_BASE_URL}/ai-chat-session/mark-first-message/`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (response.ok) {
+      // Update local user data
+      const userData = localStorage.getItem('user')
+      if (userData) {
+        const user = JSON.parse(userData)
+        user.has_sent_first_message = true
+        localStorage.setItem('user', JSON.stringify(user))
+      }
+      console.log('✅ First message marked successfully')
+    }
+  } catch (error) {
+    console.error('Error marking first message:', error)
+    // Don't block the chat flow if this fails
+  }
+}
 
   const handleVoiceMessage = async (base64Audio: string) => {
     let currentSessionId = sessionId
