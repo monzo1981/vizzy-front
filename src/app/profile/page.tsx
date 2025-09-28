@@ -57,6 +57,7 @@ export default function ProfilePage() {
   const [isUploadingCompanyProfile, setIsUploadingCompanyProfile] = useState(false);
   const [isUploadingDocument, setIsUploadingDocument] = useState(false);
   const router = useRouter();
+  const [windowWidth, setWindowWidth] = useState(1024);
 
   // Helper function to get loading state for a field
   const getIsUploading = (field: string) => {
@@ -223,6 +224,11 @@ export default function ProfilePage() {
       }
     }
   }, [router])
+
+  // Set window width on client side
+  useEffect(() => {
+    setWindowWidth(window.innerWidth);
+  }, []);
 
   // Handle logo upload
   const handleLogoUpload = async (file: File) => {
@@ -471,7 +477,7 @@ export default function ProfilePage() {
                             width: '126px', 
                             height: '126px',
                             // Reduce size for mobile
-                            ...(window.innerWidth < 768 && { width: '80px', height: '80px' })
+                            ...(windowWidth < 768 && { width: '80px', height: '80px' })
                           }}
                         >
                           <Avatar 
@@ -486,7 +492,7 @@ export default function ProfilePage() {
                           <div className="flex items-center gap-3 mb-2">
                             <h2 style={{
                               fontWeight: 700,
-                              fontSize: window.innerWidth < 768 ? '24px' : '40px', // Adjust font size for mobile
+                              fontSize: windowWidth < 768 ? '24px' : '40px', // Adjust font size for mobile
                               color: '#4248FF'
                             }}>
                               {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Vizzy User'}
@@ -498,7 +504,7 @@ export default function ProfilePage() {
                                 borderRadius: '18px',
                                 fontWeight: 900,
                                 fontStyle: 'italic',
-                                fontSize: window.innerWidth < 768 ? '14px' : '20px', // Adjust font size for mobile
+                                fontSize: windowWidth < 768 ? '14px' : '20px', // Adjust font size for mobile
                                 padding: '6px 16px'
                               }}
                             >
@@ -1171,8 +1177,8 @@ export default function ProfilePage() {
                             <div
                               className="bg-white flex items-center justify-center"
                               style={{
-                                width: window.innerWidth < 768 ? 48 : 64,
-                                height: window.innerWidth < 768 ? 48 : 64,
+                                width: windowWidth < 768 ? 48 : 64,
+                                height: windowWidth < 768 ? 48 : 64,
                                 padding: 8,
                                 borderRadius: 12,
                                 boxShadow: '0 0 2px 0 rgba(0, 0, 0, 0.25)',
@@ -1181,8 +1187,8 @@ export default function ProfilePage() {
                               <Image
                                 src={asset.icon}
                                 alt="Asset Icon"
-                                width={window.innerWidth < 768 ? 32 : 48}
-                                height={window.innerWidth < 768 ? 32 : 48}
+                                width={windowWidth < 768 ? 32 : 48}
+                                height={windowWidth < 768 ? 32 : 48}
                                 style={{ 
                                   filter: uploadedAssets[asset.field]?.file_id 
                                     ? 'invert(47%) sepia(88%) saturate(6151%) hue-rotate(11deg) brightness(95%) contrast(102%)' // #FF4A19 filter
@@ -1214,7 +1220,7 @@ export default function ProfilePage() {
                                   <Button
                                     size="sm"
                                     className="text-white text-xs px-2 md:px-4"
-                                    style={{ background: '#7FCAFE', borderRadius: 36, fontWeight: 600, fontSize: window.innerWidth < 768 ? '10px' : '12px' }}
+                                    style={{ background: '#7FCAFE', borderRadius: 36, fontWeight: 600, fontSize: windowWidth < 768 ? '10px' : '12px' }}
                                     onClick={() => handleRemoveFile(asset.field)}
                                   >
                                     {t('profile.remove')}
@@ -1222,7 +1228,7 @@ export default function ProfilePage() {
                                   <Button
                                     size="sm"
                                     className="text-white text-xs px-2 md:px-4"
-                                    style={{ background: '#7FCAFE', borderRadius: 36, fontWeight: 600, fontSize: window.innerWidth < 768 ? '10px' : '12px' }}
+                                    style={{ background: '#7FCAFE', borderRadius: 36, fontWeight: 600, fontSize: windowWidth < 768 ? '10px' : '12px' }}
                                     onClick={() => document.getElementById(`${asset.field}-upload`)?.click()}
                                     disabled={getIsUploading(asset.field)}
                                   >
@@ -1233,7 +1239,7 @@ export default function ProfilePage() {
                                 <Button
                                   size="sm"
                                   className="text-white text-xs px-4 md:px-6"
-                                  style={{ background: '#FF4A19', borderRadius: 36, fontWeight: 600, minWidth: '60px', fontSize: window.innerWidth < 768 ? '10px' : '12px' }}
+                                  style={{ background: '#FF4A19', borderRadius: 36, fontWeight: 600, minWidth: '60px', fontSize: windowWidth < 768 ? '10px' : '12px' }}
                                   onClick={() => document.getElementById(`${asset.field}-upload`)?.click()}
                                   disabled={getIsUploading(asset.field)}
                                 >
