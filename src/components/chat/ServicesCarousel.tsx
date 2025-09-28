@@ -152,7 +152,7 @@ export function ServicesCarousel({ isDarkMode = false, className = "" }: Service
   }, [currentIndex, services.length, getVisibleCards, mounted])
 
   return (
-    <div className={`w-full max-w-7xl mx-auto px-4 py-4 ${className}`} style={{ border: '2px solid #D3E6FC1F', borderRadius: '50px', boxShadow: '0px 0px 12px 0px #4248ff49' }}>
+    <div className={`w-full max-w-7xl mx-auto px-4 py-4 ${className}`} style={{ border: '2px solid #D3E6FC1F', borderRadius: '50px', boxShadow: '0px 0px 8px 0px #4248ff54' }}>
       {/* Main Carousel Container with Navigation */}
       <div className="relative flex items-center ">
         
