@@ -8,17 +8,7 @@ import Image from "next/image"
 import {
   Search,
   Bell,
-  User,
   Edit,
-  Lock,
-  CreditCard,
-  Users,
-  LogOut,
-  Trash2,
-  Menu,
-  ChevronLeft,
-  Activity,
-  Puzzle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -33,12 +23,15 @@ import { ProfileEditModal } from "@/components/profile-edit-modal"
 import { useToast, ToastContainer } from "@/components/ui/toast"
 import { useLanguage } from "@/contexts/LanguageContext"
 import { useTheme } from "@/contexts/ThemeContext"
+import { RecentWorkModal } from "@/components/profile/RecentWorkModal"
 
 export default function ProfilePage() {
   const { toasts, toast, removeToast } = useToast()
-  const { createLocalizedPath } = useLanguage()
+  const { t, isRTL, language, createLocalizedPath } = useLanguage()
   const { isDarkMode } = useTheme()
-  const [sidebarExpanded, setSidebarExpanded] = useState(false)
+
+  const [isRecentWorkModalOpen, setIsRecentWorkModalOpen] = useState(false)
+
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [companyProfile, setCompanyProfile] = useState<any | null>(null)
@@ -60,7 +53,25 @@ export default function ProfilePage() {
     company_profile: { file_id: null, file_url: null },
     document: { file_id: null, file_url: null }
   });
+  const [isUploadingBrandManual, setIsUploadingBrandManual] = useState(false);
+  const [isUploadingCompanyProfile, setIsUploadingCompanyProfile] = useState(false);
+  const [isUploadingDocument, setIsUploadingDocument] = useState(false);
   const router = useRouter();
+
+  // Helper function to get loading state for a field
+  const getIsUploading = (field: string) => {
+    if (field === 'brand_manual') return isUploadingBrandManual;
+    if (field === 'company_profile') return isUploadingCompanyProfile;
+    if (field === 'document') return isUploadingDocument;
+    return false;
+  };
+
+  // Helper function to set loading state for a field
+  const setIsUploading = (field: string, value: boolean) => {
+    if (field === 'brand_manual') setIsUploadingBrandManual(value);
+    else if (field === 'company_profile') setIsUploadingCompanyProfile(value);
+    else if (field === 'document') setIsUploadingDocument(value);
+  };
   // Fetch user limits and calculate progress
   useEffect(() => {
     async function fetchLimits() {
@@ -218,7 +229,7 @@ export default function ProfilePage() {
     try {
       const token = localStorage.getItem('access_token')
       if (!token) {
-        toast.error('Please login again')
+        toast.error(t('profile.loginAgain'))
         return
       }
 
@@ -268,33 +279,36 @@ export default function ProfilePage() {
         // Update local state
         setCompanyProfile(updatedProfile)
         
-        toast.success('Logo updated successfully!')
+        toast.success(t('profile.logoUpdated'))
       } else {
         const errorData = await response.text()
         console.error('API Error:', response.status, errorData)
-        toast.error('Failed to update logo')
+        toast.error(t('profile.logoUpdateFailed'))
       }
     } catch (error) {
       console.error('Error updating logo:', error)
-      toast.error('Error updating logo')
+      toast.error(t('profile.logoUpdateError'))
     }
   }
 
   // Get asset label from field name
   const getAssetLabel = (field: string) => {
     const assets = [
-      { icon: '/manual.svg', label: 'Brand Manual', field: 'brand_manual' },
-      { icon: '/profile.svg', label: 'Company Profile', field: 'company_profile' },
-      { icon: '/document.svg', label: 'Document', field: 'document' },
+      { icon: '/manual.svg', label: t('profile.brandManual'), field: 'brand_manual' },
+      { icon: '/profile.svg', label: t('profile.companyProfile'), field: 'company_profile' },
+      { icon: '/document.svg', label: t('profile.document'), field: 'document' },
     ];
     return assets.find(asset => asset.field === field)?.label || field;
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, field: string) => {
     if (!event.target.files || event.target.files.length === 0) {
-      toast.error('No file selected.');
+      toast.error(t('profile.noFileSelected'));
       return;
     }
+
+    // Set loading state when file is selected
+    setIsUploading(field, true);
 
     const file = event.target.files[0];
     const formData = new FormData();
@@ -304,7 +318,7 @@ export default function ProfilePage() {
     try {
       const token = localStorage.getItem('access_token'); // استخدام access_token بدلاً من token
       if (!token) {
-        toast.error('Please login again');
+        toast.error(t('profile.loginAgain'));
         return;
       }
 
@@ -319,12 +333,12 @@ export default function ProfilePage() {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Error response:', errorText);
-        toast.error('File upload failed. Please check the server response.');
+        toast.error(t('profile.fileUploadFailed'));
         return;
       }
 
       const data = await response.json();
-      toast.success(`${getAssetLabel(field)} uploaded successfully.`);
+      toast.success(`${getAssetLabel(field)} ${t('profile.fileUploadSuccess')}`);
       
       // Update uploaded assets state with the new file info
       if (data && data.data) {
@@ -342,7 +356,10 @@ export default function ProfilePage() {
       }
     } catch (error) {
       console.error('Error uploading file:', error);
-      toast.error('An error occurred during file upload.');
+      toast.error(t('profile.fileUploadError'));
+    } finally {
+      // Reset loading state
+      setIsUploading(field, false);
     }
   };
 
@@ -350,7 +367,7 @@ export default function ProfilePage() {
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        toast.error('Please login again');
+        toast.error(t('profile.loginAgain'));
         return;
       }
 
@@ -366,11 +383,11 @@ export default function ProfilePage() {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Error response:', errorText);
-        toast.error('File removal failed.');
+        toast.error(t('profile.fileRemovalFailed'));
         return;
       }
 
-      toast.success(`${getAssetLabel(field)} removed successfully.`);
+      toast.success(`${getAssetLabel(field)} ${t('profile.fileRemovalSuccess')}`);
       
       // Update uploaded assets state
       setUploadedAssets((prev) => ({
@@ -384,7 +401,7 @@ export default function ProfilePage() {
       
     } catch (error) {
       console.error('Error removing file:', error);
-      toast.error('An error occurred during file removal.');
+      toast.error(t('profile.fileRemovalError'));
     }
   };
 
@@ -431,151 +448,16 @@ export default function ProfilePage() {
       {/* Layout Container */}
   <div className="flex pt-[92px]"> {/* Padding top for fixed header, increased for larger avatar */}
         
-        {/* Sidebar - PURE WHITE, COLLAPSIBLE */}
-        <aside
-          className={`
-            fixed left-0 top-[72px] h-[calc(100vh-72px)] shadow-lg
-            transition-all duration-300 ease-in-out z-40
-            ${sidebarExpanded ? "w-[280px]" : "w-[60px]"}
-            overflow-hidden
-            ${isDarkMode ? 'bg-[#0E0E10]' : 'bg-white'}
-          `}
-        >
-          <div className="flex flex-col h-full pt-4">
-            {/* Toggle Button - TOP OF SIDEBAR */}
-            <div className={`p-3 border-b ${isDarkMode ? 'border-[#23232A]' : 'border-gray-200'}`}> 
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => setSidebarExpanded(!sidebarExpanded)}
-                className={`w-full ${isDarkMode ? 'hover:bg-[#23232A] text-white' : 'hover:bg-gray-100 text-gray-700'}`}
-              >
-                {sidebarExpanded ? (
-                  <ChevronLeft className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
-                ) : (
-                  <Menu className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
-                )}
-              </Button>
-            </div>
-
-            {/* Sidebar Content */}
-            <div className="flex-1 overflow-y-auto p-3">
-              <div className="space-y-6">
-                {/* Profile Section */}
-                <div>
-                  {sidebarExpanded && (
-                    <h3 className="text-sm font-medium text-gray-500 mb-3 px-3">Profile</h3>
-                  )}
-                  <div className="space-y-1">
-                    <Button 
-                      variant="ghost" 
-                      className={`w-full ${isDarkMode ? 'hover:bg-[#23232A] text-white' : 'hover:bg-gray-100 text-gray-700'} ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
-                    >
-                      <User className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
-                      {sidebarExpanded && <span className="ml-3">Edit Profile</span>}
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      className={`w-full ${isDarkMode ? 'hover:bg-[#23232A] text-white' : 'hover:bg-gray-100 text-gray-700'} ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
-                    >
-                      <Bell className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
-                      {sidebarExpanded && <span className="ml-3">Notification</span>}
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Subscription Section */}
-                <div>
-                  {sidebarExpanded && (
-                    <h3 className="text-sm font-medium text-gray-500 mb-3 px-3">Subscription</h3>
-                  )}
-                  <div className="space-y-1">
-                    <Button 
-                      variant="ghost" 
-                      className={`w-full ${isDarkMode ? 'hover:bg-[#23232A] text-white' : 'hover:bg-gray-100 text-gray-700'} ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
-                    >
-                      <Activity className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
-                      {sidebarExpanded && <span className="ml-3">Activetes</span>}
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      className={`w-full ${isDarkMode ? 'hover:bg-[#23232A] text-white' : 'hover:bg-gray-100 text-gray-700'} ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
-                    >
-                      <Puzzle className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
-                      {sidebarExpanded && <span className="ml-3">Interest</span>}
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      className={`w-full ${isDarkMode ? 'hover:bg-[#23232A] text-white' : 'hover:bg-gray-100 text-gray-700'} ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
-                    >
-                      <Users className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
-                      {sidebarExpanded && <span className="ml-3">Invite & win</span>}
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      className={`w-full ${isDarkMode ? 'hover:bg-[#23232A] text-white' : 'hover:bg-gray-100 text-gray-700'} ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
-                    >
-                      <CreditCard className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
-                      {sidebarExpanded && <span className="ml-3">Payment</span>}
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Secure Section */}
-                <div>
-                  {sidebarExpanded && (
-                    <h3 className="text-sm font-medium text-gray-500 mb-3 px-3">Secure</h3>
-                  )}
-                  <div className="space-y-1">
-                    <Button 
-                      variant="ghost" 
-                      className={`w-full ${isDarkMode ? 'hover:bg-[#23232A] text-white' : 'hover:bg-gray-100 text-gray-700'} ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
-                    >
-                      <Lock className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
-                      {sidebarExpanded && <span className="ml-3">Password</span>}
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      className={`w-full ${isDarkMode ? 'hover:bg-[#23232A] text-white' : 'hover:bg-gray-100 text-gray-700'} ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
-                    >
-                      <User className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
-                      {sidebarExpanded && <span className="ml-3">Access</span>}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Actions */}
-            <div className="border-t border-gray-200 p-3 space-y-1">
-              <Button 
-                variant="ghost" 
-                className={`w-full ${isDarkMode ? 'hover:bg-[#23232A] text-white' : 'hover:bg-gray-100 text-gray-700'} ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
-              >
-                <LogOut className="w-5 h-5" color={isDarkMode ? 'white' : undefined} />
-                {sidebarExpanded && <span className="ml-3">Log out</span>}
-              </Button>
-              <Button 
-                variant="ghost" 
-                className={`w-full text-red-500 hover:text-red-600 hover:bg-red-50 ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
-              >
-                <Trash2 className="w-5 h-5" />
-                {sidebarExpanded && <span className="ml-3">Delete Account</span>}
-              </Button>
-            </div>
-          </div>
-        </aside>
-
         {/* Main Content - CENTERED */}
-        <main className={`flex-1 transition-all duration-300 ${sidebarExpanded ? "ml-[280px]" : "ml-[60px]"}`}>
+        <main className="flex-1">
           <div className="flex justify-center px-6 py-6">
             <div className="w-full max-w-[1400px]">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 ${isRTL ? 'lg:grid-flow-col-reverse' : ''}`}>
                 
                 {/* Left Column - Profile Info */}
                 <div className="lg:col-span-2">
                   {/* Profile Card */}
-                  <Card className="border-0" style={{ 
+                  <Card className="border-0" dir={language === 'ar' ? 'rtl' : 'ltr'} style={{ 
                     background: isDarkMode
                       ? 'linear-gradient(100.74deg, rgba(127, 202, 254) -2.34%, rgba(255, 255, 255) 25.59%, rgba(255, 228, 224) 63.57%, rgba(255, 255, 255) 106.88%)'
                       : 'linear-gradient(100.74deg, rgba(127, 202, 254, 0.5) -2.34%, rgba(255, 255, 255, 0.5) 25.59%, rgba(255, 228, 224, 0.5) 63.57%, rgba(255, 255, 255, 0.5) 106.88%)',
@@ -623,9 +505,9 @@ export default function ProfilePage() {
                               Pro
                             </Badge>
                           </div>
-                          <p className="text-sm text-gray-600 mb-1">For uploading new Profile pic</p>
-                          <p className="text-sm text-gray-600 mb-1">At least 800×800 px recommended</p>
-                          <p className="text-sm text-gray-600">JPG or PNG is allowed</p>
+                          <p className="text-sm text-gray-600 mb-1">{t('profile.uploadProfilePic')}</p>
+                          <p className="text-sm text-gray-600 mb-1">{t('profile.recommendedSize')}</p>
+                          <p className="text-sm text-gray-600">{t('profile.allowedFormats')}</p>
                         </div>
                       </div>
 
@@ -642,7 +524,7 @@ export default function ProfilePage() {
                             fontWeight: 600,
                             fontSize: '20px',
                             color: '#11002E'
-                          }}>Personal info</h3>
+                          }}>{t('profile.personalInfo')}</h3>
                           <Button 
                             variant="outline"
                             size="sm"
@@ -656,7 +538,7 @@ export default function ProfilePage() {
                             onClick={() => setIsProfileModalOpen(true)}
                           >
                             <Edit className="w-3 h-3" style={{ color: '#78758E' }} />
-                            <span style={{ color: '#000' }}>Edit</span>
+                            <span style={{ color: '#000' }}>{t('profile.edit')}</span>
                           </Button>
                         </div>
 
@@ -690,13 +572,13 @@ export default function ProfilePage() {
                                 fontWeight: 500,
                                 fontSize: '16px',
                                 marginBottom: '4px'
-                              }}>Name</p>
+                              }}>{t('profile.name')}</p>
                               <p style={{
                                 color: '#78758E',
                                 fontWeight: 500,
                                 fontSize: '16px'
                               }}>
-                                {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Not available'}
+                                {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : t('profile.notAvailable')}
                               </p>
                             </div>
                             <div>
@@ -705,12 +587,12 @@ export default function ProfilePage() {
                                 fontWeight: 500,
                                 fontSize: '16px',
                                 marginBottom: '4px'
-                              }}>Business name</p>
+                              }}>{t('profile.businessName')}</p>
                               <p style={{
                                 color: '#78758E',
                                 fontWeight: 500,
                                 fontSize: '16px'
-                              }}>{companyProfile ? companyProfile.company_name : 'Not available'}</p>
+                              }}>{companyProfile ? companyProfile.company_name : t('profile.notAvailable')}</p>
                             </div>
                             {/* Empty div for alignment */}
                             <div></div>
@@ -722,12 +604,12 @@ export default function ProfilePage() {
                                 fontWeight: 500,
                                 fontSize: '16px',
                                 marginBottom: '4px'
-                              }}>Job Title</p>
+                              }}>{t('profile.jobTitle')}</p>
                               <p style={{
                                 color: '#78758E',
                                 fontWeight: 500,
                                 fontSize: '16px'
-                              }}>{companyProfile?.job_title || 'Not available'}</p>
+                              }}>{companyProfile?.job_title || t('profile.notAvailable')}</p>
                             </div>
                             <div>
                               <p style={{
@@ -735,12 +617,12 @@ export default function ProfilePage() {
                                 fontWeight: 500,
                                 fontSize: '16px',
                                 marginBottom: '4px'
-                              }}>Industry</p>
+                              }}>{t('profile.industry')}</p>
                               <p style={{
                                 color: '#78758E',
                                 fontWeight: 500,
                                 fontSize: '16px'
-                              }}>{companyProfile?.industry || 'Not available'}</p>
+                              }}>{companyProfile?.industry || t('profile.notAvailable')}</p>
                             </div>
                             {/* Empty div for alignment */}
                             <div></div>
@@ -752,12 +634,12 @@ export default function ProfilePage() {
                                 fontWeight: 500,
                                 fontSize: '16px',
                                 marginBottom: '4px'
-                              }}>Email</p>
+                              }}>{t('profile.email')}</p>
                               <p style={{
                                 color: '#78758E',
                                 fontWeight: 500,
                                 fontSize: '16px'
-                              }}>{currentUser ? currentUser.email : 'Not available'}</p>
+                              }}>{currentUser ? currentUser.email : t('profile.notAvailable')}</p>
                             </div>
                             <div>
                               <p style={{
@@ -765,12 +647,12 @@ export default function ProfilePage() {
                                 fontWeight: 500,
                                 fontSize: '16px',
                                 marginBottom: '4px'
-                              }}>Mobile</p>
+                              }}>{t('profile.mobile')}</p>
                               <p style={{
                                 color: '#78758E',
                                 fontWeight: 500,
                                 fontSize: '16px'
-                              }}>{currentUser?.phone_number || 'Not available'}</p>
+                              }}>{currentUser?.phone_number || t('profile.notAvailable')}</p>
                             </div>
                             <div>
                               <p style={{
@@ -778,12 +660,12 @@ export default function ProfilePage() {
                                 fontWeight: 500,
                                 fontSize: '16px',
                                 marginBottom: '4px'
-                              }}>Website</p>
+                              }}>{t('profile.website')}</p>
                               <p style={{
                                 color: '#78758E',
                                 fontWeight: 500,
                                 fontSize: '16px'
-                              }}>{companyProfile?.company_website_url || 'Not available'}</p>
+                              }}>{companyProfile?.company_website_url || t('profile.notAvailable')}</p>
                             </div>
                           </div>
                         </div>
@@ -796,13 +678,14 @@ export default function ProfilePage() {
                     {/* Recent Work Card - Takes 3 columns out of 5 */}
                     <Card 
                       className="border-0 text-white md:col-span-3"
+                      dir={language === 'ar' ? 'rtl' : 'ltr'}
                       style={{
                         background: '#7FCAFE',
                         borderRadius: '36px',
                       }}
                     >
                       <CardContent className="p-6">
-                        <h3 className="font-bold mb-2" style={{ fontWeight: 700, fontSize: 30, fontFamily: 'Inter', textAlign: 'center' }}>Recent work</h3>
+                        <h3 className="font-bold mb-2" style={{ fontWeight: 700, fontSize: 30, fontFamily: 'Inter', textAlign: 'center' }}>{t('profile.recentWork')}</h3>
                         <div className="flex flex-col h-full min-h-[240px]">
                           <div className="flex-1 flex items-center justify-center relative overflow-hidden"
                             onTouchStart={recentWork.length > 0 ? handleTouchStart : undefined}
@@ -1001,10 +884,10 @@ export default function ProfilePage() {
                                       marginBottom: '8px'
                                     }}
                                   >
-                                    Nothing here yet!
+                                    {t('profile.nothingHere')}
                                   </h3>
                                   <button
-                                    onClick={() => router.push('/chat')}
+                                    onClick={() => router.push(createLocalizedPath('chat'))}
                                     style={{
                                       background: 'white',
                                       color: '#78758E',
@@ -1017,7 +900,7 @@ export default function ProfilePage() {
                                       fontFamily: 'Inter',
                                     }}
                                   >
-                                    Start Generating Now
+                                    {t('profile.startGenerating')}
                                   </button>
                                 </div>
                               </div>
@@ -1063,8 +946,9 @@ export default function ProfilePage() {
                                     marginRight: 0,
                                     fontFamily: 'inherit',
                                   }}
+                                  onClick={() => setIsRecentWorkModalOpen(true)}
                                 >
-                                  See Full
+                                  {t('profile.seeFulld')}
                                 </Button>
                               </div>
                             </div>
@@ -1074,10 +958,11 @@ export default function ProfilePage() {
                     </Card>
 
                     {/* Right Column Cards */}
-                    <div className="space-y-4 md:col-span-2">
+                    <div className="space-y-10 md:col-span-2">
                       {/* My Links Card */}
                       <Card 
                         className="border-0 text-white"
+                        dir={language === 'ar' ? 'rtl' : 'ltr'}
                         style={{
                           background: '#4248FF',
                           borderRadius: '36px',
@@ -1092,7 +977,7 @@ export default function ProfilePage() {
                               textAlign: 'center',
                               marginBottom: '12px',
                             }}
-                          >My Links</h3>
+                          >{t('profile.myLinks')}</h3>
                           <p 
                             style={{
                               fontWeight: 400,
@@ -1104,7 +989,7 @@ export default function ProfilePage() {
                               opacity: 0.8,
                             }}
                           >
-                            This links to your accounts will be used as reference for tone of voice and visual direction, to influence future generated visuals if needed.
+                            {t('profile.linksDescription')}
                           </p>
                           <div className="flex gap-4 justify-center">
                             <Image src="/web.svg" alt="Website" width={40} height={40} />
@@ -1118,6 +1003,7 @@ export default function ProfilePage() {
                       {/* Your Logo Card */}
                       <Card 
                         className="border-0 text-white"
+                        dir={language === 'ar' ? 'rtl' : 'ltr'}
                         style={{
                           background: '#FF4A19',
                           borderRadius: '36px',
@@ -1137,7 +1023,7 @@ export default function ProfilePage() {
                                   textAlign: 'center',
                                   whiteSpace: 'nowrap',
                                 }}
-                              >Your Logo</h3>
+                              >{t('profile.yourLogo')}</h3>
                               <Button
                                 type="button"
                                 className="flex items-center justify-center border-0"
@@ -1152,7 +1038,7 @@ export default function ProfilePage() {
                                 }}
                                 onClick={() => document.getElementById('logo-upload-input')?.click()}
                               >
-                                Upload
+                                {t('profile.upload')}
                               </Button>
                             </div>
                             <div className="flex-1 flex items-center justify-center">
@@ -1186,6 +1072,7 @@ export default function ProfilePage() {
                   {/* Credits Card */}
                   <Card 
                     className="border-0" 
+                    dir={language === 'ar' ? 'rtl' : 'ltr'}
                     style={{ 
                       background: 'linear-gradient(143.41deg, #FFEB77 -4.53%, #FFE4E0 103.15%)', 
                       borderRadius: '36px' 
@@ -1203,7 +1090,7 @@ export default function ProfilePage() {
                           marginBottom: 0,
                         }}
                       >
-                        Credits
+                        {t('profile.credits')}
                       </h3>
                       <div className="relative mx-auto mb-6" style={{ width: 150, height: 150 }}>
                         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 150 150">
@@ -1229,9 +1116,9 @@ export default function ProfilePage() {
                       </div>
                       <div className="text-center mb-6">
                         <p style={{ color: '#11002E', fontWeight: 400, fontSize: '16px' }}>
-                          You have <span style={{ fontWeight: 700, color: '#4248FF' }}>{remainingCredits}</span> credits remaining
+                          {t('profile.creditsRemaining')} <span style={{ fontWeight: 700, color: '#4248FF' }}>{remainingCredits}</span> {t('profile.creditsRemainingEnd')}
                         </p>
-                        <p style={{ color: '#11002E', fontWeight: 400, fontSize: '16px' }}>Upgrade now to unlock more generations</p>
+                        <p style={{ color: '#11002E', fontWeight: 400, fontSize: '16px' }}>{t('profile.upgradeMessage')}</p>
                       </div>
                       <Button 
                         className="w-full"
@@ -1245,7 +1132,7 @@ export default function ProfilePage() {
                           paddingBottom: '14px',
                         }}
                       >
-                        Upgrade Now
+                        {t('profile.upgradeNow')}
                       </Button>
                     </CardContent>
                   </Card>
@@ -1253,6 +1140,7 @@ export default function ProfilePage() {
                   {/* Assets Card */}
                   <Card 
                     className="border-0"
+                    dir={language === 'ar' ? 'rtl' : 'ltr'}
                     style={{
                       background: 'linear-gradient(208.72deg, #D3E6FC -5%, #FFFFFF 46.16%, #D3E6FC 109.84%)',
                       borderRadius: '36px',
@@ -1268,15 +1156,15 @@ export default function ProfilePage() {
                           marginBottom: 0,
                         }}
                       >
-                        Assets
+                        {t('profile.assets')}
                       </h3>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       {/* Asset Items - All identical, background #D3E6FC */}
                       {[
-                        { icon: '/manual.svg', label: 'Brand Manual', field: 'brand_manual' },
-                        { icon: '/profile.svg', label: 'Company Profile', field: 'company_profile' },
-                        { icon: '/document.svg', label: 'Document', field: 'document' },
+                        { icon: '/manual.svg', label: t('profile.brandManual'), field: 'brand_manual' },
+                        { icon: '/profile.svg', label: t('profile.companyProfile'), field: 'company_profile' },
+                        { icon: '/document.svg', label: t('profile.document'), field: 'document' },
                       ].map((asset, i) => (
                         <div key={i} className="flex items-center justify-between p-3" style={{ background: '#D3E6FC', borderRadius: 20 }}>
                           <div className="flex items-center gap-2 md:gap-3">
@@ -1320,18 +1208,6 @@ export default function ProfilePage() {
                             </div>
                           </div>
                           <div className="flex flex-col items-end gap-1 ml-1 md:ml-2">
-                            <button
-                              type="button"
-                              className="flex items-center gap-2"
-                              style={{ background: 'none', border: 'none', color: '#78758E', fontWeight: 300, fontSize: 14, padding: 0, cursor: 'pointer', marginBottom: 4 }}
-                              onClick={() => {
-                                // TODO: Add edit name functionality
-                                console.log('Edit name clicked for:', asset.field);
-                              }}
-                            >
-                              <Image src="/edit.svg" alt="Edit" width={14} height={14} style={{ filter: 'invert(47%) sepia(8%) saturate(756%) hue-rotate(210deg) brightness(95%) contrast(84%)' }} />
-                              <span style={{ color: '#78758E' }}>Edit name</span>
-                            </button>
                             <div className="flex items-center gap-1 md:gap-2">
                               {uploadedAssets[asset.field]?.file_id ? (
                                 <>
@@ -1341,15 +1217,16 @@ export default function ProfilePage() {
                                     style={{ background: '#7FCAFE', borderRadius: 36, fontWeight: 600, fontSize: window.innerWidth < 768 ? '10px' : '12px' }}
                                     onClick={() => handleRemoveFile(asset.field)}
                                   >
-                                    Remove
+                                    {t('profile.remove')}
                                   </Button>
                                   <Button
                                     size="sm"
                                     className="text-white text-xs px-2 md:px-4"
                                     style={{ background: '#7FCAFE', borderRadius: 36, fontWeight: 600, fontSize: window.innerWidth < 768 ? '10px' : '12px' }}
                                     onClick={() => document.getElementById(`${asset.field}-upload`)?.click()}
+                                    disabled={getIsUploading(asset.field)}
                                   >
-                                    Update
+                                    {getIsUploading(asset.field) ? t('profile.uploading') : t('profile.update')}
                                   </Button>
                                 </>
                               ) : (
@@ -1358,8 +1235,9 @@ export default function ProfilePage() {
                                   className="text-white text-xs px-4 md:px-6"
                                   style={{ background: '#FF4A19', borderRadius: 36, fontWeight: 600, minWidth: '60px', fontSize: window.innerWidth < 768 ? '10px' : '12px' }}
                                   onClick={() => document.getElementById(`${asset.field}-upload`)?.click()}
+                                  disabled={getIsUploading(asset.field)}
                                 >
-                                  Upload
+                                  {getIsUploading(asset.field) ? t('profile.uploading') : t('profile.assetsUpload')}
                                 </Button>
                               )}
                             </div>
@@ -1433,6 +1311,12 @@ export default function ProfilePage() {
             toast.error(message)
           }
         }}
+      />
+
+      {/* Recent Work Modal */}
+      <RecentWorkModal
+        isOpen={isRecentWorkModalOpen}
+        onClose={() => setIsRecentWorkModalOpen(false)}
       />
       
       {/* Toast Container */}

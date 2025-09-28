@@ -47,6 +47,7 @@ const SignUp = () => {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');  // New state for phone number
   const [companyName, setCompanyName] = useState('');
   const [industry, setIndustry] = useState('');
   const [error, setError] = useState('');
@@ -100,7 +101,7 @@ const SignUp = () => {
     setIsLoading(true);
 
     if (!firstName || !lastName || !email || !password || !companyName || !industry) {
-      setError('All fields are required.');
+      setError('All fields except phone number are required.');
       setIsLoading(false);
       return;
     }
@@ -124,11 +125,19 @@ const SignUp = () => {
       return;
     }
 
+    // Validate phone number if provided
+    if (phoneNumber && phoneNumber.length < 7) {
+      setError('Please enter a valid phone number.');
+      setIsLoading(false);
+      return;
+    }
+
     const result = await register({
       first_name: firstName,
       last_name: lastName,
       email,
       password,
+      phone_number: phoneNumber,
       company_name: companyName,
       industry
     });
@@ -206,7 +215,7 @@ const SignUp = () => {
                     fontWeight: 900 
                   }}>VIZZY</span> أول مساعد شخصي
                   <br />
-                  للتسويق بالذكــاء الاصطــناعي
+                  للتسويق بالذكـــاء الاصطــــناعي
                 </p>
               </div>
               
@@ -243,7 +252,7 @@ const SignUp = () => {
                 maxWidth: 'min(585px, 90vw)',
                 width: '100%',
                 minWidth: '300px',
-                minHeight: '600px',
+                minHeight: '650px',
                 height: 'auto',
                 opacity: 1,
                 borderRadius: 'clamp(32px, 6vw, 88px)',
@@ -322,6 +331,24 @@ const SignUp = () => {
                       placeholder="Email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      className="w-full h-10 sm:h-11 lg:h-12 bg-white rounded-full px-4 sm:px-5 lg:px-6 text-gray-700 placeholder:text-gray-400 border-0 focus:outline-none focus:ring-0 focus:border-0 text-sm sm:text-base"
+                    />
+                  </div>
+                </div>
+
+                {/* Phone Number (Required) */}
+                <div>
+                  <div
+                    className="rounded-full p-[1px]"
+                    style={{
+                      background: 'linear-gradient(91.52deg, #4248FF -19.2%, #7FCBFD 119.88%)'
+                    }}
+                  >
+                    <Input
+                      type="tel"
+                      placeholder="Phone Number"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
                       className="w-full h-10 sm:h-11 lg:h-12 bg-white rounded-full px-4 sm:px-5 lg:px-6 text-gray-700 placeholder:text-gray-400 border-0 focus:outline-none focus:ring-0 focus:border-0 text-sm sm:text-base"
                     />
                   </div>

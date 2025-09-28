@@ -662,7 +662,7 @@ function ChatContent() {
               {/* Center Content: Title and Carousel */}
               <div className="flex flex-col items-center">
                 <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-[57px] font-bold text-center leading-none mb-4 pt-1 sm:mb-4 lg:mb-6 lg:pb-2 lg:pt-2.5`} style={{
-                  background: 'linear-gradient(90.57deg, #FFEB77 2.54%, #FF4A19 37.91%, #4248FF 90.32%)',
+                  background: 'linear-gradient(90.57deg, #ff9a3bff 2.54%, #FF4A19 37.91%, #4248FF 90.32%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent'
                 }}>
@@ -692,6 +692,7 @@ function ChatContent() {
                   tutorialStep={tutorialStep}
                   onTutorialNext={nextTutorialStep}
                   onTutorialSkip={skipTutorial}
+                  toast={toast}  // Add this line
                 />
               </div>
             </main>
@@ -713,6 +714,7 @@ function ChatContent() {
                 isCreatingSession={isCreatingSession}
                 onSend={handleSend}
                 onVoiceMessage={handleVoiceMessage}
+                toast={toast}  // Add this line
               />
             </div>
           )}

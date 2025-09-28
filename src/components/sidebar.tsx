@@ -1,6 +1,5 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
-import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from '../contexts/LanguageContext';
 import { motion, AnimatePresence } from "framer-motion";
@@ -226,7 +225,7 @@ export function Sidebar({
       {/* Mobile Overlay */}
       {isMobile && (
         <div 
-          className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300"
+          className="fixed inset-0 bg-black/10 z-40 transition-opacity duration-300"
           onClick={onToggle}
         />
       )}
@@ -260,14 +259,19 @@ export function Sidebar({
                 className={cn(
                   "p-2 rounded-lg transition-colors duration-200 flex items-center gap-2",
                   mounted && isDarkMode ? "hover:bg-white/10" : "hover:bg-[#7FCAFE1A]",
-                  !showExpanded && "mx-auto"
+                  showExpanded ? "w-full justify-start" : "mx-auto"
                 )}
               >
                 <span 
                   className={cn(
-                    "text-sm font-bold",
+                    "text-sm font-bold flex-shrink-0",
                     mounted && isDarkMode ? "text-white" : "text-gray-700"
                   )}
+                  style={{ 
+                    minWidth: '24px',
+                    textAlign: 'center',
+                    display: 'inline-block'
+                  }}
                 >
                   {!isHydrated ? 'AR' : (language === 'en' ? 'AR' : 'EN')}
                 </span>
@@ -300,7 +304,7 @@ export function Sidebar({
                 className={cn(
                   "p-2 rounded-lg transition-colors duration-200 flex items-center gap-2",
                   mounted && isDarkMode ? "hover:bg-white/10" : "hover:bg-[#7FCAFE1A]",
-                  !showExpanded && "mx-auto"
+                  showExpanded ? "w-full justify-start" : "mx-auto"
                 )}
               >
                 <svg 
@@ -309,6 +313,13 @@ export function Sidebar({
                   viewBox="0 0 20 20" 
                   fill="none" 
                   xmlns="http://www.w3.org/2000/svg"
+                  className="flex-shrink-0"
+                  style={{ 
+                    minWidth: '24px',
+                    minHeight: '24px',
+                    width: '24px',
+                    height: '24px'
+                  }}
                 >
                   <circle cx="10" cy="10" r="9" stroke={mounted && isDarkMode ? '#ffffff' : '#4B5563'} strokeWidth="2"/>
                   <path 
@@ -338,47 +349,48 @@ export function Sidebar({
               </button>
             </div>
             
-            {/* Toggle & Search Row */}
-            <div className="flex items-center justify-between">
+            {/* Toggle Button */}
+            <div className="flex items-center">
               <button
                 onClick={handleTogglePin}
                 className={cn(
-                  "p-2 rounded-lg transition-colors duration-200",
-                  mounted && isDarkMode ? "hover:bg-white/10" : "hover:bg-[#7FCAFE1A]",
-                  !showExpanded && "mx-auto"
+                  "p-2 rounded-lg transition-colors duration-200 flex items-center gap-2",
+                  // mounted && isDarkMode ? "hover:bg-white/10" : "hover:bg-[#7FCAFE1A]",
+                  showExpanded ? "w-full justify-start" : "mx-auto"
                 )}
               >
                 <img 
                   src="/side-bar.svg" 
                   alt="Toggle" 
-                  className="w-6 h-6"
+                  className="flex-shrink-0"
                   style={{ 
                     filter: mounted && isDarkMode ? 'brightness(0) invert(1)' : 'none',
                     minWidth: '24px',
-                    minHeight: '24px'
+                    minHeight: '24px',
+                    width: '24px',
+                    height: '24px'
                   }}
                 />
+                <AnimatePresence>
+                  {showExpanded && (
+                    <motion.span
+                      initial={{ opacity: 0, width: 0 }}
+                      animate={{ opacity: 0, width: "auto" }}
+                      exit={{ opacity: 0, width: 0 }}
+                      transition={{ 
+                        duration: 0.2,
+                        delay: showExpanded ? 0.2 : 0
+                      }}
+                      className={cn(
+                        "text-sm overflow-hidden whitespace-nowrap",
+                        mounted && isDarkMode ? "text-gray-300" : "text-gray-600"
+                      )}
+                    >
+                      {isPinned ? 'Unpin' : 'Pin sidebar'}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </button>
-              
-              <AnimatePresence>
-                {showExpanded && (
-                  <motion.button
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    transition={{ 
-                      duration: 0.2,
-                      delay: showExpanded ? 0.15 : 0
-                    }}
-                    className={cn(
-                      "p-2 rounded-lg transition-colors",
-                      mounted && isDarkMode ? "hover:bg-white/10" : "hover:bg-[#7FCAFE1A]"
-                    )}
-                  >
-                    <Search size={20} className={mounted && isDarkMode ? 'text-white' : 'text-gray-700'} />
-                  </motion.button>
-                )}
-              </AnimatePresence>
             </div>
 
             {/* New Chat Button */}
@@ -394,11 +406,13 @@ export function Sidebar({
                 <img 
                   src="/edit.svg" 
                   alt="New Chat" 
-                  className="w-5 h-5 flex-shrink-0" 
+                  className="flex-shrink-0" 
                   style={{ 
                     filter: mounted && isDarkMode ? 'brightness(0) invert(1)' : 'none',
-                    minWidth: '20px',
-                    minHeight: '20px'
+                    minWidth: '24px',
+                    minHeight: '24px',
+                    width: '24px',
+                    height: '24px'
                   }}
                 />
                 <AnimatePresence>
@@ -437,7 +451,7 @@ export function Sidebar({
                 }}
                 className={cn(
                   "h-px mb-4 origin-left",
-                  isDarkMode ? "bg-white/20" : "bg-gray-200"
+                  mounted && isDarkMode ? "bg-white/20" : "bg-gray-200"
                 )}
               />
             )}
@@ -457,7 +471,7 @@ export function Sidebar({
                     }}
                     className={cn(
                       "text-sm font-medium px-2 mb-3",
-                      isDarkMode ? "text-white" : "text-gray-700"
+                      mounted && isDarkMode ? "text-white" : "text-gray-700"
                     )}
                   >
                     Recent
@@ -481,7 +495,7 @@ export function Sidebar({
                       <div className="flex justify-center items-center py-4">
                         <div className={cn(
                           "animate-spin rounded-full h-6 w-6 border-b-2",
-                          isDarkMode ? "border-white" : "border-gray-700"
+                          mounted && isDarkMode ? "border-white" : "border-gray-700"
                         )} />
                       </div>
                     ) : chatHistory.length > 0 ? (
@@ -497,7 +511,7 @@ export function Sidebar({
                           onClick={() => handleChatSelect(session.id)}
                           className={cn(
                             "w-full text-left px-3 py-2 rounded-lg transition-colors",
-                            isDarkMode 
+                            mounted && isDarkMode 
                               ? "hover:bg-white/10 text-gray-300 hover:text-white" 
                               : "hover:bg-[#7FCAFE1A] text-gray-600 hover:text-gray-900"
                           )}
@@ -510,7 +524,7 @@ export function Sidebar({
                     ) : (
                       <div className={cn(
                         "text-center py-4",
-                        isDarkMode ? "text-gray-400" : "text-gray-500"
+                        mounted && isDarkMode ? "text-gray-400" : "text-gray-500"
                       )}>
                         <span className="text-sm">No chat history yet</span>
                       </div>

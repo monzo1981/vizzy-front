@@ -11,6 +11,7 @@ interface RegisterData {
   last_name: string;
   email: string;
   password: string;
+  phone_number: string;  // Required phone number field
   company_name: string;
   industry: string;
 }
@@ -22,7 +23,7 @@ export interface User {
   first_name: string;
   last_name: string;
   email_verified: boolean;
-  phone_number?: string | null;
+  phone_number?: string | null;  // Phone number in user data
   profile_picture_url?: string | null;
   company_profile?: {
     company_name: string;

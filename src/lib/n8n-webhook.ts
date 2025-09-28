@@ -30,6 +30,7 @@ interface N8NRequest {
     timestamp?: string;
     visual?: string;
   }>;
+  language?: string;
 }
 
 
@@ -237,6 +238,7 @@ export class N8NWebhook {
       await this.fetchCompanyProfile();
       
       const userLimits = await this.getUserLimits();
+      const language = localStorage.getItem('language') || 'en';
 
       const response = await fetch(this.webhookUrl, {
         method: 'POST',
@@ -270,6 +272,7 @@ export class N8NWebhook {
           respond_only_to: 'current_user_message',
           // Add previous context
           previous_context: chatHistory ? chatHistory.slice(-4) : [],
+          language: language,
         } as N8NRequest),
       });
 
@@ -305,6 +308,7 @@ export class N8NWebhook {
       await this.fetchCompanyProfile();
       
       const userLimits = await this.getUserLimits();
+      const language = localStorage.getItem('language') || 'en';
 
       const response = await fetch(this.webhookUrl, {
         method: 'POST',
@@ -337,6 +341,7 @@ export class N8NWebhook {
           respond_only_to: 'current_user_message',
           // Add previous context
           previous_context: chatHistory ? chatHistory.slice(-4) : [],
+          language: language,
         } as N8NRequest),
       });
 
@@ -373,6 +378,7 @@ export class N8NWebhook {
       await this.fetchCompanyProfile();
       
       const userLimits = await this.getUserLimits();
+      const language = localStorage.getItem('language') || 'en';
 
       const response = await fetch(this.webhookUrl, {
         method: 'POST',
@@ -406,6 +412,7 @@ export class N8NWebhook {
           respond_only_to: 'current_user_message',
           // Add previous context
           previous_context: chatHistory ? chatHistory.slice(-4) : [],
+          language: language,
         } as N8NRequest),
       });
 

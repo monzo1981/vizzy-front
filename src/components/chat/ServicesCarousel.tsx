@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 
@@ -22,6 +22,7 @@ export function ServicesCarousel({ isDarkMode = false, className = "" }: Service
   const [currentIndex, setCurrentIndex] = useState(0)
   const carouselRef = useRef<HTMLDivElement>(null)
   const { language } = useLanguage()
+  const [mounted, setMounted] = useState(false)
 
   const services: ServiceCard[] = useMemo(() => [
     {
@@ -86,15 +87,34 @@ export function ServicesCarousel({ isDarkMode = false, className = "" }: Service
   ], [language])
 
   // Get visible cards based on screen size
-  const getVisibleCards = () => {
-    const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 1024
+  const getVisibleCards = useCallback(() => {
+    // During SSR or before mounting, always show 4 cards to match server render
+    if (!mounted || typeof window === 'undefined') return 4
+    
+    const screenWidth = window.innerWidth
     if (screenWidth < 640) return 1 // Mobile
     if (screenWidth < 768) return 2 // Tablet
     if (screenWidth < 1024) return 3 // Small Desktop
     return 4 // Large desktop
-  }
+  }, [mounted])
 
   const [visibleCards, setVisibleCards] = useState(getVisibleCards())
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Update visible cards on window resize (only after mounting)
+  useEffect(() => {
+    if (!mounted) return
+
+    const handleResize = () => {
+      setVisibleCards(getVisibleCards())
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [mounted, getVisibleCards])
 
   const goToPrevious = () => {
     setCurrentIndex((prev) => {
@@ -117,6 +137,8 @@ export function ServicesCarousel({ isDarkMode = false, className = "" }: Service
   }
 
   useEffect(() => {
+    if (!mounted) return
+    
     const handleResize = () => {
       setVisibleCards(getVisibleCards())
       // Reset index if it's out of bounds after resize
@@ -127,7 +149,7 @@ export function ServicesCarousel({ isDarkMode = false, className = "" }: Service
 
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
-  }, [currentIndex, services.length])
+  }, [currentIndex, services.length, getVisibleCards, mounted])
 
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 py-4 ${className}`} style={{ border: '2px solid #D3E6FC1F', borderRadius: '50px', boxShadow: '0px 0px 12px 0px #4248ff49' }}>

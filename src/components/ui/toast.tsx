@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 
 export interface Toast {
   id: string
@@ -14,23 +14,27 @@ interface ToastProps extends Toast {
   onRemove: (id: string) => void
 }
 
-const Toast: React.FC<ToastProps> = ({ id, type, title, description, duration = 3000, onRemove }) => {
+const Toast: React.FC<ToastProps> = ({ id, type, title, description, duration = 2000, onRemove }) => {
   const [isVisible, setIsVisible] = useState(false)
   const [isLeaving, setIsLeaving] = useState(false)
+  const showTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const removeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     // Show animation
-    const showTimer = setTimeout(() => setIsVisible(true), 100)
+    showTimerRef.current = setTimeout(() => setIsVisible(true), 100)
     
     // Auto remove
-    const hideTimer = setTimeout(() => {
+    hideTimerRef.current = setTimeout(() => {
       setIsLeaving(true)
-      setTimeout(() => onRemove(id), 300)
+      removeTimerRef.current = setTimeout(() => onRemove(id), 300)
     }, duration)
 
     return () => {
-      clearTimeout(showTimer)
-      clearTimeout(hideTimer)
+      if (showTimerRef.current) clearTimeout(showTimerRef.current)
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+      if (removeTimerRef.current) clearTimeout(removeTimerRef.current)
     }
   }, [id, duration, onRemove])
 

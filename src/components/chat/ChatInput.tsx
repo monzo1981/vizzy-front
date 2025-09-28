@@ -24,8 +24,11 @@ interface ChatInputProps {
   tutorialStep?: number
   onTutorialNext?: () => void
   onTutorialSkip?: () => void
+  toast?: {
+    success: (message: string) => void
+    error: (message: string) => void
+  }
 }
-
 
 // Image Upload Loader Component (internal)
 const ImageUploadLoader = ({ isDarkMode }: { isDarkMode: boolean }) => {
@@ -64,7 +67,8 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
   showTutorial = false,
   tutorialStep = 1,
   onTutorialNext,
-  onTutorialSkip
+  onTutorialSkip,
+  toast
 }, ref) => {
   // State
   const [inputValue, setInputValue] = useState("")
@@ -72,6 +76,8 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
   const [isImageUploading, setIsImageUploading] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [isInputExpanded, setIsInputExpanded] = useState(false)
+  const characterLimit = 2500
+  const isOverLimit = inputValue.length > characterLimit
 
   // Refs
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -79,7 +85,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
-  const isCancelledRef = useRef<boolean>(false) // New ref to track cancellation
+  const isCancelledRef = useRef<boolean>(false)
 
   // Auto-expand input when there's content
   useEffect(() => {
@@ -124,6 +130,14 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
   // Handle sending message
   const handleSend = async () => {
     if (isLoading || isCreatingSession) return
+
+    if (inputValue.length > characterLimit) {
+      if (toast) {
+        toast.error(`Character limit exceeded (${characterLimit} characters)`)
+      }
+      return
+    }
+
     const messageToSend = inputValue.trim()
     
     if (!messageToSend && !selectedImage) return
@@ -182,7 +196,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
       const mediaRecorder = new MediaRecorder(stream)
       mediaRecorderRef.current = mediaRecorder
       audioChunksRef.current = []
-      isCancelledRef.current = false // Reset cancelled flag when starting new recording
+      isCancelledRef.current = false
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -191,17 +205,14 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
       }
 
       mediaRecorder.onstop = async () => {
-        // Clean up the stream first
         stream.getTracks().forEach(track => track.stop())
         
-        // Check if recording was cancelled
         if (isCancelledRef.current) {
           console.log("Recording cancelled - not processing audio")
-          audioChunksRef.current = [] // Clear audio chunks
-          return // Exit without processing
+          audioChunksRef.current = []
+          return
         }
         
-        // Only process if not cancelled
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
         if (audioBlob.size > 0) {
           const reader = new FileReader()
@@ -224,7 +235,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
-      isCancelledRef.current = false // Not cancelled, normal stop
+      isCancelledRef.current = false
       mediaRecorderRef.current.stop()
       setIsRecording(false)
     }
@@ -232,10 +243,10 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
 
   const cancelRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
-      isCancelledRef.current = true // Set cancelled flag BEFORE stopping
+      isCancelledRef.current = true
       mediaRecorderRef.current.stop()
       setIsRecording(false)
-      audioChunksRef.current = [] // Clear chunks immediately
+      audioChunksRef.current = []
       console.log("Recording cancelled")
     }
   }
@@ -401,15 +412,14 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                   {inputValue ? (
                     <button
                       onClick={handleSend}
-                      disabled={isLoading || isCreatingSession}
+                      disabled={isLoading || isCreatingSession || isOverLimit}
                       className="hover:scale-105 transition-transform cursor-pointer"
                       title="Send"
                     >
                       <div
                         className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${
                           isDarkMode ? 'bg-[#4248FF]' : 'bg-[#D3E6FC4D]'
-                        }`}
-                      >
+                        } ${isOverLimit ? 'opacity-50' : ''}`}>
                         <Image
                           src="/SendVector.svg"
                           alt="Send"
@@ -596,15 +606,14 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                     {inputValue ? (
                       <button
                         onClick={handleSend}
-                        disabled={isLoading || isCreatingSession}
+                        disabled={isLoading || isCreatingSession || isOverLimit}
                         className={`hover:scale-105 transition-transform cursor-pointer ${isLoading || isCreatingSession ? 'opacity-50' : ''}`}
                         title="Send"
                       >
                         <div
                           className={`w-8 h-8 rounded-full flex items-center justify-center ${
                             isDarkMode ? 'bg-[#4248FF]' : 'bg-[#D3E6FC4D]'
-                          }`}
-                        >
+                          } ${isOverLimit ? 'opacity-50' : ''}`}>
                           <Image
                             src="/SendVector.svg"
                             alt="Send"
@@ -759,15 +768,14 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                     {inputValue ? (
                       <button
                         onClick={handleSend}
-                        disabled={isLoading || isCreatingSession}
+                        disabled={isLoading || isCreatingSession || isOverLimit}
                         className={`hover:scale-105 transition-transform cursor-pointer ${isLoading || isCreatingSession ? 'opacity-50' : ''}`}
                         title="Send"
                       >
                         <div
                           className={`w-8 h-8 rounded-full flex items-center justify-center ${
                             isDarkMode ? 'bg-[#4248FF]' : 'bg-[#D3E6FC4D]'
-                          }`}
-                        >
+                          } ${isOverLimit ? 'opacity-50' : ''}`}>
                           <Image
                             src="/SendVector.svg"
                             alt="Send"

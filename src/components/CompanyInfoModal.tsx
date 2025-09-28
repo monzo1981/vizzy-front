@@ -80,14 +80,16 @@ interface CompanyInfoModalProps {
   onClose: () => void
   onSuccess: () => void
   onToast?: (type: 'success' | 'error', message: string) => void
+  existingPhoneNumber?: string  // Pass existing phone number from registration
 }
 
 interface CompanyData {
   company_name: string
   industry: string
+  phone_number: string
 }
 
-export function CompanyInfoModal({ isOpen, onClose, onSuccess, onToast }: CompanyInfoModalProps) {
+export function CompanyInfoModal({ isOpen, onClose, onSuccess, onToast, existingPhoneNumber }: CompanyInfoModalProps) {
   const { language } = useLanguage()
   const [isLoading, setIsLoading] = useState(false)
   const [isIndustryDropdownOpen, setIsIndustryDropdownOpen] = useState(false)
@@ -103,11 +105,27 @@ export function CompanyInfoModal({ isOpen, onClose, onSuccess, onToast }: Compan
     return option ? option.label[language as 'en' | 'ar'] : industry
   }
   
-  // Company Info State
+  // Company Info State - include phone_number from registration or empty
   const [companyData, setCompanyData] = useState<CompanyData>({
     company_name: '',
-    industry: ''
+    industry: '',
+    phone_number: existingPhoneNumber || ''
   })
+
+  // Load phone number from user data if available
+  useEffect(() => {
+    const userData = localStorage.getItem('user')
+    if (userData) {
+      try {
+        const user = JSON.parse(userData)
+        if (user.phone_number && !companyData.phone_number) {
+          setCompanyData(prev => ({ ...prev, phone_number: user.phone_number || '' }))
+        }
+      } catch (error) {
+        console.error('Error parsing user data:', error)
+      }
+    }
+  }, [])
 
   // Close industry dropdown when clicking outside
   useEffect(() => {
@@ -135,6 +153,17 @@ export function CompanyInfoModal({ isOpen, onClose, onSuccess, onToast }: Compan
       onToast?.('error', 'Please select an industry')
       return
     }
+    if (!companyData.phone_number.trim()) {
+      onToast?.('error', 'Phone number is required')
+      return
+    }
+
+    // Validate phone number
+    const cleanedPhone = companyData.phone_number.replace(/\s|-|\(|\)/g, '')
+    if (cleanedPhone.length < 7) {
+      onToast?.('error', 'Phone number is too short')
+      return
+    }
 
     try {
       setIsLoading(true)
@@ -144,6 +173,7 @@ export function CompanyInfoModal({ isOpen, onClose, onSuccess, onToast }: Compan
       const formData = new FormData()
       formData.append('company_name', companyData.company_name)
       formData.append('industry', companyData.industry)
+      formData.append('phone_number', companyData.phone_number)
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/client/profile/`, {
         method: 'POST',
@@ -157,6 +187,18 @@ export function CompanyInfoModal({ isOpen, onClose, onSuccess, onToast }: Compan
         const responseData = await response.json()
         const updatedCompanyData = responseData.data || responseData
         
+        // Update localStorage user data with phone number
+        const userData = localStorage.getItem('user')
+        if (userData) {
+          try {
+            const user = JSON.parse(userData)
+            user.phone_number = updatedCompanyData.phone_number || companyData.phone_number
+            localStorage.setItem('user', JSON.stringify(user))
+          } catch (error) {
+            console.error('Error updating user data:', error)
+          }
+        }
+        
         // Update localStorage and N8NWebhook cache efficiently
         const updatedProfile = {
           company_name: updatedCompanyData.company_name || null,
@@ -164,6 +206,7 @@ export function CompanyInfoModal({ isOpen, onClose, onSuccess, onToast }: Compan
           logo_url: updatedCompanyData.logo_url || null,
           industry: updatedCompanyData.industry || null,
           job_title: updatedCompanyData.job_title || null,
+          phone_number: updatedCompanyData.phone_number || null,
           // Include required asset files from existing profile or set to null
           brand_manual: updatedCompanyData.brand_manual || null,
           company_profile_file: updatedCompanyData.company_profile_file || null,
@@ -244,6 +287,22 @@ export function CompanyInfoModal({ isOpen, onClose, onSuccess, onToast }: Compan
                 value={companyData.company_name}
                 onChange={(e) => setCompanyData(prev => ({ ...prev, company_name: e.target.value }))}
                 placeholder="Enter your company name"
+                style={inputStyles}
+                onFocus={(e) => e.target.style.borderColor = '#3B82F6'}
+                onBlur={(e) => e.target.style.borderColor = 'transparent'}
+              />
+            </div>
+
+            {/* Phone Number */}
+            <div>
+              <label style={{ color: '#78758E', fontWeight: 400 }} className="block text-sm mb-2">
+                Phone Number *
+              </label>
+              <input
+                type="tel"
+                value={companyData.phone_number}
+                onChange={(e) => setCompanyData(prev => ({ ...prev, phone_number: e.target.value }))}
+                placeholder="Enter your phone number"
                 style={inputStyles}
                 onFocus={(e) => e.target.style.borderColor = '#3B82F6'}
                 onBlur={(e) => e.target.style.borderColor = 'transparent'}
@@ -337,13 +396,13 @@ export function CompanyInfoModal({ isOpen, onClose, onSuccess, onToast }: Compan
           >
             <Button
               onClick={saveCompanyInfo}
-              disabled={isLoading || !companyData.company_name.trim() || !companyData.industry}
+              disabled={isLoading || !companyData.company_name.trim() || !companyData.industry || !companyData.phone_number.trim()}
               style={{
                 background: 'linear-gradient(271.55deg, #4248FF -1.67%, #7FCAFE 99.45%)',
                 color: '#fff',
                 borderRadius: 36,
                 minWidth: 120,
-                opacity: (!companyData.company_name.trim() || !companyData.industry) ? 0.6 : 1
+                opacity: (!companyData.company_name.trim() || !companyData.industry || !companyData.phone_number.trim()) ? 0.6 : 1
               }}
               className="gap-2"
             >
