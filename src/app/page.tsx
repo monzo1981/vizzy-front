@@ -12,16 +12,17 @@ import Image from 'next/image';
 import { login, isAuthenticated, User } from '@/lib/auth';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
 import Lottie from 'lottie-react';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const Login = () => {
   const router = useRouter();
+  const { isDarkMode, mounted } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [animationData, setAnimationData] = useState(null);
-  const [isDark, setIsDark] = useState(false);
   const [btnBg, setBtnBg] = useState('linear-gradient(92.09deg, #7FCBFD -17.23%, #4248FF 107.78%)');
 
   useEffect(() => {
@@ -30,12 +31,6 @@ const Login = () => {
       .then(res => res.json())
       .then(setAnimationData)
       .catch(console.error);
-  }, []);
-
-  useEffect(() => {
-    // Read dark mode from localStorage
-    const saved = localStorage.getItem('darkMode');
-    setIsDark(saved === 'true');
   }, []);
 
   useEffect(() => {
@@ -63,7 +58,7 @@ const Login = () => {
   return (
     <>
       {isCheckingAuth ? (
-        <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: isDark ? '#181819' : 'white' }}>
+        <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: mounted && isDarkMode ? '#181819' : 'white' }}>
           {animationData ? (
             <Lottie animationData={animationData} loop={true} style={{ height: 400, width: 400 }} />
           ) : (

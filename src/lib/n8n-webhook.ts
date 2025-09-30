@@ -58,6 +58,8 @@ interface CompanyProfile {
     logo_url: string | null;
     industry: string | null;
     job_title: string | null;
+    visual_guide: string | null;  // NEW
+    logotype: string | null;  // NEW
     // Asset files
     brand_manual: {file_id: string | null, file_url: string | null} | null;
     company_profile_file: {file_id: string | null, file_url: string | null} | null;
@@ -110,7 +112,6 @@ export class N8NWebhook {
     }
 
     try {
-      // Updated endpoint path to match the new backend URL
       const response = await fetch(`${API_BASE_URL}/client/profile/`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -129,6 +130,8 @@ export class N8NWebhook {
             logo_url: data.data.logo_url || null,
             industry: data.data.industry || null,
             job_title: data.data.job_title || null,
+            visual_guide: data.data.visual_guide || null,  // NEW
+            logotype: data.data.logotype || null,  // NEW
             // Add asset files
             brand_manual: data.data.brand_manual || null,
             company_profile_file: data.data.company_profile || null,
@@ -148,6 +151,8 @@ export class N8NWebhook {
             logo_url: null,
             industry: null,
             job_title: null,
+            visual_guide: null,  // NEW
+            logotype: null,  // NEW
             brand_manual: null,
             company_profile_file: null,
             document: null,
@@ -221,7 +226,7 @@ export class N8NWebhook {
     }
   }
 
-  async sendMessage(
+async sendMessage(
     current_user_message: string, 
     sessionId?: string, 
     chatHistory?: Array<{
@@ -234,7 +239,6 @@ export class N8NWebhook {
     try {
       console.log('Sending message to N8N:', current_user_message);
 
-      // Fetch company profile if not already fetched
       await this.fetchCompanyProfile();
       
       const userLimits = await this.getUserLimits();
@@ -259,18 +263,19 @@ export class N8NWebhook {
           remaining_images: userLimits?.remaining_images ?? null,
           remaining_videos: userLimits?.remaining_videos ?? null,
           is_first_time_user: userLimits?.is_first_time_user ?? false,
-          // Add company profile data
+          // Company profile data
           company_name: this.companyProfile?.company_name || null,
           company_website_url: this.companyProfile?.company_website_url || null,
           logo_url: this.companyProfile?.logo_url || null,
           industry: this.companyProfile?.industry || null,
           job_title: this.companyProfile?.job_title || null,
-          // Add asset files URLs
+          visual_guide: this.companyProfile?.visual_guide || null,  // NEW
+          logotype: this.companyProfile?.logotype || null,  // NEW
+          // Asset files URLs
           brand_manual_url: this.companyProfile?.brand_manual?.file_url || null,
           company_profile_file_url: this.companyProfile?.company_profile_file?.file_url || null,
           client_document_url: this.companyProfile?.document?.file_url || null,
           respond_only_to: 'current_user_message',
-          // Add previous context
           previous_context: chatHistory ? chatHistory.slice(-4) : [],
           language: language,
         } as N8NRequest),
@@ -291,7 +296,7 @@ export class N8NWebhook {
     }
   }
 
-  async sendVoiceMessage(
+async sendVoiceMessage(
     audioData: string, 
     sessionId?: string, 
     chatHistory?: Array<{
@@ -304,7 +309,6 @@ export class N8NWebhook {
     try {
       console.log('Sending voice message to N8N');
 
-      // Fetch company profile if not already fetched
       await this.fetchCompanyProfile();
       
       const userLimits = await this.getUserLimits();
@@ -328,18 +332,19 @@ export class N8NWebhook {
           remaining_images: userLimits?.remaining_images ?? null,
           remaining_videos: userLimits?.remaining_videos ?? null,
           is_first_time_user: userLimits?.is_first_time_user ?? false,
-          // Add company profile data
+          // Company profile data
           company_name: this.companyProfile?.company_name || null,
           company_website_url: this.companyProfile?.company_website_url || null,
           logo_url: this.companyProfile?.logo_url || null,
           industry: this.companyProfile?.industry || null,
           job_title: this.companyProfile?.job_title || null,
-          // Add asset files URLs
+          visual_guide: this.companyProfile?.visual_guide || null,  // NEW
+          logotype: this.companyProfile?.logotype || null,  // NEW
+          // Asset files URLs
           brand_manual_url: this.companyProfile?.brand_manual?.file_url || null,
           company_profile_file_url: this.companyProfile?.company_profile_file?.file_url || null,
           client_document_url: this.companyProfile?.document?.file_url || null,
           respond_only_to: 'current_user_message',
-          // Add previous context
           previous_context: chatHistory ? chatHistory.slice(-4) : [],
           language: language,
         } as N8NRequest),
@@ -360,7 +365,7 @@ export class N8NWebhook {
     }
   }
 
-  async sendImageMessage(
+async sendImageMessage(
     imageData: string, 
     text?: string, 
     sessionId?: string, 
@@ -374,7 +379,6 @@ export class N8NWebhook {
     try {
       console.log('Sending image message to N8N with text:', text);
 
-      // Fetch company profile if not already fetched
       await this.fetchCompanyProfile();
       
       const userLimits = await this.getUserLimits();
@@ -399,18 +403,19 @@ export class N8NWebhook {
           remaining_images: userLimits?.remaining_images ?? null,
           remaining_videos: userLimits?.remaining_videos ?? null,
           is_first_time_user: userLimits?.is_first_time_user ?? false,
-          // Add company profile data
+          // Company profile data
           company_name: this.companyProfile?.company_name || null,
           company_website_url: this.companyProfile?.company_website_url || null,
           logo_url: this.companyProfile?.logo_url || null,
           industry: this.companyProfile?.industry || null,
           job_title: this.companyProfile?.job_title || null,
-          // Add asset files URLs
+          visual_guide: this.companyProfile?.visual_guide || null,  // NEW
+          logotype: this.companyProfile?.logotype || null,  // NEW
+          // Asset files URLs
           brand_manual_url: this.companyProfile?.brand_manual?.file_url || null,
           company_profile_file_url: this.companyProfile?.company_profile_file?.file_url || null,
           client_document_url: this.companyProfile?.document?.file_url || null,
           respond_only_to: 'current_user_message',
-          // Add previous context
           previous_context: chatHistory ? chatHistory.slice(-4) : [],
           language: language,
         } as N8NRequest),

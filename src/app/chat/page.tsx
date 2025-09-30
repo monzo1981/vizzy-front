@@ -98,7 +98,6 @@ function ChatContent() {
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [showCompanyInfoModal, setShowCompanyInfoModal] = useState(false)
   const [companyProfileChecked, setCompanyProfileChecked] = useState(false)
-  const [mounted, setMounted] = useState(false)
   
   // Refs
   const processedMessageIds = useRef<Set<string>>(new Set())
@@ -258,11 +257,6 @@ function ChatContent() {
     // Check company profile and show modal if needed
     checkCompanyProfile()
   }, [router])
-
-  // Set mounted state after component mounts
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   // Initialize session and load existing messages
   useEffect(() => {
@@ -582,7 +576,7 @@ const markFirstMessageSent = async () => {
           <Sidebar 
             isOpen={isOpen} 
             onToggle={toggle} 
-            isDarkMode={mounted ? isDarkMode : false} 
+            isDarkMode={isDarkMode} 
             onDarkModeToggle={toggleDarkMode} 
           />
         </div>
@@ -593,7 +587,7 @@ const markFirstMessageSent = async () => {
             <Sidebar 
               isOpen={true} 
               onToggle={() => setIsMobileSidebarOpen(false)} 
-              isDarkMode={mounted ? isDarkMode : false} 
+              isDarkMode={isDarkMode} 
               onDarkModeToggle={toggleDarkMode} 
               isMobile={true}
             />
@@ -640,7 +634,7 @@ const markFirstMessageSent = async () => {
               <button
                 onClick={() => setIsMobileSidebarOpen(true)}
                 className={`p-2 rounded-lg transition-colors ${
-                  mounted && isDarkMode 
+                  isDarkMode 
                     ? 'hover:bg-gray-800 text-white' 
                     : 'hover:bg-gray-100 text-gray-600'
                 }`}
@@ -649,7 +643,7 @@ const markFirstMessageSent = async () => {
                   src="/side-bar.svg" 
                   alt="Menu" 
                   style={{ 
-                    filter: mounted && isDarkMode ? 'brightness(0) invert(1)' : 'none',
+                    filter: isDarkMode ? 'brightness(0) invert(1)' : 'none',
                     minWidth: '24px',
                     minHeight: '24px'
                   }}
@@ -663,7 +657,7 @@ const markFirstMessageSent = async () => {
                 className="relative"
               >
                 <Image 
-                  src={mounted && isDarkMode ? "/vizzy-logo-dark.svg" : "/vizzy-logo.svg"} 
+                  src={isDarkMode ? "/vizzy-logo-dark.svg" : "/vizzy-logo.svg"} 
                   alt="Vizzy Logo" 
                   width={220}
                   height={200}
@@ -689,7 +683,7 @@ const markFirstMessageSent = async () => {
               <div className="relative">
                 <AvatarDropdown 
                   currentUser={currentUser}
-                  isDarkMode={mounted ? isDarkMode : false}
+                  isDarkMode={isDarkMode}
                 />
               </div>
             </div>
@@ -714,7 +708,7 @@ const markFirstMessageSent = async () => {
 
                 {/* Services Carousel */}
                 <div className="w-full mb-8 sm:mb-12">
-                  <ServicesCarousel isDarkMode={mounted ? isDarkMode : false} />
+                  <ServicesCarousel isDarkMode={isDarkMode} />
                 </div>
               </div>
 
@@ -726,7 +720,7 @@ const markFirstMessageSent = async () => {
                 <ChatInput
                   ref={chatInputRef}
                   mode="initial"
-                  isDarkMode={mounted ? isDarkMode : false}
+                  isDarkMode={isDarkMode}
                   isLoading={isLoading}
                   isCreatingSession={isCreatingSession}
                   onSend={handleSend}
@@ -745,14 +739,14 @@ const markFirstMessageSent = async () => {
                 messages={messages}
                 isLoading={isLoading}
                 isCreatingSession={isCreatingSession}
-                isDarkMode={mounted ? isDarkMode : false}
+                isDarkMode={isDarkMode}
                 StableImage={StableImage}
               />
 
               <ChatInput
                 ref={chatInputRef}
                 mode="compact"
-                isDarkMode={mounted ? isDarkMode : false}
+                isDarkMode={isDarkMode}
                 isLoading={isLoading}
                 isCreatingSession={isCreatingSession}
                 onSend={handleSend}

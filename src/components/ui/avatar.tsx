@@ -3,6 +3,7 @@
 import * as React from "react"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
+import { useTheme } from "@/contexts/ThemeContext"
 
 interface AvatarProps {
   src?: string
@@ -36,15 +37,7 @@ export function Avatar({
   bgOverride = 'auto'
 }: AvatarProps) {
   const [imageError, setImageError] = React.useState(false)
-  const [isDarkMode, setIsDarkMode] = React.useState(false)
-  
-  // Load dark mode preference from localStorage
-  React.useEffect(() => {
-    const savedDarkMode = localStorage.getItem('darkMode')
-    if (savedDarkMode === 'true') {
-      setIsDarkMode(true)
-    }
-  }, [])
+  const { isDarkMode } = useTheme()
   
   // Determine background color based on override prop
   const getBackgroundColor = () => {
