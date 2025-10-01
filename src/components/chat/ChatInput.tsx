@@ -16,6 +16,7 @@ export interface ChatInputHandle {
 interface ChatInputProps {
   mode: 'initial' | 'compact'
   isDarkMode: boolean
+  themeReady?: boolean
   isLoading: boolean
   isCreatingSession: boolean
   onSend: (message: string, image?: string | null) => Promise<void>
@@ -31,25 +32,27 @@ interface ChatInputProps {
 }
 
 // Image Upload Loader Component (internal)
-const ImageUploadLoader = ({ isDarkMode }: { isDarkMode: boolean }) => {
+const ImageUploadLoader = ({ isDarkMode, themeReady = false }: { isDarkMode: boolean; themeReady?: boolean }) => {
   return (
     <div 
       className="h-20 w-20 rounded-lg flex items-center justify-center"
       style={{
-        background: isDarkMode 
+        background: themeReady && isDarkMode 
           ? '#20262D' 
           : 'linear-gradient(109.03deg, #BEDCFF -35.22%, rgba(255, 255, 255, 0.9) 17.04%, rgba(255, 232, 228, 0.4) 57.59%, #BEDCFF 97.57%)'
       }}
+      suppressHydrationWarning
     >
       <div className="relative">
         <div 
           className="w-8 h-8 rounded-full border-2 animate-spin"
           style={{
             borderColor: 'transparent',
-            borderTopColor: isDarkMode ? '#78758E' : '#7FCAFE',
-            borderRightColor: isDarkMode ? '#FFFFFF' : '#D3E6FC',
+            borderTopColor: themeReady && isDarkMode ? '#78758E' : '#7FCAFE',
+            borderRightColor: themeReady && isDarkMode ? '#FFFFFF' : '#D3E6FC',
             animationDuration: '1s'
           }}
+          suppressHydrationWarning
         />
       </div>
     </div>
@@ -60,6 +63,7 @@ const ImageUploadLoader = ({ isDarkMode }: { isDarkMode: boolean }) => {
 const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
   mode,
   isDarkMode,
+  themeReady = false,
   isLoading,
   isCreatingSession,
   onSend,
@@ -129,7 +133,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
 
   // Handle sending message
   const handleSend = async () => {
-    if (isLoading || isCreatingSession) return
+    if (isLoading || isCreatingSession || isImageUploading) return
 
     if (inputValue.length > characterLimit) {
       if (toast) {
@@ -291,23 +295,31 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
             />
           )}
 
-          <div className="relative p-[2px] backdrop-blur-xl" style={{
-            borderRadius: 'clamp(30px, 7vw, 50px)',
-            background: 'conic-gradient(from -46.15deg at 50.76% 47.25%, #4248FF -40.22deg, #7FCAFE 50.49deg, #FFEB77 104.02deg, #4248FF 158.81deg, #FF4A19 224.78deg, #4248FF 319.78deg, #7FCAFE 410.49deg)',
-            boxShadow: isDarkMode ? '0px 0px 12px 0px #4248ff54' : '0px 0px 27px 0px rgba(255, 255, 255, 0.75)'
-          }}>
-            <div className={`relative px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 ${
-              isDarkMode ? 'bg-[#181819]' : 'bg-white'
-            }`} style={{ 
-              backgroundColor: isDarkMode ? '#181819' : '#ffffff',
-              borderRadius: 'clamp(28px, 6.8vw, 48px)'
-            }}>
+          <div 
+            className="relative p-[2px] backdrop-blur-xl" 
+            style={{
+              borderRadius: 'clamp(30px, 7vw, 50px)',
+              background: 'conic-gradient(from -46.15deg at 50.76% 47.25%, #4248FF -40.22deg, #7FCAFE 50.49deg, #FFEB77 104.02deg, #4248FF 158.81deg, #FF4A19 224.78deg, #4248FF 319.78deg, #7FCAFE 410.49deg)',
+              boxShadow: themeReady && isDarkMode ? '0px 0px 12px 0px #4248ff54' : '0px 0px 27px 0px rgba(255, 255, 255, 0.75)'
+            }}
+            suppressHydrationWarning
+          >
+            <div 
+              className={`relative px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 ${
+                themeReady && isDarkMode ? 'bg-[#181819]' : 'bg-white'
+              }`} 
+              style={{ 
+                backgroundColor: themeReady && isDarkMode ? '#181819' : '#ffffff',
+                borderRadius: 'clamp(28px, 6.8vw, 48px)'
+              }}
+              suppressHydrationWarning
+            >
               
               {/* Selected Image Preview */}
               {(selectedImage || isImageUploading) && (
                 <div className="mb-4 relative inline-block">
                   {isImageUploading ? (
-                    <ImageUploadLoader isDarkMode={isDarkMode} />
+                    <ImageUploadLoader isDarkMode={isDarkMode} themeReady={themeReady} />
                   ) : (
                     <>
                       <Image 
@@ -320,8 +332,9 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                       <button
                         onClick={handleRemoveImage}
                         className={`absolute -top-2 -right-2 rounded-full p-1 ${
-                          isDarkMode ? 'bg-[#D9D9D9] text-black' : 'bg-[#7FCAFE] text-white'
+                          themeReady && isDarkMode ? 'bg-[#D9D9D9] text-black' : 'bg-[#7FCAFE] text-white'
                         }`}
+                        suppressHydrationWarning
                       >
                         <X size={16} />
                       </button>
@@ -353,7 +366,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                   }}
                   placeholder=""
                   className={`w-full font-thin border-none bg-transparent px-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto no-scrollbar relative z-10 ${
-                    isDarkMode ? 'text-white' : 'text-black'
+                    themeReady && isDarkMode ? 'text-white' : 'text-black'
                   }`}
                   rows={1}
                   style={{ 
@@ -361,6 +374,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                     minHeight: '32px', 
                     maxHeight: '120px'
                   }}
+                  suppressHydrationWarning
                 />
               </div>
 
@@ -378,9 +392,10 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                   <Plus 
                     size={24} 
                     className={`sm:w-4 sm:h-4 lg:w-6 lg:h-6 cursor-pointer hover:opacity-80 transition-opacity ${
-                      isDarkMode ? 'text-white' : 'text-[#4248FF]'
+                      themeReady && isDarkMode ? 'text-white' : 'text-[#4248FF]'
                     }`}
                     onClick={() => fileInputRef.current?.click()}
+                    suppressHydrationWarning
                   />
 
                   {/* Tools Button */}
@@ -391,7 +406,8 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                       width={24} 
                       height={24} 
                       className="w-4 h-4 lg:w-6 lg:h-6"
-                      style={{ filter: isDarkMode ? 'brightness(0) invert(1)' : 'none' }}
+                      style={{ filter: themeReady && isDarkMode ? 'brightness(0) invert(1)' : 'none' }}
+                      suppressHydrationWarning
                     />
                   </div>
                 </div>
@@ -418,8 +434,10 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                     >
                       <div
                         className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${
-                          isDarkMode ? 'bg-[#4248FF]' : 'bg-[#D3E6FC4D]'
-                        } ${isOverLimit ? 'opacity-50' : ''}`}>
+                          themeReady && isDarkMode ? 'bg-[#4248FF]' : 'bg-[#D3E6FC4D]'
+                        } ${isOverLimit ? 'opacity-50' : ''}`}
+                        suppressHydrationWarning
+                      >
                         <Image
                           src="/SendVector.svg"
                           alt="Send"
@@ -446,7 +464,8 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                             alt="MIC Icon" 
                             width={16}
                             height={16}
-                            style={{ filter: isDarkMode ? 'brightness(0) invert(1)' : 'none' }} 
+                            style={{ filter: themeReady && isDarkMode ? 'brightness(0) invert(1)' : 'none' }}
+                            suppressHydrationWarning
                           />
                       )}
                     </button>
@@ -463,30 +482,38 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
   // Render Compact Mode (Bottom Chat Input)
   return (
     <div className={`flex-shrink-0 backdrop-blur-sm p-6 pt-0 relative ${
-      isDarkMode ? 'bg-gradient-to-t from-[#181819]/20 to-transparent' : 'bg-gradient-to-t from-white/20 to-transparent'
-    }`}>
+      themeReady && isDarkMode ? 'bg-gradient-to-t from-[#181819]/20 to-transparent' : 'bg-gradient-to-t from-white/20 to-transparent'
+    }`} suppressHydrationWarning>
       <div className="max-w-4xl mx-auto relative">
-        <div className="relative p-[2px] backdrop-blur-xl" style={{
-          borderRadius: 'clamp(30px, 7vw, 50px)',
-          background: 'conic-gradient(from -46.15deg at 50.76% 47.25%, #4248FF -40.22deg, #7FCAFE 50.49deg, #FFEB77 104.02deg, #4248FF 158.81deg, #FF4A19 224.78deg, #4248FF 319.78deg, #7FCAFE 410.49deg)',
-          boxShadow: isDarkMode ? '0px 0px 12px 0px #4248ff54' : '0px 0px 27px 0px rgba(255, 255, 255, 0.75)'
-        }}>
-          <div className={`relative rounded-[48px] transition-all duration-300 ease-in-out ${
-            isDarkMode ? 'bg-[#181819]' : 'bg-white'
-          }`} style={{ 
-            backgroundColor: isDarkMode ? '#181819' : '#ffffff',
-            borderRadius: 'clamp(28px, 6.8vw, 48px)',
-            padding: isInputExpanded ? '32px' : '16px 32px',
-            paddingTop: isInputExpanded ? '28px' : '16px',
-            paddingBottom: isInputExpanded ? '28px' : '16px'
-          }}>
+        <div 
+          className="relative p-[2px] backdrop-blur-xl" 
+          style={{
+            borderRadius: 'clamp(30px, 7vw, 50px)',
+            background: 'conic-gradient(from -46.15deg at 50.76% 47.25%, #4248FF -40.22deg, #7FCAFE 50.49deg, #FFEB77 104.02deg, #4248FF 158.81deg, #FF4A19 224.78deg, #4248FF 319.78deg, #7FCAFE 410.49deg)',
+            boxShadow: themeReady && isDarkMode ? '0px 0px 12px 0px #4248ff54' : '0px 0px 27px 0px rgba(255, 255, 255, 0.75)'
+          }}
+          suppressHydrationWarning
+        >
+          <div 
+            className={`relative rounded-[48px] transition-all duration-300 ease-in-out ${
+              themeReady && isDarkMode ? 'bg-[#181819]' : 'bg-white'
+            }`} 
+            style={{ 
+              backgroundColor: themeReady && isDarkMode ? '#181819' : '#ffffff',
+              borderRadius: 'clamp(28px, 6.8vw, 48px)',
+              padding: isInputExpanded ? '32px' : '16px 32px',
+              paddingTop: isInputExpanded ? '28px' : '16px',
+              paddingBottom: isInputExpanded ? '28px' : '16px'
+            }}
+            suppressHydrationWarning
+          >
             
             {/* Selected Image Preview */}
             {(selectedImage || isImageUploading) && isInputExpanded && (
               <div className="mb-2 relative inline-block transition-opacity duration-300 ease-in-out"
                    style={{ opacity: isInputExpanded ? 1 : 0 }}>
                 {isImageUploading ? (
-                  <ImageUploadLoader isDarkMode={isDarkMode} />
+                  <ImageUploadLoader isDarkMode={isDarkMode} themeReady={themeReady} />
                 ) : (
                   <>
                     <Image 
@@ -499,8 +526,9 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                     <button
                       onClick={handleRemoveImage}
                       className={`absolute -top-1 -right-1 rounded-full p-0.5 ${
-                        isDarkMode ? 'bg-[#D9D9D9] text-black' : 'bg-[#7FCAFE] text-white'
+                        themeReady && isDarkMode ? 'bg-[#D9D9D9] text-black' : 'bg-[#7FCAFE] text-white'
                       }`}
+                      suppressHydrationWarning
                     >
                       <X size={12} />
                     </button>
@@ -552,13 +580,14 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                       }}
                       placeholder=""
                       className={`w-full text-[20px] font-thin border-none bg-transparent px-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto no-scrollbar relative z-10 transition-all duration-300 ease-in-out ${
-                        isDarkMode ? 'text-white' : 'text-black'
+                        themeReady && isDarkMode ? 'text-white' : 'text-black'
                       }`}
                       rows={1}
                       style={{ 
                         minHeight: '24px', 
                         maxHeight: '72px'
                       }}
+                      suppressHydrationWarning
                     />
                   </div>
                 </div>
@@ -576,9 +605,10 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                     <Plus 
                       size={24} 
                       className={`cursor-pointer hover:opacity-80 transition-opacity ${
-                        isDarkMode ? 'text-white' : 'text-[#4248FF]'
+                        themeReady && isDarkMode ? 'text-white' : 'text-[#4248FF]'
                       }`}
                       onClick={() => fileInputRef.current?.click()}
+                      suppressHydrationWarning
                     />
                     <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-all duration-300 ease-in-out opacity-100">
                       <Image 
@@ -586,7 +616,8 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                         alt="Tool Icon" 
                         width={24} 
                         height={24}
-                        style={{ filter: isDarkMode ? 'brightness(0) invert(1)' : 'none' }}
+                        style={{ filter: themeReady && isDarkMode ? 'brightness(0) invert(1)' : 'none' }}
+                        suppressHydrationWarning
                       />
                     </div>
                   </div>
@@ -612,8 +643,10 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                       >
                         <div
                           className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                            isDarkMode ? 'bg-[#4248FF]' : 'bg-[#D3E6FC4D]'
-                          } ${isOverLimit ? 'opacity-50' : ''}`}>
+                            themeReady && isDarkMode ? 'bg-[#4248FF]' : 'bg-[#D3E6FC4D]'
+                          } ${isOverLimit ? 'opacity-50' : ''}`}
+                          suppressHydrationWarning
+                        >
                           <Image
                             src="/SendVector.svg"
                             alt="Send"
@@ -640,7 +673,8 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                             alt="MIC Icon" 
                             width={16}
                             height={16}
-                            style={{ filter: isDarkMode ? 'brightness(0) invert(1)' : 'none' }} 
+                            style={{ filter: themeReady && isDarkMode ? 'brightness(0) invert(1)' : 'none' }}
+                            suppressHydrationWarning
                           />
                         )}
                       </button>
@@ -656,7 +690,10 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                     {isImageUploading ? (
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                        <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                        <span 
+                          className={`text-sm ${themeReady && isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}
+                          suppressHydrationWarning
+                        >
                           Uploading image...
                         </span>
                       </div>
@@ -669,7 +706,10 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                           width={48}
                           height={48}
                         />
-                        <span className={`text-sm flex-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                        <span 
+                          className={`text-sm flex-1 ${themeReady && isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}
+                          suppressHydrationWarning
+                        >
                           Image ready to send
                         </span>
                         <button
@@ -726,13 +766,14 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                       }}
                       placeholder=""
                       className={`w-full text-[20px] font-thin border-none bg-transparent px-0 focus:ring-0 focus:outline-none resize-none overflow-hidden relative z-10 transition-all duration-300 ease-in-out ${
-                        isDarkMode ? 'text-white' : 'text-black'
+                        themeReady && isDarkMode ? 'text-white' : 'text-black'
                       }`}
                       rows={1}
                       style={{ 
                         minHeight: '24px', 
                         maxHeight: '24px'
                       }}
+                      suppressHydrationWarning
                     />
                   </div>
 
@@ -748,9 +789,10 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                     <Plus 
                       size={24} 
                       className={`cursor-pointer hover:opacity-80 transition-opacity ${
-                        isDarkMode ? 'text-white' : 'text-[#4248FF]'
+                        themeReady && isDarkMode ? 'text-white' : 'text-[#4248FF]'
                       }`}
                       onClick={() => fileInputRef.current?.click()}
+                      suppressHydrationWarning
                     />
 
                     {isRecording && (

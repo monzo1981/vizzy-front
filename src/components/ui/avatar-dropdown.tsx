@@ -137,7 +137,7 @@ export function AvatarDropdown({ currentUser, isDarkMode = false, onUserUpdate, 
           <div className={`border-t my-1 ${isDarkMode ? 'border-gray-600' : 'border-gray-100'}`}></div>
           
           {/* Help */}
-          <button className={`w-full px-3 py-2 text-left flex items-center 'flex-row' ${isRTL ? 'justify-between' : 'gap-2'} transition-colors duration-150 ${
+          {/* <button className={`w-full px-3 py-2 text-left flex items-center 'flex-row' ${isRTL ? 'justify-between' : 'gap-2'} transition-colors duration-150 ${
             isDarkMode ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'
           }`}>
             {isRTL ? (
@@ -155,7 +155,7 @@ export function AvatarDropdown({ currentUser, isDarkMode = false, onUserUpdate, 
                 <ChevronIcon size={14} className={isDarkMode ? 'text-gray-400 font-bold' : 'text-gray-600 font-bold'} />
               </>
             )}
-          </button>
+          </button> */}
           
           {/* Log out */}
           <button

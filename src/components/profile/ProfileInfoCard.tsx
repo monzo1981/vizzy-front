@@ -11,6 +11,7 @@ import { type User as AuthUser } from "@/lib/auth"
 
 interface ProfileInfoCardProps {
   isDarkMode: boolean;
+  themeReady?: boolean;
   language: string;
   isRTL: boolean;
   t: (key: string) => string;
@@ -22,6 +23,7 @@ interface ProfileInfoCardProps {
 
 export function ProfileInfoCard({
   isDarkMode,
+  themeReady = false,
   language,
   t,
   currentUser,
@@ -38,12 +40,17 @@ export function ProfileInfoCard({
   }, []);
 
   return (
-    <Card className="border-0" dir={language === 'ar' ? 'rtl' : 'ltr'} style={{ 
-      background: isDarkMode
-        ? 'linear-gradient(100.74deg, rgba(127, 202, 254) -2.34%, rgba(255, 255, 255) 25.59%, rgba(255, 228, 224) 63.57%, rgba(255, 255, 255) 106.88%)'
-        : 'linear-gradient(100.74deg, rgba(127, 202, 254, 0.5) -2.34%, rgba(255, 255, 255, 0.5) 25.59%, rgba(255, 228, 224, 0.5) 63.57%, rgba(255, 255, 255, 0.5) 106.88%)',
-      borderRadius: '36px'
-    }}>
+    <Card 
+      className="border-0" 
+      dir={language === 'ar' ? 'rtl' : 'ltr'} 
+      style={{ 
+        background: themeReady && isDarkMode
+          ? 'linear-gradient(100.74deg, rgba(127, 202, 254) -2.34%, rgba(255, 255, 255) 25.59%, rgba(255, 228, 224) 63.57%, rgba(255, 255, 255) 106.88%)'
+          : 'linear-gradient(100.74deg, rgba(127, 202, 254, 0.5) -2.34%, rgba(255, 255, 255, 0.5) 25.59%, rgba(255, 228, 224, 0.5) 63.57%, rgba(255, 255, 255, 0.5) 106.88%)',
+        borderRadius: '36px'
+      }}
+      suppressHydrationWarning
+    >
       <CardContent className="p-6">
         <div className="flex items-start gap-4 mb-6">
           <div 

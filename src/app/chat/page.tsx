@@ -84,7 +84,7 @@ function ChatContent() {
   const searchParams = useSearchParams()
   const { isOpen, toggle } = useSidebar()
   const { t, createLocalizedPath } = useLanguage()
-  const { isDarkMode, toggleDarkMode } = useTheme()
+  const { isDarkMode, toggleDarkMode, mounted } = useTheme()
   
   // State Management
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -634,19 +634,21 @@ const markFirstMessageSent = async () => {
               <button
                 onClick={() => setIsMobileSidebarOpen(true)}
                 className={`p-2 rounded-lg transition-colors ${
-                  isDarkMode 
+                  mounted && isDarkMode 
                     ? 'hover:bg-gray-800 text-white' 
                     : 'hover:bg-gray-100 text-gray-600'
                 }`}
+                suppressHydrationWarning
               >
                 <img 
                   src="/side-bar.svg" 
                   alt="Menu" 
                   style={{ 
-                    filter: isDarkMode ? 'brightness(0) invert(1)' : 'none',
+                    filter: mounted && isDarkMode ? 'brightness(0) invert(1)' : 'none',
                     minWidth: '24px',
                     minHeight: '24px'
                   }}
+                  suppressHydrationWarning
                 />
               </button>
             </div>
@@ -655,13 +657,15 @@ const markFirstMessageSent = async () => {
             <div className="flex justify-center mb-2">
               <div 
                 className="relative"
+                suppressHydrationWarning
               >
                 <Image 
-                  src={isDarkMode ? "/vizzy-logo-dark.svg" : "/vizzy-logo.svg"} 
+                  src={mounted && isDarkMode ? "/vizzy-logo-dark.svg" : "/vizzy-logo.svg"} 
                   alt="Vizzy Logo" 
                   width={220}
                   height={200}
                   className="w-32 sm:w-40 md:w-48 lg:w-[220px] h-auto transition-opacity"
+                  suppressHydrationWarning
                 />
               </div>
             </div>
@@ -708,7 +712,7 @@ const markFirstMessageSent = async () => {
 
                 {/* Services Carousel */}
                 <div className="w-full mb-8 sm:mb-12">
-                  <ServicesCarousel isDarkMode={isDarkMode} />
+                  <ServicesCarousel isDarkMode={isDarkMode} themeReady={mounted} />
                 </div>
               </div>
 
@@ -721,6 +725,7 @@ const markFirstMessageSent = async () => {
                   ref={chatInputRef}
                   mode="initial"
                   isDarkMode={isDarkMode}
+                  themeReady={mounted}
                   isLoading={isLoading}
                   isCreatingSession={isCreatingSession}
                   onSend={handleSend}
@@ -747,6 +752,7 @@ const markFirstMessageSent = async () => {
                 ref={chatInputRef}
                 mode="compact"
                 isDarkMode={isDarkMode}
+                themeReady={mounted}
                 isLoading={isLoading}
                 isCreatingSession={isCreatingSession}
                 onSend={handleSend}

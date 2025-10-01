@@ -207,6 +207,8 @@ export function CompanyInfoModal({ isOpen, onClose, onSuccess, onToast, existing
           industry: updatedCompanyData.industry || null,
           job_title: updatedCompanyData.job_title || null,
           phone_number: updatedCompanyData.phone_number || null,
+          visual_guide: updatedCompanyData.visual_guide || null,
+          logotype: updatedCompanyData.logotype || null,
           // Include required asset files from existing profile or set to null
           brand_manual: updatedCompanyData.brand_manual || null,
           company_profile_file: updatedCompanyData.company_profile_file || null,

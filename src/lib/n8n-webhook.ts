@@ -60,6 +60,7 @@ interface CompanyProfile {
     job_title: string | null;
     visual_guide: string | null;  // NEW
     logotype: string | null;  // NEW
+    logo_mode: string | null;  // NEW
     // Asset files
     brand_manual: {file_id: string | null, file_url: string | null} | null;
     company_profile_file: {file_id: string | null, file_url: string | null} | null;
@@ -99,9 +100,26 @@ export class N8NWebhook {
     }
   }
 
-  private async fetchCompanyProfile(): Promise<void> {
-    // Only fetch if not already fetched and user is authenticated
-    if (this.profileFetched || !this.userId || this.userId === 'anonymous') {
+  /**
+   * Fetch company profile from backend
+   * 
+   * Solution for N8N async logo processing:
+   * - When user uploads logo, backend sends it to N8N in background thread
+   * - N8N processes logo and updates DB with visual_guide, logotype, logo_mode
+   * - On first message of any chat session, we force refresh profile data
+   * - This ensures we always get the latest data after N8N processing completes
+   * 
+   * @param forceRefresh - Force fetch even if already cached (used for first message)
+   */
+  private async fetchCompanyProfile(forceRefresh: boolean = false): Promise<void> {
+    // Skip if already fetched (unless force refresh) or user is not authenticated
+    if (!forceRefresh && this.profileFetched) {
+      console.log('Profile already fetched, using cached version');
+      return;
+    }
+    
+    if (!this.userId || this.userId === 'anonymous') {
+      console.log('No user ID, skipping profile fetch');
       return;
     }
 
@@ -112,6 +130,7 @@ export class N8NWebhook {
     }
 
     try {
+      console.log('🔄 Fetching fresh company profile from backend...');
       const response = await fetch(`${API_BASE_URL}/client/profile/`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -132,6 +151,7 @@ export class N8NWebhook {
             job_title: data.data.job_title || null,
             visual_guide: data.data.visual_guide || null,  // NEW
             logotype: data.data.logotype || null,  // NEW
+            logo_mode: data.data.logo_mode || null,  // NEW
             // Add asset files
             brand_manual: data.data.brand_manual || null,
             company_profile_file: data.data.company_profile || null,
@@ -141,7 +161,7 @@ export class N8NWebhook {
           // Cache the profile in localStorage
           localStorage.setItem('company_profile', JSON.stringify(this.companyProfile));
           this.profileFetched = true;
-          console.log('Company profile fetched and cached:', this.companyProfile);
+          console.log('✅ Company profile fetched and cached:', this.companyProfile);
         } else {
           console.log('No profile data found or empty response');
           // Set empty profile if no data found
@@ -153,6 +173,7 @@ export class N8NWebhook {
             job_title: null,
             visual_guide: null,  // NEW
             logotype: null,  // NEW
+            logo_mode: null,  // NEW
             brand_manual: null,
             company_profile_file: null,
             document: null,
@@ -239,7 +260,10 @@ async sendMessage(
     try {
       console.log('Sending message to N8N:', current_user_message);
 
-      await this.fetchCompanyProfile();
+      // Force refresh profile data on first message of any session
+      // This ensures we get updated visual_guide, logotype, logo_mode after N8N processing
+      const isFirstMessage = !chatHistory || chatHistory.length === 0;
+      await this.fetchCompanyProfile(isFirstMessage);
       
       const userLimits = await this.getUserLimits();
       const language = localStorage.getItem('language') || 'en';
@@ -271,6 +295,7 @@ async sendMessage(
           job_title: this.companyProfile?.job_title || null,
           visual_guide: this.companyProfile?.visual_guide || null,  // NEW
           logotype: this.companyProfile?.logotype || null,  // NEW
+          logo_mode: this.companyProfile?.logo_mode || null,  // NEW
           // Asset files URLs
           brand_manual_url: this.companyProfile?.brand_manual?.file_url || null,
           company_profile_file_url: this.companyProfile?.company_profile_file?.file_url || null,
@@ -309,7 +334,9 @@ async sendVoiceMessage(
     try {
       console.log('Sending voice message to N8N');
 
-      await this.fetchCompanyProfile();
+      // Force refresh profile data on first message of any session
+      const isFirstMessage = !chatHistory || chatHistory.length === 0;
+      await this.fetchCompanyProfile(isFirstMessage);
       
       const userLimits = await this.getUserLimits();
       const language = localStorage.getItem('language') || 'en';
@@ -340,6 +367,7 @@ async sendVoiceMessage(
           job_title: this.companyProfile?.job_title || null,
           visual_guide: this.companyProfile?.visual_guide || null,  // NEW
           logotype: this.companyProfile?.logotype || null,  // NEW
+          logo_mode: this.companyProfile?.logo_mode || null,  // NEW
           // Asset files URLs
           brand_manual_url: this.companyProfile?.brand_manual?.file_url || null,
           company_profile_file_url: this.companyProfile?.company_profile_file?.file_url || null,
@@ -379,7 +407,9 @@ async sendImageMessage(
     try {
       console.log('Sending image message to N8N with text:', text);
 
-      await this.fetchCompanyProfile();
+      // Force refresh profile data on first message of any session
+      const isFirstMessage = !chatHistory || chatHistory.length === 0;
+      await this.fetchCompanyProfile(isFirstMessage);
       
       const userLimits = await this.getUserLimits();
       const language = localStorage.getItem('language') || 'en';
@@ -411,6 +441,7 @@ async sendImageMessage(
           job_title: this.companyProfile?.job_title || null,
           visual_guide: this.companyProfile?.visual_guide || null,  // NEW
           logotype: this.companyProfile?.logotype || null,  // NEW
+          logo_mode: this.companyProfile?.logo_mode || null,
           // Asset files URLs
           brand_manual_url: this.companyProfile?.brand_manual?.file_url || null,
           company_profile_file_url: this.companyProfile?.company_profile_file?.file_url || null,

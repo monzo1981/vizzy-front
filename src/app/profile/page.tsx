@@ -11,7 +11,6 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Avatar } from "@/components/ui/avatar"
 import { AvatarDropdown } from "@/components/ui/avatar-dropdown"
 import { Input } from "@/components/ui/input"
 import { isAuthenticated, getUser, type User as AuthUser } from "@/lib/auth"
@@ -24,11 +23,12 @@ import { useTheme } from "@/contexts/ThemeContext"
 import { RecentWorkModal } from "@/components/profile/RecentWorkModal"
 import { RecentWorkCard } from "@/components/profile/RecentWorkCard"
 import { ProfileInfoCard } from "@/components/profile/ProfileInfoCard"
+import { Footer } from "@/components/Footer"
 
 export default function ProfilePage() {
   const { toasts, toast, removeToast } = useToast()
   const { t, isRTL, language, createLocalizedPath } = useLanguage()
-  const { isDarkMode } = useTheme()
+  const { isDarkMode, mounted } = useTheme()
 
   const [isRecentWorkModalOpen, setIsRecentWorkModalOpen] = useState(false)
 
@@ -53,6 +53,7 @@ export default function ProfilePage() {
   const [isUploadingBrandManual, setIsUploadingBrandManual] = useState(false);
   const [isUploadingCompanyProfile, setIsUploadingCompanyProfile] = useState(false);
   const [isUploadingDocument, setIsUploadingDocument] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const router = useRouter();
   const [windowWidth, setWindowWidth] = useState<number>(1024);
 
@@ -197,6 +198,7 @@ export default function ProfilePage() {
 
   // Handle logo upload
   const handleLogoUpload = async (file: File) => {
+    setIsUploadingLogo(true);
     try {
       const token = localStorage.getItem('access_token')
       if (!token) {
@@ -238,6 +240,9 @@ export default function ProfilePage() {
           logo_url: updatedCompanyData.logo_url || null,
           industry: updatedCompanyData.industry || companyProfile?.industry || null,
           job_title: updatedCompanyData.job_title || companyProfile?.job_title || null,
+          visual_guide: companyProfile?.visual_guide || null,
+          logotype: companyProfile?.logotype || null,
+          logo_mode: companyProfile?.logo_mode || null,
           // Keep existing asset files
           brand_manual: companyProfile?.brand_manual || null,
           company_profile_file: companyProfile?.company_profile_file || null,
@@ -259,6 +264,8 @@ export default function ProfilePage() {
     } catch (error) {
       console.error('Error updating logo:', error)
       toast.error(t('profile.logoUpdateError'))
+    } finally {
+      setIsUploadingLogo(false);
     }
   }
 
@@ -378,21 +385,28 @@ export default function ProfilePage() {
 
   return (
     <GradientBackground>
-      {/* Fixed Header/Navbar - PURE WHITE */}
-  <header className={`fixed top-0 left-0 right-0 shadow-md px-6 py-4 z-50 ${isDarkMode ? 'bg-[#0E0E10]' : 'bg-white'}`}>
+      {/* Fixed Header/Navbar */}
+      <header 
+        className={`fixed top-0 left-0 right-0 shadow-md px-6 py-4 z-50 ${
+          mounted && isDarkMode ? 'bg-[#0E0E10]' : 'bg-white'
+        }`}
+        suppressHydrationWarning
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-8">
-            {/* Logo - NO TOGGLE HERE */}
+            {/* Logo */}
             <div 
               className="flex items-center gap-2 ml-16 cursor-pointer" 
               onClick={() => router.push(createLocalizedPath('chat'))}
               title="Go to Chat"
+              suppressHydrationWarning
             >
               <Image 
-                src={isDarkMode ? "/vizzy-logo-dark.svg" : "/vizzy-logo.svg"} 
+                src={mounted && isDarkMode ? "/vizzy-logo-dark.svg" : "/vizzy-logo.svg"} 
                 alt="Vizzy Logo" 
                 width={150}
                 height={100}
+                suppressHydrationWarning
               />
             </div>
             {/* Search Bar */}
@@ -417,8 +431,7 @@ export default function ProfilePage() {
       </header>
 
       {/* Layout Container */}
-  <div className="flex pt-[92px]"> {/* Padding top for fixed header, increased for larger avatar */}
-        
+      <div className="flex pt-[92px]">
         {/* Main Content - CENTERED */}
         <main className="flex-1">
           <div className="flex justify-center px-6 py-6">
@@ -430,6 +443,7 @@ export default function ProfilePage() {
                   {/* Profile Card */}
                   <ProfileInfoCard
                     isDarkMode={isDarkMode}
+                    themeReady={mounted}
                     language={language}
                     isRTL={isRTL}
                     t={t}
@@ -440,7 +454,7 @@ export default function ProfilePage() {
 
                   {/* Recent Work and My Links Row */}
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mt-6">
-                    {/* Recent Work Card - Takes 3 columns out of 5 */}
+                    {/* Recent Work Card */}
                     <RecentWorkCard
                       isDarkMode={isDarkMode}
                       language={language}
@@ -531,8 +545,9 @@ export default function ProfilePage() {
                                   width: 'fit-content',
                                 }}
                                 onClick={() => document.getElementById('logo-upload-input')?.click()}
+                                disabled={isUploadingLogo}
                               >
-                                {t('profile.upload')}
+                                {isUploadingLogo ? t('profile.uploading') : t('profile.upload')}
                               </Button>
                             </div>
                             <div className="flex-1 flex items-center justify-center">
@@ -654,7 +669,7 @@ export default function ProfilePage() {
                       </h3>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      {/* Asset Items - All identical, background #D3E6FC */}
+                      {/* Asset Items */}
                       {[
                         { icon: '/manual.svg', label: t('profile.brandManual'), field: 'brand_manual' },
                         { icon: '/profile.svg', label: t('profile.companyProfile'), field: 'company_profile' },
@@ -748,26 +763,14 @@ export default function ProfilePage() {
                   </Card>
                 </div>
               </div>
-
-              {/* Footer */}
-              <footer className="mt-12 pt-8 border-t border-gray-200">
-                <div className="flex flex-wrap gap-4 text-sm text-gray-500 justify-center">
-                  <a href="#" className="hover:text-gray-700">Privacy</a>
-                  <span>•</span>
-                  <a href="#" className="hover:text-gray-700">Terms</a>
-                  <span>•</span>
-                  <a href="#" className="hover:text-gray-700">Advertising</a>
-                  <span>•</span>
-                  <a href="#" className="hover:text-gray-700">Ad Choices</a>
-                  <span>•</span>
-                  <a href="#" className="hover:text-gray-700">Cookies</a>
-                  <span>•</span>
-                  <a href="#" className="hover:text-gray-700">More</a>
-                </div>
-              </footer>
             </div>
           </div>
         </main>
+      </div>
+      
+      {/* Footer - Full Width Outside Container */}
+      <div className="mt-16">
+        <Footer />
       </div>
       
       {/* Hidden file input for logo upload */}

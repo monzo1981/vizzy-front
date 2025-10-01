@@ -63,16 +63,21 @@ export default function RootLayout({
         textNodes.forEach(textNode => {
           if (textNode.textContent && arabicRegex.test(textNode.textContent)) {
             const element = textNode.parentElement;
-            if (element && !element.hasAttribute('data-font-applied')) {
-              element.style.fontFamily = "'Noto Sans Arabic', var(--font-inter), Inter, sans-serif";
-              element.setAttribute('data-font-applied', 'arabic');
+            if (element && !element.hasAttribute('data-font-applied') && !element.hasAttribute('suppressHydrationWarning')) {
+              // Use a CSS class instead of inline styles to avoid hydration issues
+              if (!element.classList.contains('arabic-text')) {
+                element.classList.add('arabic-text');
+                element.setAttribute('data-font-applied', 'arabic');
+              }
             }
           }
         });
       };
       
-      // Apply on initial load
-      applyArabicFont();
+      // Delay initial application to avoid hydration mismatch
+      const timeoutId = setTimeout(() => {
+        applyArabicFont();
+      }, 100);
       
       // Apply when DOM changes (for dynamic content)
       const observer = new MutationObserver(() => {
@@ -85,7 +90,10 @@ export default function RootLayout({
         characterData: true
       });
       
-      return () => observer.disconnect();
+      return () => {
+        clearTimeout(timeoutId);
+        observer.disconnect();
+      };
     }
   }, []);
 
@@ -100,7 +108,7 @@ export default function RootLayout({
   }
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <title>{pageTitle}</title>
         <link rel="icon" href="/web-icon.svg" />
@@ -108,6 +116,7 @@ export default function RootLayout({
       </head>
       <body
         className={`${inter.variable} ${notoSansArabic.variable} antialiased`}
+        suppressHydrationWarning
       >
         <LanguageProvider>
           <ThemeProvider>
