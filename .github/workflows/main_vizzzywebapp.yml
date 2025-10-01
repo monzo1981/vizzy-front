@@ -4,11 +4,13 @@ on:
     branches:
       - main
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    
     steps:
       - uses: actions/checkout@v4
       
@@ -21,13 +23,17 @@ jobs:
         run: |
           npm ci
           npm run build
+          npm prune --production
       
-      - name: Create standalone deployment
+      - name: Create deployment package
         run: |
           mkdir -p deploy
-          cp -r .next/standalone/* deploy/
-          cp -r .next/static deploy/.next/static
-          cp -r public deploy/public
+          cp -r .next deploy/
+          [ -d "public" ] && cp -r public deploy/ || echo "No public folder"
+          cp package.json deploy/
+          cp package-lock.json deploy/
+          cp next.config.* deploy/ 2>/dev/null || echo "No next.config file"
+          cp -r node_modules deploy/
           cd deploy
           zip -r ../release.zip .
       
@@ -43,6 +49,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
