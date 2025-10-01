@@ -22,9 +22,14 @@ jobs:
           npm ci
           npm run build
       
-      - name: Zip artifact for deployment
+      - name: Create standalone deployment
         run: |
-          zip -r release.zip . -x "*.git*" -x "*node_modules/.cache*"
+          mkdir -p deploy
+          cp -r .next/standalone/* deploy/
+          cp -r .next/static deploy/.next/static
+          cp -r public deploy/public
+          cd deploy
+          zip -r ../release.zip .
       
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
