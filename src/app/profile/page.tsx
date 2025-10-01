@@ -8,13 +8,10 @@ import Image from "next/image"
 import {
   Search,
   Bell,
-  Edit,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Avatar } from "@/components/ui/avatar"
 import { AvatarDropdown } from "@/components/ui/avatar-dropdown"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { isAuthenticated, getUser, type User as AuthUser } from "@/lib/auth"
 import { N8NWebhook } from "@/lib/n8n-webhook"
@@ -24,11 +21,14 @@ import { useToast, ToastContainer } from "@/components/ui/toast"
 import { useLanguage } from "@/contexts/LanguageContext"
 import { useTheme } from "@/contexts/ThemeContext"
 import { RecentWorkModal } from "@/components/profile/RecentWorkModal"
+import { RecentWorkCard } from "@/components/profile/RecentWorkCard"
+import { ProfileInfoCard } from "@/components/profile/ProfileInfoCard"
+import { Footer } from "@/components/Footer"
 
 export default function ProfilePage() {
   const { toasts, toast, removeToast } = useToast()
   const { t, isRTL, language, createLocalizedPath } = useLanguage()
-  const { isDarkMode } = useTheme()
+  const { isDarkMode, mounted } = useTheme()
 
   const [isRecentWorkModalOpen, setIsRecentWorkModalOpen] = useState(false)
 
@@ -42,9 +42,6 @@ export default function ProfilePage() {
     created_at: string;
     ai_chat_session_id?: string;
   }>>([])
-  const [currentSlide, setCurrentSlide] = useState(0)
-  const [touchStart, setTouchStart] = useState(0)
-  const [touchEnd, setTouchEnd] = useState(0)
   // UserLimits type is extended in n8n-webhook.ts to include max_images, max_videos
   const [progressPercent, setProgressPercent] = useState<number>(0);
   const [remainingCredits, setRemainingCredits] = useState<number | string>('-');
@@ -56,8 +53,9 @@ export default function ProfilePage() {
   const [isUploadingBrandManual, setIsUploadingBrandManual] = useState(false);
   const [isUploadingCompanyProfile, setIsUploadingCompanyProfile] = useState(false);
   const [isUploadingDocument, setIsUploadingDocument] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const router = useRouter();
-  const [windowWidth, setWindowWidth] = useState(1024);
+  const [windowWidth, setWindowWidth] = useState<number>(1024);
 
   // Helper function to get loading state for a field
   const getIsUploading = (field: string) => {
@@ -156,41 +154,6 @@ export default function ProfilePage() {
     }
   }, [])
 
-
-  // Auto-slide effect - Continuous movement
-  useEffect(() => {
-    if (recentWork.length <= 1) return
-
-    const interval = setInterval(() => {
-      setCurrentSlide(prev => (prev + 1) % recentWork.length)
-    }, 3000) // 4 seconds for longer viewing time
-
-    return () => clearInterval(interval)
-  }, [recentWork.length])
-
-  // Touch handlers for mobile swipe - Faster response
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.targetTouches[0].clientX)
-  }
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX)
-  }
-
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return
-    
-    const distance = touchStart - touchEnd
-    const isLeftSwipe = distance > 30 // Reduced threshold for faster response
-    const isRightSwipe = distance < -30
-
-    if (isLeftSwipe && recentWork.length > 0) {
-      setCurrentSlide(prev => (prev + 1) % recentWork.length)
-    } else if (isRightSwipe && recentWork.length > 0) {
-      setCurrentSlide(prev => prev === 0 ? recentWork.length - 1 : prev - 1)
-    }
-  }
-
   useEffect(() => {
     if (!isAuthenticated()) {
       router.push("/")
@@ -225,13 +188,17 @@ export default function ProfilePage() {
     }
   }, [router])
 
-  // Set window width on client side
+  // Set window width for responsive design
   useEffect(() => {
-    setWindowWidth(window.innerWidth);
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    handleResize(); // Set initial value
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   // Handle logo upload
   const handleLogoUpload = async (file: File) => {
+    setIsUploadingLogo(true);
     try {
       const token = localStorage.getItem('access_token')
       if (!token) {
@@ -273,6 +240,9 @@ export default function ProfilePage() {
           logo_url: updatedCompanyData.logo_url || null,
           industry: updatedCompanyData.industry || companyProfile?.industry || null,
           job_title: updatedCompanyData.job_title || companyProfile?.job_title || null,
+          visual_guide: companyProfile?.visual_guide || null,
+          logotype: companyProfile?.logotype || null,
+          logo_mode: companyProfile?.logo_mode || null,
           // Keep existing asset files
           brand_manual: companyProfile?.brand_manual || null,
           company_profile_file: companyProfile?.company_profile_file || null,
@@ -294,6 +264,8 @@ export default function ProfilePage() {
     } catch (error) {
       console.error('Error updating logo:', error)
       toast.error(t('profile.logoUpdateError'))
+    } finally {
+      setIsUploadingLogo(false);
     }
   }
 
@@ -413,21 +385,28 @@ export default function ProfilePage() {
 
   return (
     <GradientBackground>
-      {/* Fixed Header/Navbar - PURE WHITE */}
-  <header className={`fixed top-0 left-0 right-0 shadow-md px-6 py-4 z-50 ${isDarkMode ? 'bg-[#0E0E10]' : 'bg-white'}`}>
+      {/* Fixed Header/Navbar */}
+      <header 
+        className={`fixed top-0 left-0 right-0 shadow-md px-6 py-4 z-50 ${
+          mounted && isDarkMode ? 'bg-[#0E0E10]' : 'bg-white'
+        }`}
+        suppressHydrationWarning
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-8">
-            {/* Logo - NO TOGGLE HERE */}
+            {/* Logo */}
             <div 
               className="flex items-center gap-2 ml-16 cursor-pointer" 
               onClick={() => router.push(createLocalizedPath('chat'))}
               title="Go to Chat"
+              suppressHydrationWarning
             >
               <Image 
-                src={isDarkMode ? "/vizzy-logo-dark.svg" : "/vizzy-logo.svg"} 
+                src={mounted && isDarkMode ? "/vizzy-logo-dark.svg" : "/vizzy-logo.svg"} 
                 alt="Vizzy Logo" 
                 width={150}
                 height={100}
+                suppressHydrationWarning
               />
             </div>
             {/* Search Bar */}
@@ -452,8 +431,7 @@ export default function ProfilePage() {
       </header>
 
       {/* Layout Container */}
-  <div className="flex pt-[92px]"> {/* Padding top for fixed header, increased for larger avatar */}
-        
+      <div className="flex pt-[92px]">
         {/* Main Content - CENTERED */}
         <main className="flex-1">
           <div className="flex justify-center px-6 py-6">
@@ -463,505 +441,29 @@ export default function ProfilePage() {
                 {/* Left Column - Profile Info */}
                 <div className="lg:col-span-2">
                   {/* Profile Card */}
-                  <Card className="border-0" dir={language === 'ar' ? 'rtl' : 'ltr'} style={{ 
-                    background: isDarkMode
-                      ? 'linear-gradient(100.74deg, rgba(127, 202, 254) -2.34%, rgba(255, 255, 255) 25.59%, rgba(255, 228, 224) 63.57%, rgba(255, 255, 255) 106.88%)'
-                      : 'linear-gradient(100.74deg, rgba(127, 202, 254, 0.5) -2.34%, rgba(255, 255, 255, 0.5) 25.59%, rgba(255, 228, 224, 0.5) 63.57%, rgba(255, 255, 255, 0.5) 106.88%)',
-                    borderRadius: '36px'
-                  }}>
-                    <CardContent className="p-6">
-                      <div className="flex items-start gap-4 mb-6">
-                        <div 
-                          className="rounded-full overflow-hidden flex-shrink-0"
-                          style={{ 
-                            width: '126px', 
-                            height: '126px',
-                            // Reduce size for mobile
-                            ...(windowWidth < 768 && { width: '80px', height: '80px' })
-                          }}
-                        >
-                          <Avatar 
-                            src={currentUser?.profile_picture_url || undefined}
-                            fallback={currentUser && currentUser.first_name && currentUser.last_name ? `${currentUser.first_name.charAt(0)}${currentUser.last_name.charAt(0)}`.toUpperCase() : 'U'}
-                            alt="User"
-                            className="w-full h-full"
-                            bgOverride="light"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h2 style={{
-                              fontWeight: 700,
-                              fontSize: windowWidth < 768 ? '24px' : '40px', // Adjust font size for mobile
-                              color: '#4248FF'
-                            }}>
-                              {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Vizzy User'}
-                            </h2>
-                            <Badge 
-                              className="text-white border-0"
-                              style={{
-                                background: 'linear-gradient(90deg, #FF4A19 0%, #4248FF 100%)',
-                                borderRadius: '18px',
-                                fontWeight: 900,
-                                fontStyle: 'italic',
-                                fontSize: windowWidth < 768 ? '14px' : '20px', // Adjust font size for mobile
-                                padding: '6px 16px'
-                              }}
-                            >
-                              Pro
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-gray-600 mb-1">{t('profile.uploadProfilePic')}</p>
-                          <p className="text-sm text-gray-600 mb-1">{t('profile.recommendedSize')}</p>
-                          <p className="text-sm text-gray-600">{t('profile.allowedFormats')}</p>
-                        </div>
-                      </div>
-
-                      {/* Personal Info Section */}
-                      <div 
-                        style={{
-                          background: '#FFFFFF4A',
-                          borderRadius: '36px',
-                          padding: '1rem'
-                        }}
-                      >
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 style={{
-                            fontWeight: 600,
-                            fontSize: '20px',
-                            color: '#11002E'
-                          }}>{t('profile.personalInfo')}</h3>
-                          <Button 
-                            variant="outline"
-                            size="sm"
-                            className="gap-2"
-                            style={{
-                              border: '1px solid rgba(66, 72, 255, 0.5)',
-                              borderRadius: '40px',
-                              background: 'none',
-                              fontWeight: 600
-                            }}
-                            onClick={() => setIsProfileModalOpen(true)}
-                          >
-                            <Edit className="w-3 h-3" style={{ color: '#78758E' }} />
-                            <span style={{ color: '#000' }}>{t('profile.edit')}</span>
-                          </Button>
-                        </div>
-
-                        <div 
-                          className="max-h-32 overflow-y-auto pr-2"
-                          style={{
-                            scrollbarWidth: 'thin',
-                            scrollbarColor: '#9CA3AF transparent'
-                          }}
-                        >
-                          <style jsx>{`
-                            div::-webkit-scrollbar {
-                              width: 4px;
-                            }
-                            div::-webkit-scrollbar-track {
-                              background: transparent;
-                            }
-                            div::-webkit-scrollbar-thumb {
-                              background-color: #9CA3AF;
-                              border-radius: 2px;
-                            }
-                            div::-webkit-scrollbar-thumb:hover {
-                              background-color: #6B7280;
-                            }
-                          `}</style>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {/* First row: Name, Business name, empty */}
-                            <div>
-                              <p style={{
-                                color: '#4248FF',
-                                fontWeight: 500,
-                                fontSize: '16px',
-                                marginBottom: '4px'
-                              }}>{t('profile.name')}</p>
-                              <p style={{
-                                color: '#78758E',
-                                fontWeight: 500,
-                                fontSize: '16px'
-                              }}>
-                                {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : t('profile.notAvailable')}
-                              </p>
-                            </div>
-                            <div>
-                              <p style={{
-                                color: '#4248FF',
-                                fontWeight: 500,
-                                fontSize: '16px',
-                                marginBottom: '4px'
-                              }}>{t('profile.businessName')}</p>
-                              <p style={{
-                                color: '#78758E',
-                                fontWeight: 500,
-                                fontSize: '16px'
-                              }}>{companyProfile ? companyProfile.company_name : t('profile.notAvailable')}</p>
-                            </div>
-                            {/* Empty div for alignment */}
-                            <div></div>
-
-                            {/* Second row: Job Title, Industry, empty */}
-                            <div>
-                              <p style={{
-                                color: '#4248FF',
-                                fontWeight: 500,
-                                fontSize: '16px',
-                                marginBottom: '4px'
-                              }}>{t('profile.jobTitle')}</p>
-                              <p style={{
-                                color: '#78758E',
-                                fontWeight: 500,
-                                fontSize: '16px'
-                              }}>{companyProfile?.job_title || t('profile.notAvailable')}</p>
-                            </div>
-                            <div>
-                              <p style={{
-                                color: '#4248FF',
-                                fontWeight: 500,
-                                fontSize: '16px',
-                                marginBottom: '4px'
-                              }}>{t('profile.industry')}</p>
-                              <p style={{
-                                color: '#78758E',
-                                fontWeight: 500,
-                                fontSize: '16px'
-                              }}>{companyProfile?.industry || t('profile.notAvailable')}</p>
-                            </div>
-                            {/* Empty div for alignment */}
-                            <div></div>
-
-                            {/* Third row: Email, Mobile, Website */}
-                            <div>
-                              <p style={{
-                                color: '#4248FF',
-                                fontWeight: 500,
-                                fontSize: '16px',
-                                marginBottom: '4px'
-                              }}>{t('profile.email')}</p>
-                              <p style={{
-                                color: '#78758E',
-                                fontWeight: 500,
-                                fontSize: '16px'
-                              }}>{currentUser ? currentUser.email : t('profile.notAvailable')}</p>
-                            </div>
-                            <div>
-                              <p style={{
-                                color: '#4248FF',
-                                fontWeight: 500,
-                                fontSize: '16px',
-                                marginBottom: '4px'
-                              }}>{t('profile.mobile')}</p>
-                              <p style={{
-                                color: '#78758E',
-                                fontWeight: 500,
-                                fontSize: '16px'
-                              }}>{currentUser?.phone_number || t('profile.notAvailable')}</p>
-                            </div>
-                            <div>
-                              <p style={{
-                                color: '#4248FF',
-                                fontWeight: 500,
-                                fontSize: '16px',
-                                marginBottom: '4px'
-                              }}>{t('profile.website')}</p>
-                              <p style={{
-                                color: '#78758E',
-                                fontWeight: 500,
-                                fontSize: '16px'
-                              }}>{companyProfile?.company_website_url || t('profile.notAvailable')}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <ProfileInfoCard
+                    isDarkMode={isDarkMode}
+                    themeReady={mounted}
+                    language={language}
+                    isRTL={isRTL}
+                    t={t}
+                    currentUser={currentUser}
+                    companyProfile={companyProfile}
+                    setIsProfileModalOpen={setIsProfileModalOpen}
+                  />
 
                   {/* Recent Work and My Links Row */}
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mt-6">
-                    {/* Recent Work Card - Takes 3 columns out of 5 */}
-                    <Card 
-                      className="border-0 text-white md:col-span-3"
-                      dir={language === 'ar' ? 'rtl' : 'ltr'}
-                      style={{
-                        background: '#7FCAFE',
-                        borderRadius: '36px',
-                      }}
-                    >
-                      <CardContent className="p-6">
-                        <h3 className="font-bold mb-2" style={{ fontWeight: 700, fontSize: 30, fontFamily: 'Inter', textAlign: 'center' }}>{t('profile.recentWork')}</h3>
-                        <div className="flex flex-col h-full min-h-[240px]">
-                          <div className="flex-1 flex items-center justify-center relative overflow-hidden"
-                            onTouchStart={recentWork.length > 0 ? handleTouchStart : undefined}
-                            onTouchMove={recentWork.length > 0 ? handleTouchMove : undefined}
-                            onTouchEnd={recentWork.length > 0 ? handleTouchEnd : undefined}
-                          >
-                            {recentWork.length > 0 ? (
-                              <div className="relative w-full h-[200px] flex items-center justify-center">
-                                {/* Navigation Arrows */}
-                                <button
-                                  onClick={() => setCurrentSlide(prev => prev === 0 ? recentWork.length - 1 : prev - 1)}
-                                  className="absolute left-2 z-50 p-3 rounded-full transition-all duration-200 hover:scale-110 hover:opacity-100 hover:bg-white/20"
-                                  style={{
-                                    background: 'transparent',
-                                    border: 'none',
-                                    color: 'white',
-                                    opacity: 0.8,
-                                    cursor: 'pointer',
-                                    backdropFilter: 'blur(4px)',
-                                  }}
-                                >
-                                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                                  </svg>
-                                </button>
-                                
-                                <button
-                                  onClick={() => setCurrentSlide(prev => (prev + 1) % recentWork.length)}
-                                  className="absolute right-2 z-50 p-3 rounded-full transition-all duration-200 hover:scale-110 hover:opacity-100 hover:bg-white/20"
-                                  style={{
-                                    background: 'transparent',
-                                    border: 'none',
-                                    color: 'white',
-                                    opacity: 0.8,
-                                    cursor: 'pointer',
-                                    backdropFilter: 'blur(4px)',
-                                  }}
-                                >
-                                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                                  </svg>
-                                </button>
-
-                                {/* Triangular Stacked Carousel Container */}
-                                <div className="relative w-full h-full flex items-center justify-center">
-                                  {recentWork.map((item, index) => {
-                                    // Create seamless circular movement for 5 visible images
-                                    const totalItems = recentWork.length
-                                    let position = (index - currentSlide + totalItems) % totalItems
-                                    
-                                    // Handle negative positions for seamless loop
-                                    if (position > totalItems / 2) {
-                                      position = position - totalItems
-                                    }
-                                    
-                                    // Calculate properties for 5 visible images in triangle formation
-                                    const absPosition = Math.abs(position)
-                                    const isCenter = position === 0
-                                    const isVisible = absPosition <= 2 // Show 5 images total (-2, -1, 0, 1, 2)
-                                    
-                                    if (!isVisible) return null
-                                    
-                                    let scale = 1
-                                    let opacity = 1
-                                    let zIndex = 10
-                                    let translateX = 0
-                                    let translateY = 0
-                                    
-                                    if (isCenter) {
-                                      // Center image - largest and in front
-                                      scale = 1
-                                      opacity = 1
-                                      zIndex = 30
-                                      translateX = 0
-                                      translateY = 0
-                                    } else if (absPosition === 1) {
-                                      // First level - medium size, slightly behind
-                                      scale = 0.8
-                                      opacity = 0.8
-                                      zIndex = 20
-                                      translateX = position * 70 // Keep wider spacing for bigger width
-                                      translateY = 15 // Back to original vertical spacing
-                                    } else if (absPosition === 2) {
-                                      // Second level - same size as first level but further behind
-                                      scale = 0.8 // Same size as first level
-                                      opacity = 0.6
-                                      zIndex = 10
-                                      translateX = position * 55 // Keep adjusted spacing for wider images
-                                      translateY = 25 // Back to original vertical spacing
-                                    }
-                                    
-                                    return (
-                                      <div
-                                        key={item.id}
-                                        className="absolute transition-all duration-1000 ease-in-out cursor-pointer"
-                                        style={{
-                                          transform: `translateX(${translateX}px) translateY(${translateY}px) scale(${scale})`,
-                                          opacity,
-                                          zIndex,
-                                          width: '160px', // Keep the wider width
-                                          height: '180px', // Back to original height
-                                        }}
-                                        onClick={() => setCurrentSlide(index)}
-                                      >
-                                        <Image
-                                          src={item.content_url}
-                                          alt={`Generated content ${index + 1}`}
-                                          width={160}
-                                          height={180}
-                                          className="rounded-lg object-cover w-full h-full shadow-lg"
-                                          onError={(e) => {
-                                            // Handle broken images
-                                            const target = e.target as HTMLImageElement
-                                            target.src = '/recent-work.png'
-                                          }}
-                                        />
-                                      </div>
-                                    )
-                                  })}
-                                </div>
-                              </div>
-                            ) : (
-                              // Static placeholder boxes when no recent work is available
-                              <div className="relative w-full h-[200px] flex items-center justify-center">
-                                {/* Background placeholder boxes */}
-                                <div className="relative w-full h-full flex items-center justify-center">
-                                  {Array.from({ length: 5 }).map((_, index) => {
-                                    // Static positions for 5 placeholder boxes in same formation
-                                    let scale = 1
-                                    let opacity = 1
-                                    let zIndex = 10
-                                    let translateX = 0
-                                    let translateY = 0
-                                    
-                                    // Position 2 is center (index 2)
-                                    const position = index - 2
-                                    const absPosition = Math.abs(position)
-                                    const isCenter = position === 0
-                                    
-                                    if (isCenter) {
-                                      // Center box - largest and in front
-                                      scale = 1
-                                      opacity = 0.4
-                                      zIndex = 30
-                                      translateX = 0
-                                      translateY = 0
-                                    } else if (absPosition === 1) {
-                                      // First level - medium size, slightly behind
-                                      scale = 0.8
-                                      opacity = 0.4
-                                      zIndex = 20
-                                      translateX = position * 70
-                                      translateY = 15
-                                    } else if (absPosition === 2) {
-                                      // Second level - smaller size, further behind
-                                      scale = 0.8
-                                      opacity = 0.2
-                                      zIndex = 10
-                                      translateX = position * 55
-                                      translateY = 25
-                                    }
-                                    
-                                    return (
-                                      <div
-                                        key={index}
-                                        className="absolute"
-                                        style={{
-                                          transform: `translateX(${translateX}px) translateY(${translateY}px) scale(${scale})`,
-                                          opacity,
-                                          zIndex,
-                                          width: '160px',
-                                          height: '180px',
-                                        }}
-                                      >
-                                        <div 
-                                          className="w-full h-full rounded-lg shadow-lg"
-                                          style={{
-                                            background: 'rgba(255, 255, 255, 0.1)',
-                                            backdropFilter: 'blur(10px)',
-                                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                                            boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
-                                          }}
-                                        />
-                                      </div>
-                                    )
-                                  })}
-                                </div>
-                                
-                                {/* Text and button overlay */}
-                                <div className="absolute inset-0 flex flex-col items-center justify-center text-center z-50">
-                                  <h3 
-                                    style={{
-                                      color: '#4248FF',
-                                      fontSize: '30px',
-                                      fontWeight: 700,
-                                      marginBottom: '8px'
-                                    }}
-                                  >
-                                    {t('profile.nothingHere')}
-                                  </h3>
-                                  <button
-                                    onClick={() => router.push(createLocalizedPath('chat'))}
-                                    style={{
-                                      background: 'white',
-                                      color: '#78758E',
-                                      fontSize: '20px',
-                                      fontWeight: 400,
-                                      padding: '8px 24px',
-                                      borderRadius: '32px',
-                                      border: 'none',
-                                      cursor: 'pointer',
-                                      fontFamily: 'Inter',
-                                    }}
-                                  >
-                                    {t('profile.startGenerating')}
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                          {/* Navigation Dots - Only show when there are actual images */}
-                          {recentWork.length > 0 && (
-                            <div className="flex flex-col gap-2 mt-6">
-                              <div className="flex justify-center w-full gap-2">
-                                {recentWork.map((_, index) => {
-                                  const isActive = index === currentSlide
-                                  const width = Math.max(15, 80 / Math.max(5, recentWork.length)) // Responsive width
-                                  return (
-                                    <button
-                                      key={index}
-                                      onClick={() => setCurrentSlide(index)}
-                                      style={{
-                                        width: `${width}%`,
-                                        height: isActive ? '10px' : '8px',
-                                        background: isActive ? '#FF4A19' : '#D3E6FC',
-                                        borderRadius: '8px',
-                                        opacity: 1,
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.3s ease'
-                                      }}
-                                    />
-                                  )
-                                })}
-                              </div>
-                              <div className="flex justify-end w-full mt-2">
-                                <Button
-                                  type="button"
-                                  className="shadow-md font-bold"
-                                  style={{
-                                    background: 'white',
-                                    color: '#000',
-                                    borderRadius: '50px',
-                                    border: 'none',
-                                    fontWeight: 700,
-                                    fontSize: '16px',
-                                    padding: '12px 40px',
-                                    marginRight: 0,
-                                    fontFamily: 'inherit',
-                                  }}
-                                  onClick={() => setIsRecentWorkModalOpen(true)}
-                                >
-                                  {t('profile.seeFulld')}
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
+                    {/* Recent Work Card */}
+                    <RecentWorkCard
+                      isDarkMode={isDarkMode}
+                      language={language}
+                      isRTL={isRTL}
+                      t={t}
+                      createLocalizedPath={createLocalizedPath}
+                      recentWork={recentWork}
+                      setIsRecentWorkModalOpen={setIsRecentWorkModalOpen}
+                    />
 
                     {/* Right Column Cards */}
                     <div className="space-y-10 md:col-span-2">
@@ -1043,8 +545,9 @@ export default function ProfilePage() {
                                   width: 'fit-content',
                                 }}
                                 onClick={() => document.getElementById('logo-upload-input')?.click()}
+                                disabled={isUploadingLogo}
                               >
-                                {t('profile.upload')}
+                                {isUploadingLogo ? t('profile.uploading') : t('profile.upload')}
                               </Button>
                             </div>
                             <div className="flex-1 flex items-center justify-center">
@@ -1166,7 +669,7 @@ export default function ProfilePage() {
                       </h3>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      {/* Asset Items - All identical, background #D3E6FC */}
+                      {/* Asset Items */}
                       {[
                         { icon: '/manual.svg', label: t('profile.brandManual'), field: 'brand_manual' },
                         { icon: '/profile.svg', label: t('profile.companyProfile'), field: 'company_profile' },
@@ -1260,26 +763,14 @@ export default function ProfilePage() {
                   </Card>
                 </div>
               </div>
-
-              {/* Footer */}
-              <footer className="mt-12 pt-8 border-t border-gray-200">
-                <div className="flex flex-wrap gap-4 text-sm text-gray-500 justify-center">
-                  <a href="#" className="hover:text-gray-700">Privacy</a>
-                  <span>•</span>
-                  <a href="#" className="hover:text-gray-700">Terms</a>
-                  <span>•</span>
-                  <a href="#" className="hover:text-gray-700">Advertising</a>
-                  <span>•</span>
-                  <a href="#" className="hover:text-gray-700">Ad Choices</a>
-                  <span>•</span>
-                  <a href="#" className="hover:text-gray-700">Cookies</a>
-                  <span>•</span>
-                  <a href="#" className="hover:text-gray-700">More</a>
-                </div>
-              </footer>
             </div>
           </div>
         </main>
+      </div>
+      
+      {/* Footer - Full Width Outside Container */}
+      <div className="mt-16">
+        <Footer />
       </div>
       
       {/* Hidden file input for logo upload */}

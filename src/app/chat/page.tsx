@@ -84,7 +84,7 @@ function ChatContent() {
   const searchParams = useSearchParams()
   const { isOpen, toggle } = useSidebar()
   const { t, createLocalizedPath } = useLanguage()
-  const { isDarkMode, toggleDarkMode } = useTheme()
+  const { isDarkMode, toggleDarkMode, mounted } = useTheme()
   
   // State Management
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -98,7 +98,6 @@ function ChatContent() {
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [showCompanyInfoModal, setShowCompanyInfoModal] = useState(false)
   const [companyProfileChecked, setCompanyProfileChecked] = useState(false)
-  const [mounted, setMounted] = useState(false)
   
   // Refs
   const processedMessageIds = useRef<Set<string>>(new Set())
@@ -258,11 +257,6 @@ function ChatContent() {
     // Check company profile and show modal if needed
     checkCompanyProfile()
   }, [router])
-
-  // Set mounted state after component mounts
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   // Initialize session and load existing messages
   useEffect(() => {
@@ -582,7 +576,7 @@ const markFirstMessageSent = async () => {
           <Sidebar 
             isOpen={isOpen} 
             onToggle={toggle} 
-            isDarkMode={mounted ? isDarkMode : false} 
+            isDarkMode={isDarkMode} 
             onDarkModeToggle={toggleDarkMode} 
           />
         </div>
@@ -593,7 +587,7 @@ const markFirstMessageSent = async () => {
             <Sidebar 
               isOpen={true} 
               onToggle={() => setIsMobileSidebarOpen(false)} 
-              isDarkMode={mounted ? isDarkMode : false} 
+              isDarkMode={isDarkMode} 
               onDarkModeToggle={toggleDarkMode} 
               isMobile={true}
             />
@@ -644,6 +638,7 @@ const markFirstMessageSent = async () => {
                     ? 'hover:bg-gray-800 text-white' 
                     : 'hover:bg-gray-100 text-gray-600'
                 }`}
+                suppressHydrationWarning
               >
                 <img 
                   src="/side-bar.svg" 
@@ -653,6 +648,7 @@ const markFirstMessageSent = async () => {
                     minWidth: '24px',
                     minHeight: '24px'
                   }}
+                  suppressHydrationWarning
                 />
               </button>
             </div>
@@ -661,6 +657,7 @@ const markFirstMessageSent = async () => {
             <div className="flex justify-center mb-2">
               <div 
                 className="relative"
+                suppressHydrationWarning
               >
                 <Image 
                   src={mounted && isDarkMode ? "/vizzy-logo-dark.svg" : "/vizzy-logo.svg"} 
@@ -668,6 +665,7 @@ const markFirstMessageSent = async () => {
                   width={220}
                   height={200}
                   className="w-32 sm:w-40 md:w-48 lg:w-[220px] h-auto transition-opacity"
+                  suppressHydrationWarning
                 />
               </div>
             </div>
@@ -689,7 +687,7 @@ const markFirstMessageSent = async () => {
               <div className="relative">
                 <AvatarDropdown 
                   currentUser={currentUser}
-                  isDarkMode={mounted ? isDarkMode : false}
+                  isDarkMode={isDarkMode}
                 />
               </div>
             </div>
@@ -714,7 +712,7 @@ const markFirstMessageSent = async () => {
 
                 {/* Services Carousel */}
                 <div className="w-full mb-8 sm:mb-12">
-                  <ServicesCarousel isDarkMode={mounted ? isDarkMode : false} />
+                  <ServicesCarousel isDarkMode={isDarkMode} themeReady={mounted} />
                 </div>
               </div>
 
@@ -726,7 +724,8 @@ const markFirstMessageSent = async () => {
                 <ChatInput
                   ref={chatInputRef}
                   mode="initial"
-                  isDarkMode={mounted ? isDarkMode : false}
+                  isDarkMode={isDarkMode}
+                  themeReady={mounted}
                   isLoading={isLoading}
                   isCreatingSession={isCreatingSession}
                   onSend={handleSend}
@@ -745,14 +744,15 @@ const markFirstMessageSent = async () => {
                 messages={messages}
                 isLoading={isLoading}
                 isCreatingSession={isCreatingSession}
-                isDarkMode={mounted ? isDarkMode : false}
+                isDarkMode={isDarkMode}
                 StableImage={StableImage}
               />
 
               <ChatInput
                 ref={chatInputRef}
                 mode="compact"
-                isDarkMode={mounted ? isDarkMode : false}
+                isDarkMode={isDarkMode}
+                themeReady={mounted}
                 isLoading={isLoading}
                 isCreatingSession={isCreatingSession}
                 onSend={handleSend}

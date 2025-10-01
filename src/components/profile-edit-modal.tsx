@@ -7,6 +7,7 @@ import { Avatar } from "@/components/ui/avatar"
 import { type User, updateUser } from "@/lib/auth"
 import { N8NWebhook } from "@/lib/n8n-webhook"
 import { useLanguage } from "../contexts/LanguageContext"
+import { useTheme } from "../contexts/ThemeContext"
 
 // Custom styles for consistent focus
 const inputStyles = {
@@ -100,9 +101,9 @@ interface CompanyProfileData {
 
 export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate, onToast }: ProfileEditModalProps) {
   const { language } = useLanguage()
+  const { isDarkMode } = useTheme()
   const [activeTab, setActiveTab] = useState<'personal' | 'company'>('personal')
   const [isLoading, setIsLoading] = useState(false)
-  const [isDarkMode, setIsDarkMode] = useState(false)
   const [isIndustryDropdownOpen, setIsIndustryDropdownOpen] = useState(false)
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 })
   const industryDropdownRef = useRef<HTMLDivElement>(null)
@@ -140,13 +141,6 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate, o
   
   // Preview URLs
   const [profilePicturePreview, setProfilePicturePreview] = useState<string>('')
-
-  useEffect(() => {
-    const savedDarkMode = localStorage.getItem('darkMode')
-    if (savedDarkMode === 'true') {
-      setIsDarkMode(true)
-    }
-  }, [])
 
   // Initialize data when modal opens
   useEffect(() => {
@@ -320,6 +314,8 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate, o
           logo_url: updatedCompanyData.logo_url || null,
           industry: updatedCompanyData.industry || null,
           job_title: updatedCompanyData.job_title || null,
+          visual_guide: updatedCompanyData.visual_guide || null,
+          logotype: updatedCompanyData.logotype || null,
           // Include required asset files from existing profile or set to null
           brand_manual: updatedCompanyData.brand_manual || null,
           company_profile_file: updatedCompanyData.company_profile_file || null,

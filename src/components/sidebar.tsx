@@ -272,8 +272,9 @@ export function Sidebar({
                     textAlign: 'center',
                     display: 'inline-block'
                   }}
+                  suppressHydrationWarning
                 >
-                  {!isHydrated ? 'AR' : (language === 'en' ? 'AR' : 'EN')}
+                  {!isHydrated ? 'ع' : (language === 'en' ? 'ع' : 'EN')}
                 </span>
                 <AnimatePresence>
                   {showExpanded && (

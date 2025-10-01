@@ -58,6 +58,9 @@ interface CompanyProfile {
     logo_url: string | null;
     industry: string | null;
     job_title: string | null;
+    visual_guide: string | null;  // NEW
+    logotype: string | null;  // NEW
+    logo_mode: string | null;  // NEW
     // Asset files
     brand_manual: {file_id: string | null, file_url: string | null} | null;
     company_profile_file: {file_id: string | null, file_url: string | null} | null;
@@ -97,9 +100,26 @@ export class N8NWebhook {
     }
   }
 
-  private async fetchCompanyProfile(): Promise<void> {
-    // Only fetch if not already fetched and user is authenticated
-    if (this.profileFetched || !this.userId || this.userId === 'anonymous') {
+  /**
+   * Fetch company profile from backend
+   * 
+   * Solution for N8N async logo processing:
+   * - When user uploads logo, backend sends it to N8N in background thread
+   * - N8N processes logo and updates DB with visual_guide, logotype, logo_mode
+   * - On first message of any chat session, we force refresh profile data
+   * - This ensures we always get the latest data after N8N processing completes
+   * 
+   * @param forceRefresh - Force fetch even if already cached (used for first message)
+   */
+  private async fetchCompanyProfile(forceRefresh: boolean = false): Promise<void> {
+    // Skip if already fetched (unless force refresh) or user is not authenticated
+    if (!forceRefresh && this.profileFetched) {
+      console.log('Profile already fetched, using cached version');
+      return;
+    }
+    
+    if (!this.userId || this.userId === 'anonymous') {
+      console.log('No user ID, skipping profile fetch');
       return;
     }
 
@@ -110,7 +130,7 @@ export class N8NWebhook {
     }
 
     try {
-      // Updated endpoint path to match the new backend URL
+      console.log('🔄 Fetching fresh company profile from backend...');
       const response = await fetch(`${API_BASE_URL}/client/profile/`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -129,6 +149,9 @@ export class N8NWebhook {
             logo_url: data.data.logo_url || null,
             industry: data.data.industry || null,
             job_title: data.data.job_title || null,
+            visual_guide: data.data.visual_guide || null,  // NEW
+            logotype: data.data.logotype || null,  // NEW
+            logo_mode: data.data.logo_mode || null,  // NEW
             // Add asset files
             brand_manual: data.data.brand_manual || null,
             company_profile_file: data.data.company_profile || null,
@@ -138,7 +161,7 @@ export class N8NWebhook {
           // Cache the profile in localStorage
           localStorage.setItem('company_profile', JSON.stringify(this.companyProfile));
           this.profileFetched = true;
-          console.log('Company profile fetched and cached:', this.companyProfile);
+          console.log('✅ Company profile fetched and cached:', this.companyProfile);
         } else {
           console.log('No profile data found or empty response');
           // Set empty profile if no data found
@@ -148,6 +171,9 @@ export class N8NWebhook {
             logo_url: null,
             industry: null,
             job_title: null,
+            visual_guide: null,  // NEW
+            logotype: null,  // NEW
+            logo_mode: null,  // NEW
             brand_manual: null,
             company_profile_file: null,
             document: null,
@@ -221,7 +247,7 @@ export class N8NWebhook {
     }
   }
 
-  async sendMessage(
+async sendMessage(
     current_user_message: string, 
     sessionId?: string, 
     chatHistory?: Array<{
@@ -234,8 +260,10 @@ export class N8NWebhook {
     try {
       console.log('Sending message to N8N:', current_user_message);
 
-      // Fetch company profile if not already fetched
-      await this.fetchCompanyProfile();
+      // Force refresh profile data on first message of any session
+      // This ensures we get updated visual_guide, logotype, logo_mode after N8N processing
+      const isFirstMessage = !chatHistory || chatHistory.length === 0;
+      await this.fetchCompanyProfile(isFirstMessage);
       
       const userLimits = await this.getUserLimits();
       const language = localStorage.getItem('language') || 'en';
@@ -259,18 +287,20 @@ export class N8NWebhook {
           remaining_images: userLimits?.remaining_images ?? null,
           remaining_videos: userLimits?.remaining_videos ?? null,
           is_first_time_user: userLimits?.is_first_time_user ?? false,
-          // Add company profile data
+          // Company profile data
           company_name: this.companyProfile?.company_name || null,
           company_website_url: this.companyProfile?.company_website_url || null,
           logo_url: this.companyProfile?.logo_url || null,
           industry: this.companyProfile?.industry || null,
           job_title: this.companyProfile?.job_title || null,
-          // Add asset files URLs
+          visual_guide: this.companyProfile?.visual_guide || null,  // NEW
+          logotype: this.companyProfile?.logotype || null,  // NEW
+          logo_mode: this.companyProfile?.logo_mode || null,  // NEW
+          // Asset files URLs
           brand_manual_url: this.companyProfile?.brand_manual?.file_url || null,
           company_profile_file_url: this.companyProfile?.company_profile_file?.file_url || null,
           client_document_url: this.companyProfile?.document?.file_url || null,
           respond_only_to: 'current_user_message',
-          // Add previous context
           previous_context: chatHistory ? chatHistory.slice(-4) : [],
           language: language,
         } as N8NRequest),
@@ -291,7 +321,7 @@ export class N8NWebhook {
     }
   }
 
-  async sendVoiceMessage(
+async sendVoiceMessage(
     audioData: string, 
     sessionId?: string, 
     chatHistory?: Array<{
@@ -304,8 +334,9 @@ export class N8NWebhook {
     try {
       console.log('Sending voice message to N8N');
 
-      // Fetch company profile if not already fetched
-      await this.fetchCompanyProfile();
+      // Force refresh profile data on first message of any session
+      const isFirstMessage = !chatHistory || chatHistory.length === 0;
+      await this.fetchCompanyProfile(isFirstMessage);
       
       const userLimits = await this.getUserLimits();
       const language = localStorage.getItem('language') || 'en';
@@ -328,18 +359,20 @@ export class N8NWebhook {
           remaining_images: userLimits?.remaining_images ?? null,
           remaining_videos: userLimits?.remaining_videos ?? null,
           is_first_time_user: userLimits?.is_first_time_user ?? false,
-          // Add company profile data
+          // Company profile data
           company_name: this.companyProfile?.company_name || null,
           company_website_url: this.companyProfile?.company_website_url || null,
           logo_url: this.companyProfile?.logo_url || null,
           industry: this.companyProfile?.industry || null,
           job_title: this.companyProfile?.job_title || null,
-          // Add asset files URLs
+          visual_guide: this.companyProfile?.visual_guide || null,  // NEW
+          logotype: this.companyProfile?.logotype || null,  // NEW
+          logo_mode: this.companyProfile?.logo_mode || null,  // NEW
+          // Asset files URLs
           brand_manual_url: this.companyProfile?.brand_manual?.file_url || null,
           company_profile_file_url: this.companyProfile?.company_profile_file?.file_url || null,
           client_document_url: this.companyProfile?.document?.file_url || null,
           respond_only_to: 'current_user_message',
-          // Add previous context
           previous_context: chatHistory ? chatHistory.slice(-4) : [],
           language: language,
         } as N8NRequest),
@@ -360,7 +393,7 @@ export class N8NWebhook {
     }
   }
 
-  async sendImageMessage(
+async sendImageMessage(
     imageData: string, 
     text?: string, 
     sessionId?: string, 
@@ -374,8 +407,9 @@ export class N8NWebhook {
     try {
       console.log('Sending image message to N8N with text:', text);
 
-      // Fetch company profile if not already fetched
-      await this.fetchCompanyProfile();
+      // Force refresh profile data on first message of any session
+      const isFirstMessage = !chatHistory || chatHistory.length === 0;
+      await this.fetchCompanyProfile(isFirstMessage);
       
       const userLimits = await this.getUserLimits();
       const language = localStorage.getItem('language') || 'en';
@@ -399,18 +433,20 @@ export class N8NWebhook {
           remaining_images: userLimits?.remaining_images ?? null,
           remaining_videos: userLimits?.remaining_videos ?? null,
           is_first_time_user: userLimits?.is_first_time_user ?? false,
-          // Add company profile data
+          // Company profile data
           company_name: this.companyProfile?.company_name || null,
           company_website_url: this.companyProfile?.company_website_url || null,
           logo_url: this.companyProfile?.logo_url || null,
           industry: this.companyProfile?.industry || null,
           job_title: this.companyProfile?.job_title || null,
-          // Add asset files URLs
+          visual_guide: this.companyProfile?.visual_guide || null,  // NEW
+          logotype: this.companyProfile?.logotype || null,  // NEW
+          logo_mode: this.companyProfile?.logo_mode || null,
+          // Asset files URLs
           brand_manual_url: this.companyProfile?.brand_manual?.file_url || null,
           company_profile_file_url: this.companyProfile?.company_profile_file?.file_url || null,
           client_document_url: this.companyProfile?.document?.file_url || null,
           respond_only_to: 'current_user_message',
-          // Add previous context
           previous_context: chatHistory ? chatHistory.slice(-4) : [],
           language: language,
         } as N8NRequest),

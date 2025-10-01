@@ -3,6 +3,7 @@
 import * as React from "react"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
+import { useTheme } from "@/contexts/ThemeContext"
 
 interface AvatarProps {
   src?: string
@@ -36,23 +37,15 @@ export function Avatar({
   bgOverride = 'auto'
 }: AvatarProps) {
   const [imageError, setImageError] = React.useState(false)
-  const [isDarkMode, setIsDarkMode] = React.useState(false)
-  
-  // Load dark mode preference from localStorage
-  React.useEffect(() => {
-    const savedDarkMode = localStorage.getItem('darkMode')
-    if (savedDarkMode === 'true') {
-      setIsDarkMode(true)
-    }
-  }, [])
+  const { isDarkMode, mounted } = useTheme()
   
   // Determine background color based on override prop
   const getBackgroundColor = () => {
     if (bgOverride === 'transparent') return 'bg-transparent'
     if (bgOverride === 'light') return 'bg-white'
     if (bgOverride === 'dark') return 'bg-black'
-    // Default 'auto' mode
-    return isDarkMode ? 'bg-black' : 'bg-white'
+    // Default 'auto' mode - only apply theme after mount
+    return (mounted && isDarkMode) ? 'bg-black' : 'bg-white'
   }
   
   // Generate fallback from alt text if not provided
@@ -88,12 +81,13 @@ export function Avatar({
       style={{
         ...customSize,
         background: ' conic-gradient(from 223.88deg at 50% 50%, #FF4A19 -75.43deg, #FFEB77 6.01deg, #4248FF 92.34deg, #7FCAFE 211.14deg, #FF4A19 284.57deg, #FFEB77 366.01deg)',
-        boxShadow: (bgOverride === 'dark' || (bgOverride === 'auto' && isDarkMode)) 
+        boxShadow: (bgOverride === 'dark' || (bgOverride === 'auto' && mounted && isDarkMode)) 
           ? '0px 0px 16px 0px #4248ff69' 
           : '0px 0px 16px 0px rgba(255, 255, 255, 0.75)'
       }}
+      suppressHydrationWarning
     >
-      <div className={`w-full h-full p-[3px] rounded-full ${getBackgroundColor()}`}>
+      <div className={`w-full h-full p-[3px] rounded-full ${getBackgroundColor()}`} suppressHydrationWarning>
         {showImage ? (
           <div className="relative w-full h-full overflow-hidden rounded-full">
             <Image

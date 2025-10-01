@@ -15,14 +15,18 @@ interface ServiceCard {
 
 interface ServicesCarouselProps {
   isDarkMode?: boolean
+  themeReady?: boolean
   className?: string
 }
 
-export function ServicesCarousel({ isDarkMode = false, className = "" }: ServicesCarouselProps) {
+export function ServicesCarousel({ isDarkMode = false, themeReady = false, className = "" }: ServicesCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const carouselRef = useRef<HTMLDivElement>(null)
   const { language } = useLanguage()
   const [mounted, setMounted] = useState(false)
+  const [isHovered, setIsHovered] = useState(false)
+  const autoScrollInterval = useRef<NodeJS.Timeout | null>(null)
+  const [isTransitioning, setIsTransitioning] = useState(true)
 
   const services: ServiceCard[] = useMemo(() => [
     {
@@ -55,7 +59,7 @@ export function ServicesCarousel({ isDarkMode = false, className = "" }: Service
       title: "Service 5",
       image: language === 'ar' ? "/cards/card5-ar.png" : "/cards/card5.png",
       cardTitle: language === 'ar' ? "فيديو مراجعة لمنتجك" : "Instant UGC!",
-      subtitle: language === 'ar' ? "اشرح ميزات منتجك بفيديو .. فقط من صورة المنتج!" : "Create a preview video For your products",
+      subtitle: language === 'ar' ? "اشرح مميزات منتجك بفيديو .. فقط من صورة المنتج!" : "Create a preview video For your products",
       onClick: () => console.log("Card 5 clicked"),
     },
     {
@@ -100,59 +104,96 @@ export function ServicesCarousel({ isDarkMode = false, className = "" }: Service
 
   const [visibleCards, setVisibleCards] = useState(getVisibleCards())
 
+  // Create infinite loop by triplicating services for smoother transitions
+  const infiniteServices = useMemo(() => [...services, ...services, ...services], [services])
+
+  const goToPrevious = useCallback(() => {
+    setIsTransitioning(true)
+    setCurrentIndex((prev) => prev - 1)
+  }, [])
+
+  const goToNext = useCallback(() => {
+    setIsTransitioning(true)
+    setCurrentIndex((prev) => prev + 1)
+  }, [])
+
   useEffect(() => {
     setMounted(true)
-  }, [])
+    // Start from the middle set (original first item)
+    setCurrentIndex(services.length)
+  }, [services.length])
 
   // Update visible cards on window resize (only after mounting)
   useEffect(() => {
     if (!mounted) return
 
     const handleResize = () => {
-      setVisibleCards(getVisibleCards())
+      const newVisibleCards = getVisibleCards()
+      setVisibleCards(newVisibleCards)
     }
 
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [mounted, getVisibleCards])
 
-  const goToPrevious = () => {
-    setCurrentIndex((prev) => {
-      if (prev === 0) {
-        // Loop to the end
-        return services.length - visibleCards
-      }
-      return prev - 1
-    })
-  }
-
-  const goToNext = () => {
-    setCurrentIndex((prev) => {
-      if (prev >= services.length - visibleCards) {
-        // Loop to the beginning
-        return 0
-      }
-      return prev + 1
-    })
-  }
-
+  // Handle infinite loop reset with seamless transitions
   useEffect(() => {
-    if (!mounted) return
+    if (!isTransitioning) return
+
+    // When reaching the end of the second set, reset to the middle set
+    if (currentIndex >= services.length * 2) {
+      const timer = setTimeout(() => {
+        setIsTransitioning(false)
+        setCurrentIndex(currentIndex - services.length)
+        setTimeout(() => setIsTransitioning(true), 50)
+      }, 500)
+      return () => clearTimeout(timer)
+    }
     
-    const handleResize = () => {
-      setVisibleCards(getVisibleCards())
-      // Reset index if it's out of bounds after resize
-      if (currentIndex > services.length - getVisibleCards()) {
-        setCurrentIndex(0)
+    // When reaching the beginning, reset to the middle set
+    if (currentIndex <= 0) {
+      const timer = setTimeout(() => {
+        setIsTransitioning(false)
+        setCurrentIndex(services.length)
+        setTimeout(() => setIsTransitioning(true), 50)
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [currentIndex, services.length, isTransitioning])
+
+  // Auto scroll effect
+  useEffect(() => {
+    if (!mounted || isHovered) return
+
+    autoScrollInterval.current = setInterval(() => {
+      goToNext()
+    }, 3000) // Auto scroll every 3 seconds
+
+    return () => {
+      if (autoScrollInterval.current) {
+        clearInterval(autoScrollInterval.current)
       }
     }
+  }, [mounted, isHovered, goToNext])
 
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [currentIndex, services.length, getVisibleCards, mounted])
+  const handleMouseEnter = () => {
+    setIsHovered(true)
+    if (autoScrollInterval.current) {
+      clearInterval(autoScrollInterval.current)
+    }
+  }
+
+  const handleMouseLeave = () => {
+    setIsHovered(false)
+  }
 
   return (
-    <div className={`w-full max-w-7xl mx-auto px-4 py-4 ${className}`} style={{ border: '2px solid #D3E6FC1F', borderRadius: '50px', boxShadow: '0px 0px 8px 0px #4248ff54' }}>
+    <div 
+      className={`w-full max-w-7xl mx-auto px-4 py-4 ${className}`} 
+      style={{ border: '2px solid #D3E6FC1F', borderRadius: '50px', boxShadow: '0px 0px 8px 0px #4248ff54' }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       {/* Main Carousel Container with Navigation */}
       <div className="relative flex items-center ">
         
@@ -160,10 +201,11 @@ export function ServicesCarousel({ isDarkMode = false, className = "" }: Service
         <button
           onClick={goToPrevious}
           className={`absolute left-0 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 ${
-            isDarkMode 
+            themeReady && isDarkMode 
               ? ' text-white' 
               : 'text-gray-700'
           }`}
+          suppressHydrationWarning
         >
           <ChevronLeft size={24} />
         </button>
@@ -174,20 +216,19 @@ export function ServicesCarousel({ isDarkMode = false, className = "" }: Service
           className="overflow-hidden rounded-xl mx-14 w-full"
         >
           <div 
-            className="flex transition-transform duration-500 ease-in-out"
+            className={`flex ${isTransitioning ? 'transition-transform duration-500 ease-in-out' : ''}`}
             style={{ 
               transform: `translateX(-${(currentIndex * 100) / visibleCards}%)`,
             }}
           >
-            {services.map((service) => (
+            {infiniteServices.map((service, index) => (
               <div
-                key={service.id}
+                key={`${service.id}-${index}`}
                 className="flex-shrink-0 px-2"
                 style={{ width: `${100 / visibleCards}%` }}
               >
                 <div 
                   className="relative cursor-pointer rounded-xl flex flex-col items-center justify-start"
-
                   onClick={service.onClick}
                 >
                   {/* Image Container with Text for card 2 */}
@@ -201,23 +242,28 @@ export function ServicesCarousel({ isDarkMode = false, className = "" }: Service
                     
                     {/* Text Content - For cards with title and subtitle */}
                     {service.cardTitle && (
-                      <div className="w-full text-center">
-                        <h3 className={`text-[12px] font-semibold mb-0 ${
-                          isDarkMode ? 'text-white' : 'text-black'
-                        }`}>
+                      <div className="w-full text-center" suppressHydrationWarning>
+                        <h3 
+                          className={`text-[12px] font-semibold mb-0 ${
+                            themeReady && isDarkMode ? 'text-white' : 'text-black'
+                          }`}
+                          suppressHydrationWarning
+                        >
                           {service.cardTitle}
                         </h3>
                         {service.subtitle && (
-                          <p className={`text-[10px] font-light ${
-                            isDarkMode ? 'text-[#D3E6FC]' : 'text-black'
-                          }`}>
+                          <p 
+                            className={`text-[10px] font-light ${
+                              themeReady && isDarkMode ? 'text-[#D3E6FC]' : 'text-black'
+                            }`}
+                            suppressHydrationWarning
+                          >
                             {service.subtitle}
                           </p>
                         )}
                       </div>
                     )}
                   </div>
-
                 </div>
               </div>
             ))}
@@ -228,10 +274,11 @@ export function ServicesCarousel({ isDarkMode = false, className = "" }: Service
         <button
           onClick={goToNext}
           className={`absolute right-0 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 ${
-            isDarkMode 
+            themeReady && isDarkMode 
               ? 'text-white' 
               : 'text-gray-700'
           }`}
+          suppressHydrationWarning
         >
           <ChevronRight size={24} />
         </button>
