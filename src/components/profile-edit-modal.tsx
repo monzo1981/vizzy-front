@@ -316,6 +316,7 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate, o
           job_title: updatedCompanyData.job_title || null,
           visual_guide: updatedCompanyData.visual_guide || null,
           logotype: updatedCompanyData.logotype || null,
+          logo_mode: updatedCompanyData.logo_mode || null,
           // Include required asset files from existing profile or set to null
           brand_manual: updatedCompanyData.brand_manual || null,
           company_profile_file: updatedCompanyData.company_profile_file || null,
