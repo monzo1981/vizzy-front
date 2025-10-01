@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   images: {
     unoptimized: true, // لحل مشاكل الصور في الـ development
     domains: [], // لسنا نحتاجها مع الـ img tag العادي
