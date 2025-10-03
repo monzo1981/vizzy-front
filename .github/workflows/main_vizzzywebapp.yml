@@ -36,7 +36,6 @@ jobs:
           [ -f "next.config.mjs" ] && cp next.config.mjs deploy/ || echo "No next.config.mjs"
           cp -r node_modules deploy/
           
-          # أضف web.config لتعطيل Oryx build
           cat > deploy/web.config << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <configuration>
@@ -79,9 +78,6 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    environment:
-      name: 'Production'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
     
     steps:
       - name: Download artifact from build job
