@@ -30,10 +30,13 @@ jobs:
           cp -r .next deploy/
           [ -d "public" ] && cp -r public deploy/ || echo "No public folder"
           [ -d "static" ] && cp -r static deploy/ || echo "No static folder"
+          [ -d "src" ] && cp -r src deploy/ || echo "No src folder"
           cp package.json deploy/
           cp package-lock.json deploy/
           [ -f "next.config.js" ] && cp next.config.js deploy/ || echo "No next.config.js"
           [ -f "next.config.mjs" ] && cp next.config.mjs deploy/ || echo "No next.config.mjs"
+          [ -f "next.config.ts" ] && cp next.config.ts deploy/ || echo "No next.config.ts"
+          [ -f "tsconfig.json" ] && cp tsconfig.json deploy/ || echo "No tsconfig.json"
           cp -r node_modules deploy/
           
           cat > deploy/web.config << 'EOF'
