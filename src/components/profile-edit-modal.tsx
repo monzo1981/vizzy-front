@@ -95,6 +95,7 @@ interface UserProfileData {
 interface CompanyProfileData {
   company_name: string
   company_website_url: string
+  about_company: string
   industry: string
   job_title: string
 }
@@ -132,6 +133,7 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate, o
   const [companyProfile, setCompanyProfile] = useState<CompanyProfileData>({
     company_name: '',
     company_website_url: '',
+    about_company: '',
     industry: '',
     job_title: ''
   })
@@ -212,6 +214,7 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate, o
         setCompanyProfile({
           company_name: profile.company_name || '',
           company_website_url: profile.company_website_url || '',
+          about_company: profile.about_company || '',
           industry: profile.industry || '',
           job_title: profile.job_title || ''
         })
@@ -284,16 +287,28 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate, o
 
   // Save Company Info
   const saveCompanyInfo = async () => {
+    // Validate required fields before saving
+    if (!companyProfile.company_name || !companyProfile.company_name.trim()) {
+      onToast?.('error', 'Company name is required')
+      return
+    }
+    
+    if (!companyProfile.industry || !companyProfile.industry.trim()) {
+      onToast?.('error', 'Industry is required')
+      return
+    }
+    
     try {
       setIsLoading(true)
       const token = localStorage.getItem('access_token')
       if (!token) return
 
       const formData = new FormData()
-      formData.append('company_name', companyProfile.company_name)
-      formData.append('company_website_url', companyProfile.company_website_url)
-      formData.append('industry', companyProfile.industry)
-      formData.append('job_title', companyProfile.job_title)
+      formData.append('company_name', companyProfile.company_name.trim())
+      formData.append('company_website_url', companyProfile.company_website_url || '')
+      formData.append('about_company', companyProfile.about_company || '')
+      formData.append('industry', companyProfile.industry.trim())
+      formData.append('job_title', companyProfile.job_title || '')
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/client/profile/`, {
         method: 'POST',
@@ -307,12 +322,13 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate, o
         const responseData = await response.json()
         const updatedCompanyData = responseData.data || responseData
         
-        // Update localStorage and N8NWebhook cache efficiently
+        // Update localStorage and N8NWebhook cache efficiently - ENSURE required fields are not null
         const updatedProfile = {
-          company_name: updatedCompanyData.company_name || null,
+          company_name: updatedCompanyData.company_name || companyProfile.company_name.trim(),
           company_website_url: updatedCompanyData.company_website_url || null,
+          about_company: updatedCompanyData.about_company || null,
           logo_url: updatedCompanyData.logo_url || null,
-          industry: updatedCompanyData.industry || null,
+          industry: updatedCompanyData.industry || companyProfile.industry.trim(),
           job_title: updatedCompanyData.job_title || null,
           visual_guide: updatedCompanyData.visual_guide || null,
           logotype: updatedCompanyData.logotype || null,
@@ -323,6 +339,7 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate, o
           document: updatedCompanyData.document || null,
         }
         
+        console.log('[ProfileEditModal] Updating company profile cache:', updatedProfile)
         const webhook = new N8NWebhook()
         webhook.updateCompanyProfileCache(updatedProfile)
         
@@ -555,6 +572,22 @@ export function ProfileEditModal({ isOpen, onClose, currentUser, onUserUpdate, o
                     onChange={(e) => setCompanyProfile(prev => ({ ...prev, company_website_url: e.target.value }))}
                     placeholder="https://example.com"
                     className="w-full px-3"
+                    style={inputStyles}
+                    onFocus={(e) => e.target.style.borderColor = '#3B82F6'}
+                    onBlur={(e) => e.target.style.borderColor = 'transparent'}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ color: '#78758E', fontWeight: 400 }} className="block text-sm mb-2">
+                    About Company
+                  </label>
+                  <textarea
+                    value={companyProfile.about_company}
+                    onChange={(e) => setCompanyProfile(prev => ({ ...prev, about_company: e.target.value }))}
+                    placeholder="Tell us about your company..."
+                    className="w-full px-3 resize-none"
+                    rows={3}
                     style={inputStyles}
                     onFocus={(e) => e.target.style.borderColor = '#3B82F6'}
                     onBlur={(e) => e.target.style.borderColor = 'transparent'}

@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Image from "next/image"
 import { Edit } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -185,7 +184,7 @@ export function ProfileInfoCard({
               {/* Empty div for alignment */}
               <div></div>
 
-              {/* Second row: Job Title, Industry, empty */}
+              {/* Second row: Job Title, Industry, About Company */}
               <div>
                 <p style={{
                   color: '#4248FF',
@@ -212,8 +211,24 @@ export function ProfileInfoCard({
                   fontSize: '16px'
                 }}>{companyProfile?.industry || t('profile.notAvailable')}</p>
               </div>
-              {/* Empty div for alignment */}
-              <div></div>
+              <div>
+                <p style={{
+                  color: '#4248FF',
+                  fontWeight: 500,
+                  fontSize: '16px',
+                  marginBottom: '4px'
+                }}>{t('profile.aboutCompany')}</p>
+                <p style={{
+                  color: '#78758E',
+                  fontWeight: 500,
+                  fontSize: '16px'
+                }}>
+                  {companyProfile?.about_company 
+                    ? companyProfile.about_company.split(' ').slice(0, 3).join(' ') + (companyProfile.about_company.split(' ').length > 3 ? '...' : '')
+                    : t('profile.notAvailable')
+                  }
+                </p>
+              </div>
 
               {/* Third row: Email, Mobile, Website */}
               <div>
