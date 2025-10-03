@@ -84,7 +84,7 @@ web_modules/
 .parcel-cache
 
 # Next.js build output
-.next
+# .next  ← تم تعطيله للسماح بـ deployment الـ build
 out
 
 # Nuxt.js build / generate output

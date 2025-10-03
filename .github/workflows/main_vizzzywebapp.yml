@@ -27,17 +27,39 @@ jobs:
       - name: Create deployment package
         run: |
           mkdir -p deploy
-          cp -r .next deploy/
-          [ -d "public" ] && cp -r public deploy/ || echo "No public folder"
-          [ -d "static" ] && cp -r static deploy/ || echo "No static folder"
-          [ -d "src" ] && cp -r src deploy/ || echo "No src folder"
+          
+          # نسخ standalone build (Next.js standalone mode)
+          if [ -d ".next/standalone" ]; then
+            echo "Using Next.js standalone build..."
+            cp -r .next/standalone/. deploy/
+            
+            # نسخ static files
+            mkdir -p deploy/.next/static
+            cp -r .next/static deploy/.next/static
+          else
+            echo "Using regular Next.js build..."
+            cp -r .next deploy/
+          fi
+          
+          # نسخ public folder
+          [ -d "public" ] && cp -r public deploy/public || echo "No public folder"
+          
+          # نسخ src (للـ middleware و server components)
+          [ -d "src" ] && cp -r src deploy/src || echo "No src folder"
+          
+          # نسخ config files
           cp package.json deploy/
           cp package-lock.json deploy/
           [ -f "next.config.js" ] && cp next.config.js deploy/ || echo "No next.config.js"
           [ -f "next.config.mjs" ] && cp next.config.mjs deploy/ || echo "No next.config.mjs"
           [ -f "next.config.ts" ] && cp next.config.ts deploy/ || echo "No next.config.ts"
           [ -f "tsconfig.json" ] && cp tsconfig.json deploy/ || echo "No tsconfig.json"
-          cp -r node_modules deploy/
+          [ -f ".deployment" ] && cp .deployment deploy/ || echo "No .deployment"
+          
+          # نسخ node_modules فقط إذا لم يكن standalone
+          if [ ! -d ".next/standalone" ]; then
+            cp -r node_modules deploy/
+          fi
           
           # منع Oryx من البناء
           echo "Disabling Oryx build" > deploy/.skipDeployment
