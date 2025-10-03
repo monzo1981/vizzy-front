@@ -39,6 +39,9 @@ jobs:
           [ -f "tsconfig.json" ] && cp tsconfig.json deploy/ || echo "No tsconfig.json"
           cp -r node_modules deploy/
           
+          # منع Oryx من البناء
+          echo "Disabling Oryx build" > deploy/.skipDeployment
+          
           cat > deploy/web.config << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <configuration>
@@ -98,6 +101,30 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_31FD7D403C2D4B368D7609E371CC7AA5 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_908A8BEBFD224116AB5FC8808EEAE4EA }}
       
+      - name: Stop Web App
+        run: |
+          echo "Stopping web app..."
+          az webapp stop --name vizzzyWebApp --resource-group vizzzyWebApp_group
+          sleep 10
+      
+      - name: Delete old files from wwwroot
+        run: |
+          echo "Cleaning old deployment files..."
+          az webapp deployment source delete --name vizzzyWebApp --resource-group vizzzyWebApp_group --repository-type=git || true
+          
+          # استخدام Kudu API لمسح الملفات
+          PUBLISH_PROFILE=$(az webapp deployment list-publishing-profiles --name vizzzyWebApp --resource-group vizzzyWebApp_group --xml)
+          KUDU_USER=$(echo $PUBLISH_PROFILE | grep -oP 'userName="\K[^"]+' | head -1)
+          KUDU_PASS=$(echo $PUBLISH_PROFILE | grep -oP 'userPWD="\K[^"]+' | head -1)
+          
+          # مسح oryx-manifest.toml وnode_modules.tar.gz
+          curl -X DELETE "https://vizzzywebapp-dcb8azg7asc4h4av.scm.canadacentral-01.azurewebsites.net/api/vfs/site/wwwroot/oryx-manifest.toml" \
+            -u "$KUDU_USER:$KUDU_PASS" || echo "No manifest to delete"
+          
+          curl -X DELETE "https://vizzzywebapp-dcb8azg7asc4h4av.scm.canadacentral-01.azurewebsites.net/api/vfs/site/wwwroot/node_modules.tar.gz" \
+            -u "$KUDU_USER:$KUDU_PASS" || echo "No tar.gz to delete"
+        continue-on-error: true
+      
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
@@ -105,3 +132,11 @@ jobs:
           app-name: 'vizzzyWebApp'
           slot-name: 'Production'
           package: .
+          clean: true
+      
+      - name: Start Web App
+        run: |
+          echo "Starting web app..."
+          az webapp start --name vizzzyWebApp --resource-group vizzzyWebApp_group
+          sleep 5
+          echo "Deployment completed!"
