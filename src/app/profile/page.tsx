@@ -209,7 +209,7 @@ export default function ProfilePage() {
       const formData = new FormData()
       formData.append('logo', file)
       
-      // إرسال company_name و company_website_url إذا كانوا موجودين
+      // إرسال company_name و industry (required fields)
       if (companyProfile?.company_name) {
         formData.append('company_name', companyProfile.company_name)
       } else {
@@ -217,8 +217,25 @@ export default function ProfilePage() {
         formData.append('company_name', 'Default Company')
       }
       
+      // إرسال industry (required field)
+      if (companyProfile?.industry) {
+        formData.append('industry', companyProfile.industry)
+      } else {
+        // إذا لم يكن موجود، استخدم قيمة افتراضية
+        formData.append('industry', 'Other')
+      }
+      
+      // إرسال باقي الحقول الاختيارية
       if (companyProfile?.company_website_url) {
         formData.append('company_website_url', companyProfile.company_website_url)
+      }
+      
+      if (companyProfile?.about_company) {
+        formData.append('about_company', companyProfile.about_company)
+      }
+      
+      if (companyProfile?.job_title) {
+        formData.append('job_title', companyProfile.job_title)
       }
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/client/profile/`, {
@@ -237,6 +254,7 @@ export default function ProfilePage() {
         const updatedProfile = {
           company_name: updatedCompanyData.company_name || companyProfile?.company_name || null,
           company_website_url: updatedCompanyData.company_website_url || companyProfile?.company_website_url || null,
+          about_company: updatedCompanyData.about_company || companyProfile?.about_company || null,
           logo_url: updatedCompanyData.logo_url || null,
           industry: updatedCompanyData.industry || companyProfile?.industry || null,
           job_title: updatedCompanyData.job_title || companyProfile?.job_title || null,

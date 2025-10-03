@@ -112,19 +112,20 @@ export function CompanyInfoModal({ isOpen, onClose, onSuccess, onToast, existing
     phone_number: existingPhoneNumber || ''
   })
 
-  // Load phone number from user data if available
+  // Load phone number from user data if available - only once on mount
   useEffect(() => {
     const userData = localStorage.getItem('user')
     if (userData) {
       try {
         const user = JSON.parse(userData)
-        if (user.phone_number && !companyData.phone_number) {
+        if (user.phone_number && !existingPhoneNumber) {
           setCompanyData(prev => ({ ...prev, phone_number: user.phone_number || '' }))
         }
       } catch (error) {
         console.error('Error parsing user data:', error)
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Close industry dropdown when clicking outside
@@ -149,7 +150,7 @@ export function CompanyInfoModal({ isOpen, onClose, onSuccess, onToast, existing
       onToast?.('error', 'Company name is required')
       return
     }
-    if (!companyData.industry) {
+    if (!companyData.industry || !companyData.industry.trim()) {
       onToast?.('error', 'Please select an industry')
       return
     }
@@ -171,9 +172,9 @@ export function CompanyInfoModal({ isOpen, onClose, onSuccess, onToast, existing
       if (!token) return
 
       const formData = new FormData()
-      formData.append('company_name', companyData.company_name)
-      formData.append('industry', companyData.industry)
-      formData.append('phone_number', companyData.phone_number)
+      formData.append('company_name', companyData.company_name.trim())
+      formData.append('industry', companyData.industry.trim())
+      formData.append('phone_number', companyData.phone_number.trim())
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/client/profile/`, {
         method: 'POST',
@@ -187,35 +188,38 @@ export function CompanyInfoModal({ isOpen, onClose, onSuccess, onToast, existing
         const responseData = await response.json()
         const updatedCompanyData = responseData.data || responseData
         
-        // Update localStorage user data with phone number
+        // Update localStorage user data with phone number - ENSURE it's saved
         const userData = localStorage.getItem('user')
         if (userData) {
           try {
             const user = JSON.parse(userData)
-            user.phone_number = updatedCompanyData.phone_number || companyData.phone_number
+            user.phone_number = updatedCompanyData.phone_number || companyData.phone_number.trim()
             localStorage.setItem('user', JSON.stringify(user))
+            console.log('[CompanyInfoModal] User data updated with phone:', user.phone_number)
           } catch (error) {
             console.error('Error updating user data:', error)
           }
         }
         
-        // Update localStorage and N8NWebhook cache efficiently
+        // Update localStorage and N8NWebhook cache efficiently - ENSURE no null values for required fields
         const updatedProfile = {
-          company_name: updatedCompanyData.company_name || null,
+          company_name: updatedCompanyData.company_name || companyData.company_name.trim(),
           company_website_url: updatedCompanyData.company_website_url || null,
           logo_url: updatedCompanyData.logo_url || null,
-          industry: updatedCompanyData.industry || null,
+          industry: updatedCompanyData.industry || companyData.industry.trim(),
           job_title: updatedCompanyData.job_title || null,
-          phone_number: updatedCompanyData.phone_number || null,
+          phone_number: updatedCompanyData.phone_number || companyData.phone_number.trim(),
           visual_guide: updatedCompanyData.visual_guide || null,
           logotype: updatedCompanyData.logotype || null,
           logo_mode: updatedCompanyData.logo_mode || null,
+          about_company: updatedCompanyData.about_company || null,
           // Include required asset files from existing profile or set to null
           brand_manual: updatedCompanyData.brand_manual || null,
           company_profile_file: updatedCompanyData.company_profile_file || null,
           document: updatedCompanyData.document || null,
         }
         
+        console.log('[CompanyInfoModal] Updating company profile cache:', updatedProfile)
         const webhook = new N8NWebhook()
         webhook.updateCompanyProfileCache(updatedProfile)
         

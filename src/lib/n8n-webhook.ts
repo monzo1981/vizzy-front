@@ -20,6 +20,7 @@ interface N8NRequest {
   // New company profile fields
   company_name?: string;
   company_website_url?: string;
+  about_company?: string;
   logo_url?: string;
   industry?: string;
   job_title?: string;
@@ -55,6 +56,7 @@ interface UserLimits {
 interface CompanyProfile {
     company_name: string | null;
     company_website_url: string | null;
+    about_company: string | null;
     logo_url: string | null;
     industry: string | null;
     job_title: string | null;
@@ -114,23 +116,23 @@ export class N8NWebhook {
   private async fetchCompanyProfile(forceRefresh: boolean = false): Promise<void> {
     // Skip if already fetched (unless force refresh) or user is not authenticated
     if (!forceRefresh && this.profileFetched) {
-      console.log('Profile already fetched, using cached version');
+      console.log('[N8NWebhook] Profile already fetched, using cached version');
       return;
     }
     
     if (!this.userId || this.userId === 'anonymous') {
-      console.log('No user ID, skipping profile fetch');
+      console.log('[N8NWebhook] No user ID, skipping profile fetch');
       return;
     }
 
     const token = localStorage.getItem('access_token');
     if (!token) {
-      console.warn('No auth token for fetching company profile');
+      console.warn('[N8NWebhook] No auth token for fetching company profile');
       return;
     }
 
     try {
-      console.log('🔄 Fetching fresh company profile from backend...');
+      console.log('[N8NWebhook] 🔄 Fetching fresh company profile from backend...');
       const response = await fetch(`${API_BASE_URL}/client/profile/`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -140,12 +142,13 @@ export class N8NWebhook {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Profile API response:', data);
+        console.log('[N8NWebhook] Profile API response:', data);
         
         if (data.success && data.data) {
           this.companyProfile = {
             company_name: data.data.company_name || null,
             company_website_url: data.data.company_website_url || null,
+            about_company: data.data.about_company || null,
             logo_url: data.data.logo_url || null,
             industry: data.data.industry || null,
             job_title: data.data.job_title || null,
@@ -161,13 +164,22 @@ export class N8NWebhook {
           // Cache the profile in localStorage
           localStorage.setItem('company_profile', JSON.stringify(this.companyProfile));
           this.profileFetched = true;
-          console.log('✅ Company profile fetched and cached:', this.companyProfile);
+          console.log('[N8NWebhook] ✅ Company profile fetched and cached:', this.companyProfile);
+          
+          // Log warning if company_name or industry is missing
+          if (!this.companyProfile.company_name) {
+            console.warn('[N8NWebhook] ⚠️ WARNING: company_name is missing from profile!');
+          }
+          if (!this.companyProfile.industry) {
+            console.warn('[N8NWebhook] ⚠️ WARNING: industry is missing from profile!');
+          }
         } else {
-          console.log('No profile data found or empty response');
+          console.log('[N8NWebhook] No profile data found or empty response');
           // Set empty profile if no data found
           this.companyProfile = {
             company_name: null,
             company_website_url: null,
+            about_company: null,
             logo_url: null,
             industry: null,
             job_title: null,
@@ -181,10 +193,10 @@ export class N8NWebhook {
           this.profileFetched = true;
         }
       } else {
-        console.error('Failed to fetch profile:', response.status, response.statusText);
+        console.error('[N8NWebhook] Failed to fetch profile:', response.status, response.statusText);
       }
     } catch (error) {
-      console.error('Error fetching company profile:', error);
+      console.error('[N8NWebhook] Error fetching company profile:', error);
     }
   }
 
@@ -258,7 +270,7 @@ async sendMessage(
     }>
   ): Promise<N8NResponse> {
     try {
-      console.log('Sending message to N8N:', current_user_message);
+      console.log('[N8NWebhook] Sending message to N8N:', current_user_message);
 
       // Force refresh profile data on first message of any session
       // This ensures we get updated visual_guide, logotype, logo_mode after N8N processing
@@ -267,6 +279,24 @@ async sendMessage(
       
       const userLimits = await this.getUserLimits();
       const language = localStorage.getItem('language') || 'en';
+
+      // Log what we're sending to N8N
+      const companyDataToSend = {
+        company_name: this.companyProfile?.company_name || null,
+        industry: this.companyProfile?.industry || null,
+        company_website_url: this.companyProfile?.company_website_url || null,
+        about_company: this.companyProfile?.about_company || null,
+        job_title: this.companyProfile?.job_title || null,
+      };
+      console.log('[N8NWebhook] 📤 Sending company data to N8N:', companyDataToSend);
+      
+      // Warn if required fields are missing
+      if (!companyDataToSend.company_name) {
+        console.warn('[N8NWebhook] ⚠️ WARNING: Sending null company_name to N8N!');
+      }
+      if (!companyDataToSend.industry) {
+        console.warn('[N8NWebhook] ⚠️ WARNING: Sending null industry to N8N!');
+      }
 
       const response = await fetch(this.webhookUrl, {
         method: 'POST',
@@ -290,6 +320,7 @@ async sendMessage(
           // Company profile data
           company_name: this.companyProfile?.company_name || null,
           company_website_url: this.companyProfile?.company_website_url || null,
+          about_company: this.companyProfile?.about_company || null,
           logo_url: this.companyProfile?.logo_url || null,
           industry: this.companyProfile?.industry || null,
           job_title: this.companyProfile?.job_title || null,
@@ -307,7 +338,7 @@ async sendMessage(
       });
 
       if (!response.ok) {
-        console.error('HTTP error:', response.status, response.statusText);
+        console.error('[N8NWebhook] HTTP error:', response.status, response.statusText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
@@ -362,6 +393,7 @@ async sendVoiceMessage(
           // Company profile data
           company_name: this.companyProfile?.company_name || null,
           company_website_url: this.companyProfile?.company_website_url || null,
+          about_company: this.companyProfile?.about_company || null,
           logo_url: this.companyProfile?.logo_url || null,
           industry: this.companyProfile?.industry || null,
           job_title: this.companyProfile?.job_title || null,
@@ -436,6 +468,7 @@ async sendImageMessage(
           // Company profile data
           company_name: this.companyProfile?.company_name || null,
           company_website_url: this.companyProfile?.company_website_url || null,
+          about_company: this.companyProfile?.about_company || null,
           logo_url: this.companyProfile?.logo_url || null,
           industry: this.companyProfile?.industry || null,
           job_title: this.companyProfile?.job_title || null,

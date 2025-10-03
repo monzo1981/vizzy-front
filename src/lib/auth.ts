@@ -241,6 +241,25 @@ export const login = async (credentials: LoginCredentials): Promise<AuthResponse
       localStorage.setItem('refresh_token', data.data.tokens.refresh);
       localStorage.setItem('user', JSON.stringify(data.data.user));
       
+      // Store company profile if available in response
+      if (data.data.user.company_profile) {
+        const companyProfile = {
+          company_name: data.data.user.company_profile.company_name,
+          industry: data.data.user.company_profile.industry,
+          company_website_url: data.data.user.company_profile.company_website_url || null,
+          job_title: data.data.user.company_profile.job_title || null,
+          logo_url: null,
+          visual_guide: null,
+          logotype: null,
+          logo_mode: null,
+          brand_manual: null,
+          company_profile_file: null,
+          document: null
+        };
+        localStorage.setItem('company_profile', JSON.stringify(companyProfile));
+        console.log('[Login] Company profile stored in localStorage:', companyProfile);
+      }
+      
       // Start automatic refresh cycle
       tokenRefreshManager.scheduleRefresh(data.data.tokens.access);
       
@@ -282,7 +301,32 @@ export const register = async (userData: RegisterData): Promise<AuthResponse> =>
       // Store tokens in localStorage
       localStorage.setItem('access_token', data.data.tokens.access);
       localStorage.setItem('refresh_token', data.data.tokens.refresh);
-      localStorage.setItem('user', JSON.stringify(data.data.user));
+      
+      // Ensure user data includes phone_number
+      const userToStore = {
+        ...data.data.user,
+        phone_number: userData.phone_number || null
+      };
+      localStorage.setItem('user', JSON.stringify(userToStore));
+      
+      // Store company profile if available in response
+      if (data.data.user.company_profile) {
+        const companyProfile = {
+          company_name: data.data.user.company_profile.company_name,
+          industry: data.data.user.company_profile.industry,
+          company_website_url: data.data.user.company_profile.company_website_url || null,
+          job_title: data.data.user.company_profile.job_title || null,
+          logo_url: null,
+          visual_guide: null,
+          logotype: null,
+          logo_mode: null,
+          brand_manual: null,
+          company_profile_file: null,
+          document: null
+        };
+        localStorage.setItem('company_profile', JSON.stringify(companyProfile));
+        console.log('[Register] Company profile stored in localStorage:', companyProfile);
+      }
       
       // Start automatic refresh cycle
       tokenRefreshManager.scheduleRefresh(data.data.tokens.access);

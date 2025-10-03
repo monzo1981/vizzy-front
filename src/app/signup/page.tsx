@@ -100,8 +100,39 @@ const SignUp = () => {
     setError('');
     setIsLoading(true);
 
-    if (!firstName || !lastName || !email || !password || !companyName || !industry) {
-      setError('All fields except phone number are required.');
+    // Validate all required fields
+    if (!firstName || !firstName.trim()) {
+      setError('First name is required.');
+      setIsLoading(false);
+      return;
+    }
+    
+    if (!lastName || !lastName.trim()) {
+      setError('Last name is required.');
+      setIsLoading(false);
+      return;
+    }
+    
+    if (!email || !email.trim()) {
+      setError('Email is required.');
+      setIsLoading(false);
+      return;
+    }
+    
+    if (!password) {
+      setError('Password is required.');
+      setIsLoading(false);
+      return;
+    }
+    
+    if (!companyName || !companyName.trim()) {
+      setError('Company name is required.');
+      setIsLoading(false);
+      return;
+    }
+    
+    if (!industry || !industry.trim()) {
+      setError('Industry is required.');
       setIsLoading(false);
       return;
     }
@@ -119,27 +150,31 @@ const SignUp = () => {
       return;
     }
 
-    if (companyName.length < 2) {
+    if (companyName.trim().length < 2) {
       setError('Company name must be at least 2 characters long.');
       setIsLoading(false);
       return;
     }
 
     // Validate phone number if provided
-    if (phoneNumber && phoneNumber.length < 7) {
-      setError('Please enter a valid phone number.');
-      setIsLoading(false);
-      return;
+    if (phoneNumber && phoneNumber.trim().length > 0) {
+      const cleanedPhone = phoneNumber.replace(/\s|-|\(|\)/g, '');
+      if (cleanedPhone.length < 7) {
+        setError('Please enter a valid phone number.');
+        setIsLoading(false);
+        return;
+      }
     }
 
+    // Send registration data with trimmed values to ensure no empty strings
     const result = await register({
-      first_name: firstName,
-      last_name: lastName,
-      email,
+      first_name: firstName.trim(),
+      last_name: lastName.trim(),
+      email: email.trim(),
       password,
-      phone_number: phoneNumber,
-      company_name: companyName,
-      industry
+      phone_number: phoneNumber && phoneNumber.trim() ? phoneNumber.trim() : '',
+      company_name: companyName.trim(),
+      industry: industry.trim()
     });
 
     if (result.success) {
