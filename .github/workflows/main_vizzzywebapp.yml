@@ -132,7 +132,7 @@ jobs:
       - name: Delete old files from wwwroot
         run: |
           echo "Cleaning old deployment files..."
-          az webapp deployment source delete --name vizzzyWebApp --resource-group vizzzyWebApp_group --repository-type=git || true
+          az webapp deployment source delete --name vizzzyWebApp --resource-group vizzzyWebApp_group || true
           
           # استخدام Kudu API لمسح الملفات
           PUBLISH_PROFILE=$(az webapp deployment list-publishing-profiles --name vizzzyWebApp --resource-group vizzzyWebApp_group --xml)
