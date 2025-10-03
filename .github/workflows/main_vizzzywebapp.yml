@@ -23,43 +23,52 @@ jobs:
         run: |
           npm ci
           npm run build
+          
+      - name: Verify build output
+        run: |
+          echo "Checking build output..."
+          ls -la .next/
+          echo "Static files:"
+          ls -la .next/static/ || echo "No static folder"
+          echo "Build completed successfully"
       
       - name: Create deployment package
         run: |
           mkdir -p deploy
           
-          # نسخ standalone build (Next.js standalone mode)
-          if [ -d ".next/standalone" ]; then
-            echo "Using Next.js standalone build..."
-            cp -r .next/standalone/. deploy/
-            
-            # نسخ static files
-            mkdir -p deploy/.next/static
-            cp -r .next/static deploy/.next/static
-          else
-            echo "Using regular Next.js build..."
-            cp -r .next deploy/
-          fi
+          echo "=== Creating deployment package for Regular Next.js Build ==="
+          
+          # نسخ .next كامل (يحتوي على كل البناء)
+          echo "Copying .next folder..."
+          cp -r .next deploy/.next
           
           # نسخ public folder
-          [ -d "public" ] && cp -r public deploy/public || echo "No public folder"
+          echo "Copying public folder..."
+          cp -r public deploy/public
           
           # نسخ src (للـ middleware و server components)
-          [ -d "src" ] && cp -r src deploy/src || echo "No src folder"
+          echo "Copying src folder..."
+          cp -r src deploy/src
+          
+          # نسخ node_modules
+          echo "Copying node_modules..."
+          cp -r node_modules deploy/node_modules
           
           # نسخ config files
-          cp package.json deploy/
-          cp package-lock.json deploy/
-          [ -f "next.config.js" ] && cp next.config.js deploy/ || echo "No next.config.js"
-          [ -f "next.config.mjs" ] && cp next.config.mjs deploy/ || echo "No next.config.mjs"
-          [ -f "next.config.ts" ] && cp next.config.ts deploy/ || echo "No next.config.ts"
-          [ -f "tsconfig.json" ] && cp tsconfig.json deploy/ || echo "No tsconfig.json"
-          [ -f ".deployment" ] && cp .deployment deploy/ || echo "No .deployment"
+          echo "Copying config files..."
+          cp package.json deploy/package.json
+          cp package-lock.json deploy/package-lock.json
+          cp next.config.ts deploy/next.config.ts
+          cp tsconfig.json deploy/tsconfig.json
           
-          # نسخ node_modules فقط إذا لم يكن standalone
-          if [ ! -d ".next/standalone" ]; then
-            cp -r node_modules deploy/
-          fi
+          # نسخ .deployment file
+          [ -f ".deployment" ] && cp .deployment deploy/.deployment || echo "No .deployment file"
+          
+          # التحقق من المحتويات
+          echo "=== Deployment package contents ==="
+          ls -la deploy/
+          echo "=== Static files in deployment ==="
+          ls -la deploy/.next/static/ | head -20
           
           # منع Oryx من البناء
           echo "Disabling Oryx build" > deploy/.skipDeployment
