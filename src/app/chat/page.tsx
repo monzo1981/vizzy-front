@@ -599,6 +599,11 @@ const markFirstMessageSent = async () => {
     }
   }
 
+  // Handler for service carousel card clicks
+  const handleServiceCardClick = (message: string) => {
+    handleSend(message)
+  }
+
   const hasMessages = messages.length > 0
 
   return (
@@ -749,7 +754,11 @@ const markFirstMessageSent = async () => {
 
                 {/* Services Carousel */}
                 <div className="w-full mb-8 sm:mb-12">
-                  <ServicesCarousel isDarkMode={isDarkMode} themeReady={mounted} />
+                  <ServicesCarousel 
+                    isDarkMode={isDarkMode} 
+                    themeReady={mounted}
+                    onSendMessage={handleServiceCardClick}
+                  />
                 </div>
               </div>
 
