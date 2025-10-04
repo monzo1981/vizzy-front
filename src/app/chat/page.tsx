@@ -259,7 +259,7 @@ function ChatContent() {
   }, [router])
 
   // Initialize session and load existing messages
-  useEffect(() => {
+useEffect(() => {
     if (!sessionId) return
     
     const loadExistingMessages = async () => {
@@ -305,6 +305,9 @@ function ChatContent() {
               sender: msg.role === 'user' ? 'user' : 'assistant',
               timestamp: new Date(msg.timestamp),
               visual: finalVisual,
+              // NEW: Load additional images from database
+              image_url2: msg.image_url2 || undefined,
+              image_url3: msg.image_url3 || undefined,
               serviceType: msg.service_type,
               isProcessing: false,
               isVoice: false
@@ -323,6 +326,7 @@ function ChatContent() {
     
     loadExistingMessages()
   }, [sessionId])
+
 
   // Supabase Realtime subscription
   useEffect(() => {
@@ -422,9 +426,9 @@ function ChatContent() {
 
 // في page.tsx - تحديث handleSend function
 
-const handleSend = async (messageToSend: string, imageToSend?: string | null) => {
+const handleSend = async (messageToSend: string, imagesToSend?: string[]) => {
   if (isLoading || isCreatingSession) return
-  if (!messageToSend && !imageToSend) return
+  if (!messageToSend && (!imagesToSend || imagesToSend.length === 0)) return
   if (!n8nWebhook.current) return
 
   let currentSessionId = sessionId
@@ -450,22 +454,40 @@ const handleSend = async (messageToSend: string, imageToSend?: string | null) =>
     await new Promise(resolve => setTimeout(resolve, 500))
   }
 
+  // Create user message with all images
+  let displayContent = messageToSend || ''
+  if (imagesToSend && imagesToSend.length > 0) {
+    if (!displayContent) {
+      displayContent = `Sent ${imagesToSend.length} image${imagesToSend.length > 1 ? 's' : ''}`
+    }
+  }
+
   const userMessage: ChatMessage = {
     id: `user-${Date.now()}`,
-    content: messageToSend || (imageToSend ? 'Sent an image' : ''),
+    content: displayContent,
     sender: 'user',
     timestamp: new Date(),
-    visual: imageToSend || undefined
+    // Store first image in visual field for backward compatibility
+    visual: imagesToSend && imagesToSend.length > 0 ? imagesToSend[0] : undefined,
+    // NEW: Store additional images
+    image_url2: imagesToSend && imagesToSend.length > 1 ? imagesToSend[1] : undefined,
+    image_url3: imagesToSend && imagesToSend.length > 2 ? imagesToSend[2] : undefined,
   }
+  
   setMessages(prev => [...prev, userMessage])
   setIsLoading(true)
 
   try {
     const chatHistory = convertMessages(messages)
     
-    // Send message to N8N (N8N will get is_first_time_user = true for first message)
-    if (imageToSend) {
-      await n8nWebhook.current.sendImageMessage(imageToSend, messageToSend, currentSessionId, chatHistory)
+    // Send message to N8N with multiple images support
+    if (imagesToSend && imagesToSend.length > 0) {
+      await n8nWebhook.current.sendImageMessage(
+        imagesToSend, 
+        messageToSend, 
+        currentSessionId, 
+        chatHistory
+      )
     } else {
       await n8nWebhook.current.sendMessage(messageToSend, currentSessionId, chatHistory)
     }

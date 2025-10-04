@@ -426,7 +426,7 @@ async sendVoiceMessage(
   }
 
 async sendImageMessage(
-    imageData: string, 
+    imageData: string | string[], // UPDATED: accept array or single string
     text?: string, 
     sessionId?: string, 
     chatHistory?: Array<{
@@ -437,7 +437,10 @@ async sendImageMessage(
     }>
   ): Promise<N8NResponse> {
     try {
-      console.log('Sending image message to N8N with text:', text);
+      // Convert single image to array for uniform handling
+      const images = Array.isArray(imageData) ? imageData : [imageData];
+      
+      console.log(`Sending image message to N8N with ${images.length} image(s) and text:`, text);
 
       // Force refresh profile data on first message of any session
       const isFirstMessage = !chatHistory || chatHistory.length === 0;
@@ -446,6 +449,55 @@ async sendImageMessage(
       const userLimits = await this.getUserLimits();
       const language = localStorage.getItem('language') || 'en';
 
+      // Prepare image URLs - support up to 3 images
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const requestBody: any = {
+        current_user_message: text,
+        image_url: images[0], // First image (required if images exist)
+        user_id: this.userId,
+        session_id: sessionId,
+        user_email: this.userEmail,
+        name: `${this.firstName} ${this.lastName}`,
+        quota: "paid",
+        timestamp: new Date().toISOString(),
+        remaining_images: userLimits?.remaining_images ?? null,
+        remaining_videos: userLimits?.remaining_videos ?? null,
+        is_first_time_user: userLimits?.is_first_time_user ?? false,
+        // Company profile data
+        company_name: this.companyProfile?.company_name || null,
+        company_website_url: this.companyProfile?.company_website_url || null,
+        about_company: this.companyProfile?.about_company || null,
+        logo_url: this.companyProfile?.logo_url || null,
+        industry: this.companyProfile?.industry || null,
+        job_title: this.companyProfile?.job_title || null,
+        visual_guide: this.companyProfile?.visual_guide || null,
+        logotype: this.companyProfile?.logotype || null,
+        logo_mode: this.companyProfile?.logo_mode || null,
+        // Asset files URLs
+        brand_manual_url: this.companyProfile?.brand_manual?.file_url || null,
+        company_profile_file_url: this.companyProfile?.company_profile_file?.file_url || null,
+        client_document_url: this.companyProfile?.document?.file_url || null,
+        respond_only_to: 'current_user_message',
+        previous_context: chatHistory ? chatHistory.slice(-4) : [],
+        language: language,
+      };
+
+      // Add second image if exists
+      if (images.length > 1 && images[1]) {
+        requestBody.image_url2 = images[1];
+      }
+
+      // Add third image if exists
+      if (images.length > 2 && images[2]) {
+        requestBody.image_url3 = images[2];
+      }
+
+      console.log(`[N8NWebhook] Sending ${images.length} image(s) to N8N:`, {
+        image_url: !!requestBody.image_url,
+        image_url2: !!requestBody.image_url2,
+        image_url3: !!requestBody.image_url3
+      });
+
       const response = await fetch(this.webhookUrl, {
         method: 'POST',
         headers: {
@@ -453,36 +505,7 @@ async sendImageMessage(
           '_method': 'POST',
           'key': process.env.NEXT_PUBLIC_N8N_WEBHOOK_KEY!
         },
-        body: JSON.stringify({
-          current_user_message: text,
-          image_url: imageData,
-          user_id: this.userId,
-          session_id: sessionId,
-          user_email: this.userEmail,
-          name: `${this.firstName} ${this.lastName}`,
-          quota: "paid",
-          timestamp: new Date().toISOString(),
-          remaining_images: userLimits?.remaining_images ?? null,
-          remaining_videos: userLimits?.remaining_videos ?? null,
-          is_first_time_user: userLimits?.is_first_time_user ?? false,
-          // Company profile data
-          company_name: this.companyProfile?.company_name || null,
-          company_website_url: this.companyProfile?.company_website_url || null,
-          about_company: this.companyProfile?.about_company || null,
-          logo_url: this.companyProfile?.logo_url || null,
-          industry: this.companyProfile?.industry || null,
-          job_title: this.companyProfile?.job_title || null,
-          visual_guide: this.companyProfile?.visual_guide || null,  // NEW
-          logotype: this.companyProfile?.logotype || null,  // NEW
-          logo_mode: this.companyProfile?.logo_mode || null,
-          // Asset files URLs
-          brand_manual_url: this.companyProfile?.brand_manual?.file_url || null,
-          company_profile_file_url: this.companyProfile?.company_profile_file?.file_url || null,
-          client_document_url: this.companyProfile?.document?.file_url || null,
-          respond_only_to: 'current_user_message',
-          previous_context: chatHistory ? chatHistory.slice(-4) : [],
-          language: language,
-        } as N8NRequest),
+        body: JSON.stringify(requestBody as N8NRequest),
       });
 
       if (!response.ok) {
@@ -495,8 +518,8 @@ async sendImageMessage(
       
       return this.normalizeResponse(data);
     } catch (error) {
-      console.error('Error sending image to N8N:', error);
-      return { error: 'Failed to upload image. Please try again.' };
+      console.error('Error sending image(s) to N8N:', error);
+      return { error: 'Failed to upload image(s). Please try again.' };
     }
   }
   
