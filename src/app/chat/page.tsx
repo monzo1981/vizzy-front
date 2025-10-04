@@ -9,7 +9,7 @@ import { AvatarDropdown } from "@/components/ui/avatar-dropdown"
 import { GradientBackground } from "../../components/gradient-background"
 import { Sidebar, useSidebar } from "../../components/sidebar"
 import Image from "next/image"
-import { isAuthenticated, getUser, type User } from "@/lib/auth"
+import { isAuthenticated, getUser, refreshUserData, type User } from "@/lib/auth"
 import { N8NWebhook } from "@/lib/n8n-webhook"
 import { useLanguage } from "../../contexts/LanguageContext"
 import { useTheme } from "../../contexts/ThemeContext"
@@ -243,19 +243,30 @@ function ChatContent() {
       return
     }
 
-    const user = getUser()
-    setCurrentUser(user)
-    
-    if (!n8nWebhook.current) {
-      n8nWebhook.current = new N8NWebhook(
-        process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL!,
-        user?.id,
-        user?.email
-      )
+    const initializeUser = async () => {
+      // First get user from localStorage
+      const user = getUser()
+      setCurrentUser(user)
+      
+      // Then refresh user data from API to get latest subscription info
+      const updatedUser = await refreshUserData()
+      if (updatedUser) {
+        setCurrentUser(updatedUser)
+      }
+      
+      if (!n8nWebhook.current) {
+        n8nWebhook.current = new N8NWebhook(
+          process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL!,
+          user?.id,
+          user?.email
+        )
+      }
+
+      // Check company profile and show modal if needed
+      checkCompanyProfile()
     }
 
-    // Check company profile and show modal if needed
-    checkCompanyProfile()
+    initializeUser()
   }, [router])
 
   // Initialize session and load existing messages
@@ -693,19 +704,23 @@ const markFirstMessageSent = async () => {
             </div>
             
             <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 relative">
-              <Badge 
-                className="text-white border-0"
-                style={{
-                  background: 'linear-gradient(90deg, #FF4A19 0%, #4248FF 100%)',
-                  borderRadius: '18px',
-                  fontWeight: 900,
-                  fontStyle: 'italic',
-                  fontSize: 'clamp(12px, 2vw, 16px)',
-                  padding: '3px 8px'
-                }}
-              >
-                Pro
-              </Badge>
+              {currentUser?.subscription_type_name && currentUser.subscription_type_name !== 'Trial' && (
+                <Badge 
+                  className="text-white border-0"
+                  style={{
+                    background: currentUser.subscription_type_name === 'Grow' 
+                      ? 'linear-gradient(89.95deg, #FFEB77 -5.49%, #FF4A19 20.79%, #4248FF 72.23%)'
+                      : 'linear-gradient(90deg, #FF4A19 0%, #4248FF 100%)',
+                    borderRadius: '18px',
+                    fontWeight: 900,
+                    fontStyle: 'italic',
+                    fontSize: 'clamp(12px, 2vw, 16px)',
+                    padding: '3px 8px'
+                  }}
+                >
+                  {currentUser.subscription_type_name}
+                </Badge>
+              )}
               <div className="relative">
                 <AvatarDropdown 
                   currentUser={currentUser}

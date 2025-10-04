@@ -12,6 +12,7 @@ interface AvatarProps {
   size?: 'sm' | 'md' | 'lg' | 'xl' | number
   className?: string
   bgOverride?: 'transparent' | 'light' | 'dark' | 'auto' // Added prop to control background
+  showBorder?: boolean // NEW: Control gradient border visibility
 }
 
 const sizeClasses = {
@@ -34,7 +35,8 @@ export function Avatar({
   fallback, 
   size = 'md',
   className,
-  bgOverride = 'auto'
+  bgOverride = 'auto',
+  showBorder = true // Default to true to maintain existing behavior
 }: AvatarProps) {
   const [imageError, setImageError] = React.useState(false)
   const { isDarkMode, mounted } = useTheme()
@@ -74,20 +76,23 @@ export function Avatar({
   return (
     <div
       className={cn(
-        "relative flex-shrink-0 p-[2px] rounded-full",
+        "relative flex-shrink-0 rounded-full",
+        showBorder ? "p-[2px]" : "p-0", // Only add padding if border is shown
         typeof size === 'string' ? sizeClasses[size] : '',
         className
       )}
       style={{
         ...customSize,
-        background: ' conic-gradient(from 223.88deg at 50% 50%, #FF4A19 -75.43deg, #FFEB77 6.01deg, #4248FF 92.34deg, #7FCAFE 211.14deg, #FF4A19 284.57deg, #FFEB77 366.01deg)',
-        boxShadow: (bgOverride === 'dark' || (bgOverride === 'auto' && mounted && isDarkMode)) 
-          ? '0px 0px 16px 0px #4248ff69' 
-          : '0px 0px 16px 0px rgba(255, 255, 255, 0.75)'
+        ...(showBorder && {
+          background: ' conic-gradient(from 223.88deg at 50% 50%, #FF4A19 -75.43deg, #FFEB77 6.01deg, #4248FF 92.34deg, #7FCAFE 211.14deg, #FF4A19 284.57deg, #FFEB77 366.01deg)',
+          boxShadow: (bgOverride === 'dark' || (bgOverride === 'auto' && mounted && isDarkMode)) 
+            ? '0px 0px 16px 0px #4248ff69' 
+            : '0px 0px 16px 0px rgba(255, 255, 255, 0.75)'
+        })
       }}
       suppressHydrationWarning
     >
-      <div className={`w-full h-full p-[3px] rounded-full ${getBackgroundColor()}`} suppressHydrationWarning>
+      <div className={`w-full h-full ${showBorder ? 'p-[3px]' : 'p-0'} rounded-full ${getBackgroundColor()}`} suppressHydrationWarning>
         {showImage ? (
           <div className="relative w-full h-full overflow-hidden rounded-full">
             <Image

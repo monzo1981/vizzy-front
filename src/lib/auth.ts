@@ -32,6 +32,7 @@ export interface User {
     job_title: string;
   } | null;
   has_sent_first_message?: boolean;
+  subscription_type_name?: string;  // Subscription type: Trial, Pro, Grow
 }
 
 interface AuthResponse {
@@ -472,6 +473,42 @@ export const googleLogin = async (googleToken: string): Promise<AuthResponse> =>
   } catch (error) {
     console.error('[GoogleLogin] Network error:', error);
     return { success: false, error: 'Network error' };
+  }
+};
+
+// Fetch and update user data from API
+export const refreshUserData = async (): Promise<User | null> => {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      console.error('[RefreshUserData] No access token found');
+      return null;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/auth/profile/`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.data) {
+        const userData = data.data;
+        localStorage.setItem('user', JSON.stringify(userData));
+        console.log('[RefreshUserData] ✅ User data updated successfully with subscription:', userData.subscription_type_name);
+        return userData;
+      }
+    } else {
+      console.error('[RefreshUserData] Failed to fetch user data:', response.status);
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('[RefreshUserData] Error fetching user data:', error);
+    return null;
   }
 };
 

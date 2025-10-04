@@ -81,6 +81,7 @@ export function AvatarDropdown({ currentUser, isDarkMode = false, onUserUpdate, 
           alt="User" 
           size={isLargeScreen ? 60 : 48}
           className={isLargeScreen ? "w-[60px] h-[60px]" : "w-12 h-12"}
+          showBorder={currentUser?.subscription_type_name !== 'Trial'} // Hide border for Trial users
         />
       </div>
       

@@ -67,6 +67,7 @@ export function ProfileInfoCard({
               alt="User"
               className="w-full h-full"
               bgOverride="light"
+              showBorder={currentUser?.subscription_type_name !== 'Trial'} // Hide border for Trial users
             />
           </div>
           <div className="flex-1">
@@ -78,19 +79,23 @@ export function ProfileInfoCard({
               }}>
                 {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Vizzy User'}
               </h2>
-              <Badge 
-                className="text-white border-0"
-                style={{
-                  background: 'linear-gradient(90deg, #FF4A19 0%, #4248FF 100%)',
-                  borderRadius: '18px',
-                  fontWeight: 900,
-                  fontStyle: 'italic',
-                  fontSize: windowWidth < 768 ? '14px' : '20px', // Adjust font size for mobile
-                  padding: '6px 16px'
-                }}
-              >
-                Pro
-              </Badge>
+              {currentUser?.subscription_type_name && currentUser.subscription_type_name !== 'Trial' && (
+                <Badge 
+                  className="text-white border-0"
+                  style={{
+                    background: currentUser.subscription_type_name === 'Grow' 
+                      ? 'linear-gradient(89.95deg, #FFEB77 -5.49%, #FF4A19 20.79%, #4248FF 72.23%)'
+                      : 'linear-gradient(90deg, #FF4A19 0%, #4248FF 100%)',
+                    borderRadius: '18px',
+                    fontWeight: 900,
+                    fontStyle: 'italic',
+                    fontSize: windowWidth < 768 ? '14px' : '20px', // Adjust font size for mobile
+                    padding: '6px 16px'
+                  }}
+                >
+                  {currentUser.subscription_type_name}
+                </Badge>
+              )}
             </div>
             <p className="text-sm text-gray-600 mb-1">{t('profile.uploadProfilePic')}</p>
             <p className="text-sm text-gray-600 mb-1">{t('profile.recommendedSize')}</p>
