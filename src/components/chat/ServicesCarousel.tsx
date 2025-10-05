@@ -10,16 +10,20 @@ interface ServiceCard {
   image: string
   subtitle?: string
   cardTitle?: string
-  onClick: () => void
+  message: {
+    en: string
+    ar: string
+  }
 }
 
 interface ServicesCarouselProps {
   isDarkMode?: boolean
   themeReady?: boolean
   className?: string
+  onSendMessage?: (message: string) => void
 }
 
-export function ServicesCarousel({ isDarkMode = false, themeReady = false, className = "" }: ServicesCarouselProps) {
+export function ServicesCarousel({ isDarkMode = false, themeReady = false, className = "", onSendMessage }: ServicesCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const carouselRef = useRef<HTMLDivElement>(null)
   const { language } = useLanguage()
@@ -33,26 +37,38 @@ export function ServicesCarousel({ isDarkMode = false, themeReady = false, class
       id: "card1",
       title: "Service 1",
       image: language === 'ar' ? "/cards/card1-ar.png" : "/cards/card1.png",
-      onClick: () => console.log("Card 1 clicked"),
+      message: {
+        en: "I want to create a complete marketing campaign",
+        ar: "أريد إنشاء حملة تسويقية متكاملة"
+      }
     },
     {
       id: "card2",
       title: "Service 2",
       image: language === 'ar' ? "/cards/card2-ar.png" : "/cards/card2.png",
       cardTitle: language === 'ar' ? "خطة احترافية متكاملة لحملاتك الاعلانية للحصول على أفضل  النتائج" : "Professional Budgeting, & Targeting assuring best results",
-      onClick: () => console.log("Card 2 clicked"),
+      message: {
+        en: "I need help with professional budgeting and targeting for my ad campaigns",
+        ar: "أحتاج مساعدة في وضع ميزانية احترافية واستهداف لحملاتي الإعلانية"
+      }
     },
     {
       id: "card3",
       title: "Service 3",
       image: language === 'ar' ? "/cards/card3-ar.png" : "/cards/card3.png",
-      onClick: () => console.log("Card 3 clicked"),
+      message: {
+        en: "I want to create engaging content for my brand",
+        ar: "أريد إنشاء محتوى جذاب لعلامتي التجارية"
+      }
     },
     {
       id: "card4",
       title: "Service 4",
       image: language === 'ar' ? "/cards/card4-ar.png" : "/cards/card4.png",
-      onClick: () => console.log("Card 4 clicked"),
+      message: {
+        en: "I need social media management services",
+        ar: "أحتاج خدمات إدارة وسائل التواصل الاجتماعي"
+      }
     },
     {
       id: "card5",
@@ -60,25 +76,37 @@ export function ServicesCarousel({ isDarkMode = false, themeReady = false, class
       image: language === 'ar' ? "/cards/card5-ar.png" : "/cards/card5.png",
       cardTitle: language === 'ar' ? "فيديو مراجعة لمنتجك" : "Instant UGC!",
       subtitle: language === 'ar' ? "اشرح مميزات منتجك بفيديو .. فقط من صورة المنتج!" : "Create a preview video For your products",
-      onClick: () => console.log("Card 5 clicked"),
+      message: {
+        en: "I want to create a product review video from just a product image",
+        ar: "أريد إنشاء فيديو مراجعة للمنتج من مجرد صورة المنتج"
+      }
     },
     {
       id: "card6",
       title: "Service 6",
       image: language === 'ar' ? "/cards/card6-ar.png" : "/cards/card6.png",
-      onClick: () => console.log("Card 6 clicked"),
+      message: {
+        en: "I need SEO optimization for my website",
+        ar: "أحتاج تحسين محركات البحث لموقعي الإلكتروني"
+      }
     },
     {
       id: "card7",
       title: "Service 7",
       image: language === 'ar' ? "/cards/card7-ar.png" : "/cards/card7.png",
-      onClick: () => console.log("Card 7 clicked"),
+      message: {
+        en: "I want to create professional graphics and designs",
+        ar: "أريد إنشاء تصاميم ورسومات احترافية"
+      }
     },
     {
       id: "card8",
       title: "Service 8",
       image: language === 'ar' ? "/cards/card8-ar.png" : "/cards/card8.png",
-      onClick: () => console.log("Card 8 clicked"),
+      message: {
+        en: "I need email marketing campaign services",
+        ar: "أحتاج خدمات حملات التسويق عبر البريد الإلكتروني"
+      }
     },
     {
       id: "card9",
@@ -86,7 +114,10 @@ export function ServicesCarousel({ isDarkMode = false, themeReady = false, class
       image: language === 'ar' ? "/cards/card9-ar.png" : "/cards/card9.png",
       cardTitle: language === 'ar' ? "تخيل موقعك الإلكتروني" : "Imagine Your Website",
       subtitle: language === 'ar' ? "تصميم احترافي لموقعك مناسب لمشروعك" : "Professional website layout with just a chat",
-      onClick: () => console.log("Card 9 clicked"),
+      message: {
+        en: "I want to design a professional website for my business",
+        ar: "أريد تصميم موقع إلكتروني احترافي لعملي"
+      }
     }
   ], [language])
 
@@ -187,6 +218,13 @@ export function ServicesCarousel({ isDarkMode = false, themeReady = false, class
     setIsHovered(false)
   }
 
+  const handleCardClick = useCallback((service: ServiceCard) => {
+    if (onSendMessage) {
+      const message = language === 'ar' ? service.message.ar : service.message.en
+      onSendMessage(message)
+    }
+  }, [onSendMessage, language])
+
   return (
     <div 
       className={`w-full max-w-7xl mx-auto px-4 py-4 ${className}`} 
@@ -229,7 +267,7 @@ export function ServicesCarousel({ isDarkMode = false, themeReady = false, class
               >
                 <div 
                   className="relative cursor-pointer rounded-xl flex flex-col items-center justify-start"
-                  onClick={service.onClick}
+                  onClick={() => handleCardClick(service)}
                 >
                   {/* Image Container with Text for card 2 */}
                   <div className="w-full h-full flex flex-col items-center justify-start p-2">

@@ -42,9 +42,12 @@ export default function ProfilePage() {
     created_at: string;
     ai_chat_session_id?: string;
   }>>([])
-  // UserLimits type is extended in n8n-webhook.ts to include max_images, max_videos
+  // UserLimits type is extended in n8n-webhook.ts to include credits system
   const [progressPercent, setProgressPercent] = useState<number>(0);
   const [remainingCredits, setRemainingCredits] = useState<number | string>('-');
+  const [totalCredits, setTotalCredits] = useState<number | string>('-');
+  const [isUnlimited, setIsUnlimited] = useState<boolean>(false);
+  const [subscriptionType, setSubscriptionType] = useState<string>('Trial');
   const [uploadedAssets, setUploadedAssets] = useState<Record<string, {file_id: string | null, file_url: string | null}>>({
     brand_manual: { file_id: null, file_url: null },
     company_profile: { file_id: null, file_url: null },
@@ -81,41 +84,55 @@ export default function ProfilePage() {
       console.log('Received limits:', limits);
       
       if (limits) {
-        // Use type assertion to access possible backend fields
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const l: any = limits;
-        const maxImages = Number.isFinite(l.max_images) ? l.max_images : 0;
-        const maxVideos = Number.isFinite(l.max_videos) ? l.max_videos : 0;
-        const remImages = Number.isFinite(l.remaining_images) ? l.remaining_images : 0;
-        const remVideos = Number.isFinite(l.remaining_videos) ? l.remaining_videos : 0;
+        // New credits system
+        const remaining = limits.remaining_credits;
+        const total = limits.total_credits;
+        const unlimited = limits.is_unlimited ?? false;
+        const subType = limits.subscription_type || 'Trial';
         
-        console.log('Parsed values:', { maxImages, maxVideos, remImages, remVideos });
+        console.log('Credits data:', { remaining, total, unlimited, subType });
         
-        const total = maxImages + maxVideos;
-        const remaining = remImages + remVideos;
-        let percent = 0;
-        if (total > 0) {
-          // Progress based on remaining (100% = full limits, 0% = no limits left)
-          percent = Math.round((remaining / total) * 100);
-        }
+        // Update state
+        setSubscriptionType(subType);
+        setIsUnlimited(unlimited);
         
-        // Update remaining credits display
-        setRemainingCredits(remaining);
-        
-        console.log('Calculated progress:', { total, remaining, percent });
-        
-        // Animate from 0 to percent
-        let current = 0;
-        const step = percent > 0 ? Math.max(1, Math.round(percent / 20)) : 1;
-        const interval = setInterval(() => {
-          current += step;
-          if (current >= percent) {
-            setProgressPercent(percent);
-            clearInterval(interval);
-          } else {
-            setProgressPercent(current);
+        if (unlimited) {
+          // Unlimited subscription
+          setRemainingCredits('∞');
+          setTotalCredits('∞');
+          setProgressPercent(100); // Always full for unlimited
+        } else if (remaining !== null && remaining !== undefined) {
+          // Limited credits
+          setRemainingCredits(remaining);
+          setTotalCredits(total || 0);
+          
+          // Calculate progress percentage
+          let percent = 0;
+          if (total && total > 0) {
+            percent = Math.round((remaining / total) * 100);
           }
-        }, 20);
+          
+          console.log('Calculated progress:', { remaining, total, percent });
+          
+          // Animate from 0 to percent
+          let current = 0;
+          const step = percent > 0 ? Math.max(1, Math.round(percent / 20)) : 1;
+          const interval = setInterval(() => {
+            current += step;
+            if (current >= percent) {
+              setProgressPercent(percent);
+              clearInterval(interval);
+            } else {
+              setProgressPercent(current);
+            }
+          }, 20);
+        } else {
+          // No credits data available
+          console.warn('No credits data available');
+          setRemainingCredits(0);
+          setTotalCredits(0);
+          setProgressPercent(0);
+        }
       } else {
         console.error('Failed to get user limits');
       }
@@ -643,7 +660,16 @@ export default function ProfilePage() {
                       </div>
                       <div className="text-center mb-6">
                         <p style={{ color: '#11002E', fontWeight: 400, fontSize: '16px' }}>
-                          {t('profile.creditsRemaining')} <span style={{ fontWeight: 700, color: '#4248FF' }}>{remainingCredits}</span> {t('profile.creditsRemainingEnd')}
+                          {isUnlimited ? (
+                            <>
+                              {language === 'ar' ? 'نقاط غير محدودة' : 'Unlimited Credits'} 
+                              <span style={{ fontWeight: 700, color: '#4248FF' }}> ∞</span>
+                            </>
+                          ) : (
+                            <>
+                              {t('profile.creditsRemaining')} <span style={{ fontWeight: 700, color: '#4248FF' }}>{remainingCredits}</span> {t('profile.creditsRemainingEnd')}
+                            </>
+                          )}
                         </p>
                         <p style={{ color: '#11002E', fontWeight: 400, fontSize: '16px' }}>{t('profile.upgradeMessage')}</p>
                       </div>

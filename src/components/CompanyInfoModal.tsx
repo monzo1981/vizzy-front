@@ -252,7 +252,7 @@ export function CompanyInfoModal({ isOpen, onClose, onSuccess, onToast, existing
       >
         <div 
           className="fixed inset-0" 
-          style={{ background: 'rgba(17,0,46,0.48)' }}
+          style={{ background: 'rgba(17,0,46,0.48)', backdropFilter: 'blur(4px)' }}
         />
         
         {/* Modal with smooth slide-in and scale animation */}
@@ -271,7 +271,7 @@ export function CompanyInfoModal({ isOpen, onClose, onSuccess, onToast, existing
             style={{ borderTopLeftRadius: 56, borderTopRightRadius: 56, borderBottom: '1px solid #E5E7EB' }}
           >
             <h2 className="text-xl" style={{ color: '#111', fontWeight: 400 }}>
-              Complete Your Company Profile
+              Please Complete Your Profile
             </h2>
           </div>
 

@@ -9,6 +9,12 @@ import { isVideoUrl, getVideoMimeType } from '@/lib/videoUtils'
 import { downloadMedia, isVideoUrl as isVideoUrlHelper } from '@/lib/chat/imageHelpers'
 import type { ChatMessage } from '@/lib/supabase-client'
 
+// Add new interface for message with multiple images
+interface ChatMessageWithImages extends ChatMessage {
+  image_url2?: string;
+  image_url3?: string;
+}
+
 // FormattedText Component for rendering bold text
 interface FormattedTextProps {
   content: string;
@@ -69,7 +75,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   const isAssistant = message.sender === 'assistant' || message.sender === 'system';
   const [isDownloading, setIsDownloading] = useState(false);
   
-  // Adjusted responsiveMediaStyle to fix type error
+  // Collect all images from the message
+  const allImages: string[] = [];
+  if ((message as ChatMessageWithImages).visual) allImages.push((message as ChatMessageWithImages).visual!);
+  if ((message as ChatMessageWithImages).image_url2) allImages.push((message as ChatMessageWithImages).image_url2!);
+  if ((message as ChatMessageWithImages).image_url3) allImages.push((message as ChatMessageWithImages).image_url3!);
+  
   const responsiveMediaStyle = {
     maxWidth: '100%' as const,
     height: 'auto' as const,
@@ -143,36 +154,52 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               />
             )}
 
-            {message.visual && (
-              <div className="mt-3 relative flex justify-end">
-                <div 
-                  className="cursor-pointer relative group"
-                  onClick={() => onImageClick && onImageClick(message.visual || '')}
-                >
-                  <Image 
-                    src={message.visual} 
-                    alt="Uploaded image" 
-                    className="rounded-lg"
-                    style={responsiveMediaStyle}
-                    width={200}
-                    height={200}
-                  />
-                  
-                  {/* Download button for user images - shows on hover */}
-                  <button
-                    onClick={(e) => handleDownload(message.visual!, e)}
-                    disabled={isDownloading}
-                    className="cursor-pointer absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 disabled:opacity-70 z-20 bg-black/70 rounded-full p-2 hover:bg-black/80"
-                    title="Download Image"
+            {/* Display all images in a grid */}
+            {allImages.length > 0 && (
+              <div className={`mt-3 relative flex justify-end ${
+                allImages.length === 1 ? '' : 
+                allImages.length === 2 ? 'gap-2' : 
+                'gap-2 flex-wrap'
+              }`}>
+                {allImages.map((imageUrl, index) => (
+                  <div 
+                    key={index}
+                    className="cursor-pointer relative group"
+                    onClick={() => onImageClick && onImageClick(imageUrl)}
+                    style={{
+                      width: allImages.length === 1 ? '200px' : 
+                             allImages.length === 2 ? 'calc(50% - 4px)' : 
+                             'calc(33.333% - 6px)',
+                      maxWidth: allImages.length === 1 ? '200px' : '150px'
+                    }}
                   >
-                    <Image
-                      src="/download.svg"
-                      alt="Download"
-                      width={16}
-                      height={16}
+                    <Image 
+                      src={imageUrl} 
+                      alt={`Image ${index + 1}`} 
+                      className="rounded-lg w-full h-auto object-cover"
+                      style={{
+                        aspectRatio: allImages.length > 1 ? '1/1' : 'auto'
+                      }}
+                      width={200}
+                      height={200}
                     />
-                  </button>
-                </div>
+                    
+                    {/* Download button - shows on hover */}
+                    <button
+                      onClick={(e) => handleDownload(imageUrl, e)}
+                      disabled={isDownloading}
+                      className="cursor-pointer absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 disabled:opacity-70 z-20 bg-black/70 rounded-full p-2 hover:bg-black/80"
+                      title="Download Image"
+                    >
+                      <Image
+                        src="/download.svg"
+                        alt="Download"
+                        width={16}
+                        height={16}
+                      />
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
           </div>

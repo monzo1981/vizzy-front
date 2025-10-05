@@ -5,7 +5,7 @@ import { Plus, MicOff, X } from 'lucide-react'
 import Image from 'next/image'
 import TypewriterPlaceholder from '@/components/chat/TypewriterPlaceholder'
 import TutorialCard from '@/components/chat/TutorialCard'
-import { handleImageSelect as uploadImage } from '@/lib/chat/imageHelpers'
+import { handleMultiImageSelect as uploadImages } from '@/lib/chat/imageHelpers'
 
 // Types
 export interface ChatInputHandle {
@@ -19,7 +19,7 @@ interface ChatInputProps {
   themeReady?: boolean
   isLoading: boolean
   isCreatingSession: boolean
-  onSend: (message: string, image?: string | null) => Promise<void>
+  onSend: (message: string, images?: string[]) => Promise<void>
   onVoiceMessage: (audioBase64: string) => Promise<void>
   showTutorial?: boolean
   tutorialStep?: number
@@ -74,14 +74,16 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
   onTutorialSkip,
   toast
 }, ref) => {
-  // State
+  // State - CHANGED: selectedImages is now an array
   const [inputValue, setInputValue] = useState("")
-  const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [selectedImages, setSelectedImages] = useState<string[]>([])
   const [isImageUploading, setIsImageUploading] = useState(false)
+  const [uploadingCount, setUploadingCount] = useState(0) // NEW: Track number of images being uploaded
   const [isRecording, setIsRecording] = useState(false)
   const [isInputExpanded, setIsInputExpanded] = useState(false)
   const characterLimit = 2500
   const isOverLimit = inputValue.length > characterLimit
+  const MAX_IMAGES = 3
 
   // Refs
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -93,10 +95,10 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
 
   // Auto-expand input when there's content
   useEffect(() => {
-    if (mode === 'compact' && (inputValue.trim() || selectedImage || isImageUploading)) {
+    if (mode === 'compact' && (inputValue.trim() || selectedImages.length > 0 || uploadingCount > 0)) {
       setIsInputExpanded(true)
     }
-  }, [inputValue, selectedImage, isImageUploading, mode])
+  }, [inputValue, selectedImages.length, uploadingCount, mode])
 
   // Focus correct input on mount/mode change
   useEffect(() => {
@@ -131,7 +133,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
     }
   }), [mode, inputValue])
 
-  // Handle sending message
+  // Handle sending message - UPDATED for multiple images
   const handleSend = async () => {
     if (isLoading || isCreatingSession || isImageUploading) return
 
@@ -144,21 +146,22 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
 
     const messageToSend = inputValue.trim()
     
-    if (!messageToSend && !selectedImage) return
+    if (!messageToSend && selectedImages.length === 0) return
 
     // Clear state immediately before sending
     setInputValue("")
-    setSelectedImage(null)
+    const imagesToSend = [...selectedImages]
+    setSelectedImages([])
     setIsInputExpanded(false)
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
     
-    // Send message after clearing (no await to avoid blocking)
-    onSend(messageToSend, selectedImage)
+    // Send message with array of images
+    onSend(messageToSend, imagesToSend.length > 0 ? imagesToSend : undefined)
   }
 
-  // Handle image selection
+  // Handle multiple image selection - UPDATED
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const token = localStorage.getItem('access_token')
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
@@ -168,15 +171,26 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
       return
     }
 
-    await uploadImage(
+    // Check if we already have max images
+    if (selectedImages.length >= MAX_IMAGES) {
+      if (toast) {
+        toast.error(`Maximum ${MAX_IMAGES} images allowed`)
+      }
+      return
+    }
+
+    await uploadImages(
       e,
       {
-        setSelectedImage,
+        selectedImages,
+        setSelectedImages,
         setIsImageUploading,
-        toast: {
-          success: (msg) => console.log('Success:', msg),
-          error: (msg) => console.error('Error:', msg)
-        }
+        setUploadingCount, // NEW: Pass setUploadingCount
+        toast: toast || {
+          success: (msg: string) => console.log('Success:', msg),
+          error: (msg: string) => console.error('Error:', msg)
+        },
+        maxImages: MAX_IMAGES
       },
       {
         token,
@@ -185,9 +199,9 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
     )
   }
 
-  // Remove selected image
-  const handleRemoveImage = () => {
-    setSelectedImage(null)
+  // Remove selected image by index - NEW
+  const handleRemoveImage = (index: number) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index))
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
@@ -315,22 +329,25 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
               suppressHydrationWarning
             >
               
-              {/* Selected Image Preview */}
-              {(selectedImage || isImageUploading) && (
-                <div className="mb-4 relative inline-block">
-                  {isImageUploading ? (
-                    <ImageUploadLoader isDarkMode={isDarkMode} themeReady={themeReady} />
-                  ) : (
-                    <>
+              {/* Selected Images Preview - UPDATED for multiple images */}
+              {(selectedImages.length > 0 || uploadingCount > 0) && (
+                <div className="mb-4 flex flex-wrap gap-2">
+                  {/* Show loaders for images being uploaded */}
+                  {Array.from({ length: uploadingCount }).map((_, index) => (
+                    <ImageUploadLoader key={`loader-${index}`} isDarkMode={isDarkMode} themeReady={themeReady} />
+                  ))}
+                  {/* Show uploaded images */}
+                  {selectedImages.map((imageUrl, index) => (
+                    <div key={index} className="relative inline-block">
                       <Image 
-                        src={selectedImage!} 
-                        alt="Selected" 
+                        src={imageUrl} 
+                        alt={`Selected ${index + 1}`} 
                         className="h-20 rounded-lg" 
                         width={80} 
                         height={80} 
                       />
                       <button
-                        onClick={handleRemoveImage}
+                        onClick={() => handleRemoveImage(index)}
                         className={`absolute -top-2 -right-2 rounded-full p-1 ${
                           themeReady && isDarkMode ? 'bg-[#D9D9D9] text-black' : 'bg-[#7FCAFE] text-white'
                         }`}
@@ -338,8 +355,8 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                       >
                         <X size={16} />
                       </button>
-                    </>
-                  )}
+                    </div>
+                  ))}
                 </div>
               )}
               
@@ -381,22 +398,35 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
               {/* Bottom bar with buttons */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  {/* Image Upload Button */}
+                  {/* Image Upload Button - UPDATED with multiple support */}
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
+                    multiple
                     onChange={handleImageSelect}
                     className="hidden"
+                    disabled={selectedImages.length >= MAX_IMAGES || isImageUploading}
                   />
-                  <Plus 
-                    size={24} 
-                    className={`sm:w-4 sm:h-4 lg:w-6 lg:h-6 cursor-pointer hover:opacity-80 transition-opacity ${
-                      themeReady && isDarkMode ? 'text-white' : 'text-[#4248FF]'
-                    }`}
-                    onClick={() => fileInputRef.current?.click()}
-                    suppressHydrationWarning
-                  />
+                  <div className="relative">
+                    <Plus 
+                      size={24} 
+                      className={`sm:w-4 sm:h-4 lg:w-6 lg:h-6 cursor-pointer hover:opacity-80 transition-opacity ${
+                        themeReady && isDarkMode ? 'text-white' : 'text-[#4248FF]'
+                      } ${selectedImages.length >= MAX_IMAGES || isImageUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      onClick={() => {
+                        if (selectedImages.length < MAX_IMAGES && !isImageUploading) {
+                          fileInputRef.current?.click()
+                        }
+                      }}
+                      suppressHydrationWarning
+                    />
+                    {selectedImages.length > 0 && (
+                      <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                        {selectedImages.length}
+                      </span>
+                    )}
+                  </div>
 
                   {/* Tools Button */}
                   <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
@@ -425,7 +455,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                       </div>
                     </button>
                   )}
-                  {inputValue ? (
+                  {inputValue || selectedImages.length > 0 ? (
                     <button
                       onClick={handleSend}
                       disabled={isLoading || isCreatingSession || isOverLimit}
@@ -508,23 +538,34 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
             suppressHydrationWarning
           >
             
-            {/* Selected Image Preview */}
-            {(selectedImage || isImageUploading) && isInputExpanded && (
-              <div className="mb-2 relative inline-block transition-opacity duration-300 ease-in-out"
+            {/* Selected Images Preview - UPDATED for multiple images */}
+            {(selectedImages.length > 0 || uploadingCount > 0) && isInputExpanded && (
+              <div className="mb-2 flex flex-wrap gap-2 transition-opacity duration-300 ease-in-out"
                    style={{ opacity: isInputExpanded ? 1 : 0 }}>
-                {isImageUploading ? (
-                  <ImageUploadLoader isDarkMode={isDarkMode} themeReady={themeReady} />
-                ) : (
-                  <>
+                {/* Show loaders for images being uploaded */}
+                {Array.from({ length: uploadingCount }).map((_, index) => (
+                  <div key={`loader-${index}`} className="h-16 w-16 rounded-lg flex items-center justify-center" style={{
+                    background: themeReady && isDarkMode ? '#20262D' : 'linear-gradient(109.03deg, #BEDCFF -35.22%, rgba(255, 255, 255, 0.9) 17.04%, rgba(255, 232, 228, 0.4) 57.59%, #BEDCFF 97.57%)'
+                  }}>
+                    <div className="w-6 h-6 rounded-full border-2 animate-spin" style={{
+                      borderColor: 'transparent',
+                      borderTopColor: themeReady && isDarkMode ? '#78758E' : '#7FCAFE',
+                      borderRightColor: themeReady && isDarkMode ? '#FFFFFF' : '#D3E6FC',
+                    }} />
+                  </div>
+                ))}
+                {/* Show uploaded images */}
+                {selectedImages.map((imageUrl, index) => (
+                  <div key={index} className="relative inline-block">
                     <Image 
-                      src={selectedImage!} 
-                      alt="Selected" 
+                      src={imageUrl} 
+                      alt={`Selected ${index + 1}`} 
                       className="h-16 rounded-lg" 
                       width={64} 
                       height={64} 
                     />
                     <button
-                      onClick={handleRemoveImage}
+                      onClick={() => handleRemoveImage(index)}
                       className={`absolute -top-1 -right-1 rounded-full p-0.5 ${
                         themeReady && isDarkMode ? 'bg-[#D9D9D9] text-black' : 'bg-[#7FCAFE] text-white'
                       }`}
@@ -532,8 +573,8 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                     >
                       <X size={12} />
                     </button>
-                  </>
-                )}
+                  </div>
+                ))}
               </div>
             )}
             
@@ -599,17 +640,30 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                       ref={fileInputRef}
                       type="file"
                       accept="image/*"
+                      multiple
                       onChange={handleImageSelect}
                       className="hidden"
+                      disabled={selectedImages.length >= MAX_IMAGES || isImageUploading}
                     />
-                    <Plus 
-                      size={24} 
-                      className={`cursor-pointer hover:opacity-80 transition-opacity ${
-                        themeReady && isDarkMode ? 'text-white' : 'text-[#4248FF]'
-                      }`}
-                      onClick={() => fileInputRef.current?.click()}
-                      suppressHydrationWarning
-                    />
+                    <div className="relative">
+                      <Plus 
+                        size={24} 
+                        className={`cursor-pointer hover:opacity-80 transition-opacity ${
+                          themeReady && isDarkMode ? 'text-white' : 'text-[#4248FF]'
+                        } ${selectedImages.length >= MAX_IMAGES || isImageUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        onClick={() => {
+                          if (selectedImages.length < MAX_IMAGES && !isImageUploading) {
+                            fileInputRef.current?.click()
+                          }
+                        }}
+                        suppressHydrationWarning
+                      />
+                      {selectedImages.length > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                          {selectedImages.length}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-all duration-300 ease-in-out opacity-100">
                       <Image 
                         src="/tool-icon.svg" 
@@ -634,7 +688,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                         </div>
                       </button>
                     )}
-                    {inputValue ? (
+                    {inputValue || selectedImages.length > 0 ? (
                       <button
                         onClick={handleSend}
                         disabled={isLoading || isCreatingSession || isOverLimit}
@@ -685,44 +739,41 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
             ) : (
               // COLLAPSED STATE
               <div className="flex flex-col gap-2 w-full">
-                {(selectedImage || isImageUploading) && (
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-black/10 backdrop-blur-sm">
-                    {isImageUploading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                        <span 
-                          className={`text-sm ${themeReady && isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}
-                          suppressHydrationWarning
-                        >
-                          Uploading image...
-                        </span>
+                {(selectedImages.length > 0 || uploadingCount > 0) && (
+                  <div className="flex flex-wrap gap-2">
+                    {/* Show loaders for images being uploaded */}
+                    {Array.from({ length: uploadingCount }).map((_, index) => (
+                      <div key={`loader-compact-${index}`} className="h-12 w-12 rounded-lg flex items-center justify-center" style={{
+                        background: themeReady && isDarkMode ? '#20262D' : 'linear-gradient(109.03deg, #BEDCFF -35.22%, rgba(255, 255, 255, 0.9) 17.04%, rgba(255, 232, 228, 0.4) 57.59%, #BEDCFF 97.57%)'
+                      }}>
+                        <div className="w-5 h-5 rounded-full border-2 animate-spin" style={{
+                          borderColor: 'transparent',
+                          borderTopColor: themeReady && isDarkMode ? '#78758E' : '#7FCAFE',
+                          borderRightColor: themeReady && isDarkMode ? '#FFFFFF' : '#D3E6FC',
+                        }} />
                       </div>
-                    ) : (
-                      <>
+                    ))}
+                    {/* Show uploaded images */}
+                    {selectedImages.map((imageUrl, index) => (
+                      <div key={index} className="relative">
                         <Image 
-                          src={selectedImage!} 
-                          alt="Selected" 
+                          src={imageUrl} 
+                          alt={`Selected ${index + 1}`} 
                           className="h-12 w-12 rounded-lg object-cover" 
                           width={48}
                           height={48}
                         />
-                        <span 
-                          className={`text-sm flex-1 ${themeReady && isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}
-                          suppressHydrationWarning
-                        >
-                          Image ready to send
-                        </span>
                         <button
-                          onClick={() => setSelectedImage(null)}
-                          className="hover:scale-105 transition-transform cursor-pointer"
+                          onClick={() => handleRemoveImage(index)}
+                          className="absolute -top-1 -right-1 hover:scale-105 transition-transform cursor-pointer"
                           title="Remove Image"
                         >
                           <div className="w-5 h-5 bg-gray-500 rounded-full flex items-center justify-center">
                             <X size={12} className="text-white" />
                           </div>
                         </button>
-                      </>
-                    )}
+                      </div>
+                    ))}
                   </div>
                 )}
 
@@ -782,18 +833,31 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                       ref={fileInputRef}
                       type="file"
                       accept="image/*"
+                      multiple
                       onChange={handleImageSelect}
                       className="hidden"
+                      disabled={selectedImages.length >= MAX_IMAGES || isImageUploading}
                     />
                     
-                    <Plus 
-                      size={24} 
-                      className={`cursor-pointer hover:opacity-80 transition-opacity ${
-                        themeReady && isDarkMode ? 'text-white' : 'text-[#4248FF]'
-                      }`}
-                      onClick={() => fileInputRef.current?.click()}
-                      suppressHydrationWarning
-                    />
+                    <div className="relative">
+                      <Plus 
+                        size={24} 
+                        className={`cursor-pointer hover:opacity-80 transition-opacity ${
+                          themeReady && isDarkMode ? 'text-white' : 'text-[#4248FF]'
+                        } ${selectedImages.length >= MAX_IMAGES || isImageUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        onClick={() => {
+                          if (selectedImages.length < MAX_IMAGES && !isImageUploading) {
+                            fileInputRef.current?.click()
+                          }
+                        }}
+                        suppressHydrationWarning
+                      />
+                      {selectedImages.length > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center" style={{ fontSize: '10px' }}>
+                          {selectedImages.length}
+                        </span>
+                      )}
+                    </div>
 
                     {isRecording && (
                       <button
@@ -807,7 +871,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                       </button>
                     )}
 
-                    {inputValue ? (
+                    {inputValue || selectedImages.length > 0 ? (
                       <button
                         onClick={handleSend}
                         disabled={isLoading || isCreatingSession || isOverLimit}

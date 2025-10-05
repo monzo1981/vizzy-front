@@ -9,7 +9,7 @@ import { AvatarDropdown } from "@/components/ui/avatar-dropdown"
 import { GradientBackground } from "../../components/gradient-background"
 import { Sidebar, useSidebar } from "../../components/sidebar"
 import Image from "next/image"
-import { isAuthenticated, getUser, type User } from "@/lib/auth"
+import { isAuthenticated, getUser, refreshUserData, type User } from "@/lib/auth"
 import { N8NWebhook } from "@/lib/n8n-webhook"
 import { useLanguage } from "../../contexts/LanguageContext"
 import { useTheme } from "../../contexts/ThemeContext"
@@ -243,23 +243,34 @@ function ChatContent() {
       return
     }
 
-    const user = getUser()
-    setCurrentUser(user)
-    
-    if (!n8nWebhook.current) {
-      n8nWebhook.current = new N8NWebhook(
-        process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL!,
-        user?.id,
-        user?.email
-      )
+    const initializeUser = async () => {
+      // First get user from localStorage
+      const user = getUser()
+      setCurrentUser(user)
+      
+      // Then refresh user data from API to get latest subscription info
+      const updatedUser = await refreshUserData()
+      if (updatedUser) {
+        setCurrentUser(updatedUser)
+      }
+      
+      if (!n8nWebhook.current) {
+        n8nWebhook.current = new N8NWebhook(
+          process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL!,
+          user?.id,
+          user?.email
+        )
+      }
+
+      // Check company profile and show modal if needed
+      checkCompanyProfile()
     }
 
-    // Check company profile and show modal if needed
-    checkCompanyProfile()
+    initializeUser()
   }, [router])
 
   // Initialize session and load existing messages
-  useEffect(() => {
+useEffect(() => {
     if (!sessionId) return
     
     const loadExistingMessages = async () => {
@@ -305,6 +316,9 @@ function ChatContent() {
               sender: msg.role === 'user' ? 'user' : 'assistant',
               timestamp: new Date(msg.timestamp),
               visual: finalVisual,
+              // NEW: Load additional images from database
+              image_url2: msg.image_url2 || undefined,
+              image_url3: msg.image_url3 || undefined,
               serviceType: msg.service_type,
               isProcessing: false,
               isVoice: false
@@ -323,6 +337,7 @@ function ChatContent() {
     
     loadExistingMessages()
   }, [sessionId])
+
 
   // Supabase Realtime subscription
   useEffect(() => {
@@ -422,9 +437,9 @@ function ChatContent() {
 
 // في page.tsx - تحديث handleSend function
 
-const handleSend = async (messageToSend: string, imageToSend?: string | null) => {
+const handleSend = async (messageToSend: string, imagesToSend?: string[]) => {
   if (isLoading || isCreatingSession) return
-  if (!messageToSend && !imageToSend) return
+  if (!messageToSend && (!imagesToSend || imagesToSend.length === 0)) return
   if (!n8nWebhook.current) return
 
   let currentSessionId = sessionId
@@ -450,22 +465,40 @@ const handleSend = async (messageToSend: string, imageToSend?: string | null) =>
     await new Promise(resolve => setTimeout(resolve, 500))
   }
 
+  // Create user message with all images
+  let displayContent = messageToSend || ''
+  if (imagesToSend && imagesToSend.length > 0) {
+    if (!displayContent) {
+      displayContent = `Sent ${imagesToSend.length} image${imagesToSend.length > 1 ? 's' : ''}`
+    }
+  }
+
   const userMessage: ChatMessage = {
     id: `user-${Date.now()}`,
-    content: messageToSend || (imageToSend ? 'Sent an image' : ''),
+    content: displayContent,
     sender: 'user',
     timestamp: new Date(),
-    visual: imageToSend || undefined
+    // Store first image in visual field for backward compatibility
+    visual: imagesToSend && imagesToSend.length > 0 ? imagesToSend[0] : undefined,
+    // NEW: Store additional images
+    image_url2: imagesToSend && imagesToSend.length > 1 ? imagesToSend[1] : undefined,
+    image_url3: imagesToSend && imagesToSend.length > 2 ? imagesToSend[2] : undefined,
   }
+  
   setMessages(prev => [...prev, userMessage])
   setIsLoading(true)
 
   try {
     const chatHistory = convertMessages(messages)
     
-    // Send message to N8N (N8N will get is_first_time_user = true for first message)
-    if (imageToSend) {
-      await n8nWebhook.current.sendImageMessage(imageToSend, messageToSend, currentSessionId, chatHistory)
+    // Send message to N8N with multiple images support
+    if (imagesToSend && imagesToSend.length > 0) {
+      await n8nWebhook.current.sendImageMessage(
+        imagesToSend, 
+        messageToSend, 
+        currentSessionId, 
+        chatHistory
+      )
     } else {
       await n8nWebhook.current.sendMessage(messageToSend, currentSessionId, chatHistory)
     }
@@ -564,6 +597,11 @@ const markFirstMessageSent = async () => {
       setMessages(prev => [...prev, errorMessage])
       setIsLoading(false)
     }
+  }
+
+  // Handler for service carousel card clicks
+  const handleServiceCardClick = (message: string) => {
+    handleSend(message)
   }
 
   const hasMessages = messages.length > 0
@@ -671,19 +709,23 @@ const markFirstMessageSent = async () => {
             </div>
             
             <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 relative">
-              <Badge 
-                className="text-white border-0"
-                style={{
-                  background: 'linear-gradient(90deg, #FF4A19 0%, #4248FF 100%)',
-                  borderRadius: '18px',
-                  fontWeight: 900,
-                  fontStyle: 'italic',
-                  fontSize: 'clamp(12px, 2vw, 16px)',
-                  padding: '3px 8px'
-                }}
-              >
-                Pro
-              </Badge>
+              {currentUser?.subscription_type_name && currentUser.subscription_type_name !== 'Trial' && (
+                <Badge 
+                  className="text-white border-0"
+                  style={{
+                    background: currentUser.subscription_type_name === 'Grow' 
+                      ? 'linear-gradient(89.95deg, #FFEB77 -5.49%, #FF4A19 20.79%, #4248FF 72.23%)'
+                      : 'linear-gradient(90deg, #FF4A19 0%, #4248FF 100%)',
+                    borderRadius: '18px',
+                    fontWeight: 900,
+                    fontStyle: 'italic',
+                    fontSize: 'clamp(12px, 2vw, 16px)',
+                    padding: '3px 8px'
+                  }}
+                >
+                  {currentUser.subscription_type_name}
+                </Badge>
+              )}
               <div className="relative">
                 <AvatarDropdown 
                   currentUser={currentUser}
@@ -712,7 +754,11 @@ const markFirstMessageSent = async () => {
 
                 {/* Services Carousel */}
                 <div className="w-full mb-8 sm:mb-12">
-                  <ServicesCarousel isDarkMode={isDarkMode} themeReady={mounted} />
+                  <ServicesCarousel 
+                    isDarkMode={isDarkMode} 
+                    themeReady={mounted}
+                    onSendMessage={handleServiceCardClick}
+                  />
                 </div>
               </div>
 

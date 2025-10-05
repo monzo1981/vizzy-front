@@ -1,7 +1,5 @@
-// Image helper functions extracted from chat page
-// Provides reusable image handling functionality with proper TypeScript types
+// Image helper functions with multi-image support
 
-// Type definitions
 export interface ToastFunction {
   success: (message: string) => void;
   error: (message: string) => void;
@@ -13,10 +11,13 @@ export interface ImageUploadOptions {
   quality?: number;
 }
 
-export interface ImageSelectHandlers {
-  setSelectedImage: (url: string | null) => void;
+export interface MultiImageSelectHandlers {
+  selectedImages: string[];
+  setSelectedImages: (urls: string[] | ((prev: string[]) => string[])) => void;
   setIsImageUploading: (loading: boolean) => void;
+  setUploadingCount: (count: number | ((prev: number) => number)) => void; // NEW
   toast: ToastFunction;
+  maxImages?: number;
 }
 
 export interface ImageUploadConfig {
@@ -24,27 +25,29 @@ export interface ImageUploadConfig {
   apiBaseUrl: string;
 }
 
-// Function to download an image from URL or base64 data
+// Existing single image handlers for backward compatibility
+export interface ImageSelectHandlers {
+  setSelectedImage: (url: string | null) => void;
+  setIsImageUploading: (loading: boolean) => void;
+  toast: ToastFunction;
+}
+
+// Download functions (unchanged)
 export const downloadImage = async (imageUrl: string, fileName?: string): Promise<void> => {
   try {
     let blob: Blob
     let finalUrl: string
     
-    // Check if it's a base64 image
     if (imageUrl.startsWith('data:')) {
-      // Convert base64 to blob directly
       const response = await fetch(imageUrl)
       blob = await response.blob()
     } else {
-      // For external URLs (like Azure blob storage), use the image proxy
       if (imageUrl.includes('blob.core.windows.net') || imageUrl.includes('http')) {
-        // Use the image proxy to bypass CORS
         finalUrl = `/api/image-proxy?imageUrl=${encodeURIComponent(imageUrl)}`
       } else {
         finalUrl = imageUrl
       }
       
-      // Fetch through proxy or directly
       const response = await fetch(finalUrl)
       if (!response.ok) {
         throw new Error(`Failed to fetch image: ${response.status}`)
@@ -52,22 +55,16 @@ export const downloadImage = async (imageUrl: string, fileName?: string): Promis
       blob = await response.blob()
     }
     
-    // Create a temporary URL for the blob
     const url = window.URL.createObjectURL(blob)
-    
-    // Create a temporary anchor element and trigger download
     const link = document.createElement('a')
     link.href = url
     link.download = fileName || `vizzy-image-${Date.now()}.png`
     document.body.appendChild(link)
     link.click()
-    
-    // Clean up
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
   } catch (error) {
     console.error('Error downloading image:', error)
-    // Fallback: try to open in new tab if download fails
     try {
       window.open(imageUrl, '_blank')
     } catch (fallbackError) {
@@ -76,31 +73,25 @@ export const downloadImage = async (imageUrl: string, fileName?: string): Promis
   }
 }
 
-// Function to download video from URL
 export const downloadVideo = async (videoUrl: string, fileName?: string): Promise<void> => {
   try {
     let finalUrl: string
     
-    // For external URLs (like Azure blob storage), use the video proxy
     if (videoUrl.includes('blob.core.windows.net') || videoUrl.includes('http')) {
-      // Use the video proxy to bypass CORS
       finalUrl = `/api/video-proxy?videoUrl=${encodeURIComponent(videoUrl)}`
     } else {
       finalUrl = videoUrl
     }
     
-    // Fetch through proxy or directly
     const response = await fetch(finalUrl)
     if (!response.ok) {
       throw new Error(`Failed to fetch video: ${response.status}`)
     }
     const blob = await response.blob()
     
-    // Create a temporary URL for the blob
     const url = window.URL.createObjectURL(blob)
     
-    // Determine file extension from the blob type or use default
-    let fileExtension = 'mp4' // default
+    let fileExtension = 'mp4'
     if (blob.type.includes('webm')) {
       fileExtension = 'webm'
     } else if (blob.type.includes('mov')) {
@@ -109,19 +100,15 @@ export const downloadVideo = async (videoUrl: string, fileName?: string): Promis
       fileExtension = 'avi'
     }
     
-    // Create a temporary anchor element and trigger download
     const link = document.createElement('a')
     link.href = url
-    link.download = fileName || `vizzy-video-${Date.now()}.mp4` // Always use provided fileName or default with .mp4
+    link.download = fileName || `vizzy-video-${Date.now()}.mp4`
     document.body.appendChild(link)
     link.click()
-    
-    // Clean up
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
   } catch (error) {
     console.error('Error downloading video:', error)
-    // Fallback: try to open in new tab if download fails
     try {
       window.open(videoUrl, '_blank')
     } catch (fallbackError) {
@@ -130,13 +117,10 @@ export const downloadVideo = async (videoUrl: string, fileName?: string): Promis
   }
 }
 
-// Function to download media (image or video) based on URL
 export const downloadMedia = async (mediaUrl: string, fileName?: string): Promise<void> => {
-  // Check if it's a video URL
   const isVideo = isVideoUrl(mediaUrl)
   
   if (isVideo) {
-    // For videos, determine extension from URL or use mp4 as default
     let videoExtension = 'mp4'
     if (mediaUrl.includes('.webm')) videoExtension = 'webm'
     else if (mediaUrl.includes('.mov')) videoExtension = 'mov'
@@ -145,17 +129,14 @@ export const downloadMedia = async (mediaUrl: string, fileName?: string): Promis
     const videoFileName = fileName || `vizzy-video-${Date.now()}.${videoExtension}`
     await downloadVideo(mediaUrl, videoFileName)
   } else {
-    // For images, use png as default
     const imageFileName = fileName || `vizzy-image-${Date.now()}.png`
     await downloadImage(mediaUrl, imageFileName)
   }
 }
 
-// Function to check if a URL is a video
 export const isVideoUrl = (url: string | undefined): boolean => {
   if (!url) return false
   
-  // Check for video file extensions
   const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv', '.flv', '.wmv']
   const lowerUrl = url.toLowerCase()
   
@@ -165,12 +146,10 @@ export const isVideoUrl = (url: string | undefined): boolean => {
     }
   }
   
-  // Check for video MIME types in data URLs
   if (url.startsWith('data:video')) {
     return true
   }
   
-  // Check for video proxy URLs
   if (url.includes('/api/video-proxy')) {
     return true
   }
@@ -178,13 +157,12 @@ export const isVideoUrl = (url: string | undefined): boolean => {
   return false
 }
 
-// Function to check if a URL is a base64 image
 export const isBase64Image = (url: string | undefined): boolean => {
   if (!url) return false
   return url.startsWith('data:image')
 }
 
-// Function to compress and convert image to PNG format
+// Compress and convert image
 export const compressAndConvertImage = async (
   file: File, 
   options: ImageUploadOptions = {}
@@ -202,18 +180,15 @@ export const compressAndConvertImage = async (
       const img = document.createElement('img');
       
       img.onload = () => {
-        // Calculate new dimensions while maintaining aspect ratio
         let width = img.width;
         let height = img.height;
         
-        // Resize image if it's larger than maximum allowed
         if (width > maxWidth || height > maxHeight) {
           const ratio = Math.min(maxWidth / width, maxHeight / height);
           width = Math.round(width * ratio);
           height = Math.round(height * ratio);
         }
         
-        // Create canvas for drawing
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         
@@ -222,18 +197,13 @@ export const compressAndConvertImage = async (
           return;
         }
         
-        // Set canvas dimensions
         canvas.width = width;
         canvas.height = height;
         
-        // Improve drawing quality
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-        
-        // Draw image on canvas
         ctx.drawImage(img, 0, 0, width, height);
         
-        // Convert canvas to blob in PNG format
         canvas.toBlob(
           (blob) => {
             if (!blob) {
@@ -241,10 +211,9 @@ export const compressAndConvertImage = async (
               return;
             }
             
-            // Create new File object in PNG format
             const compressedFile = new File(
               [blob], 
-              file.name.replace(/\.[^/.]+$/, '.png'), // Change file extension to .png
+              file.name.replace(/\.[^/.]+$/, '.png'),
               { 
                 type: 'image/png',
                 lastModified: Date.now()
@@ -253,12 +222,11 @@ export const compressAndConvertImage = async (
             
             console.log('Original size:', (file.size / 1024).toFixed(2), 'KB');
             console.log('Compressed size:', (compressedFile.size / 1024).toFixed(2), 'KB');
-            console.log('Compression ratio:', ((1 - compressedFile.size / file.size) * 100).toFixed(1), '%');
             
             resolve(compressedFile);
           },
           'image/png',
-          quality // Compression quality (0.85 = 85% quality)
+          quality
         );
       };
       
@@ -277,7 +245,7 @@ export const compressAndConvertImage = async (
   });
 };
 
-// Function to upload image to server
+// Upload single image to server
 export const handleImageUpload = async (
   file: File, 
   config: ImageUploadConfig
@@ -315,7 +283,93 @@ export const handleImageUpload = async (
   }
 };
 
-// Function to handle image selection and processing
+// NEW: Handle multiple image selection and upload
+export const handleMultiImageSelect = async (
+  e: React.ChangeEvent<HTMLInputElement>,
+  handlers: MultiImageSelectHandlers,
+  config: ImageUploadConfig,
+  options: ImageUploadOptions = {}
+): Promise<void> => {
+  const { selectedImages, setSelectedImages, setIsImageUploading, setUploadingCount, toast, maxImages = 3 } = handlers;
+  const files = Array.from(e.target.files || []);
+  
+  if (files.length === 0) return;
+  
+  // Check total number of images
+  const remainingSlots = maxImages - selectedImages.length;
+  if (remainingSlots <= 0) {
+    toast.error(`Maximum ${maxImages} images allowed`);
+    return;
+  }
+  
+  // Limit files to remaining slots
+  const filesToProcess = files.slice(0, remainingSlots);
+  
+  if (files.length > remainingSlots) {
+    toast.error(`Only ${remainingSlots} more image${remainingSlots > 1 ? 's' : ''} can be added`);
+  }
+  
+  // Validate all files first
+  for (const file of filesToProcess) {
+    if (!file.type.startsWith('image/')) {
+      toast.error("Please select only image files");
+      return;
+    }
+    
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Each image must be less than 10MB");
+      return;
+    }
+  }
+
+  setIsImageUploading(true);
+  setUploadingCount(filesToProcess.length); // NEW: Set uploading count
+
+  try {
+    const uploadPromises = filesToProcess.map(async (file) => {
+      // Compress and convert each image
+      const compressedFile = await compressAndConvertImage(file, {
+        maxWidth: options.maxWidth || 1920,
+        maxHeight: options.maxHeight || 1080,
+        quality: options.quality || 0.85
+      });
+      
+      // Upload compressed image
+      const url = await handleImageUpload(compressedFile, config);
+      
+      return url;
+    });
+    
+    // Wait for all uploads to complete before updating UI
+    const uploadedUrls = await Promise.all(uploadPromises);
+    
+    // Filter out any failed uploads (null values)
+    const successfulUrls = uploadedUrls.filter((url): url is string => url !== null);
+    
+    // Update images and uploading count together after all uploads complete
+    if (successfulUrls.length > 0) {
+      setSelectedImages(prev => [...prev, ...successfulUrls]);
+      toast.success(`${successfulUrls.length} image${successfulUrls.length > 1 ? 's' : ''} uploaded successfully!`);
+    }
+    
+    if (successfulUrls.length < filesToProcess.length) {
+      toast.error("Some images failed to upload");
+    }
+  } catch (error) {
+    console.error('Error processing images:', error);
+    toast.error("Failed to process images. Please try again.");
+  } finally {
+    setIsImageUploading(false);
+    setUploadingCount(0); // Reset uploading count after all uploads complete
+  }
+
+  // Reset input value
+  if (e.target) {
+    e.target.value = "";
+  }
+};
+
+// Original single image handler (for backward compatibility)
 export const handleImageSelect = async (
   e: React.ChangeEvent<HTMLInputElement>,
   handlers: ImageSelectHandlers,
@@ -326,31 +380,25 @@ export const handleImageSelect = async (
   const file = e.target.files?.[0];
   
   if (file) {
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       toast.error("Please select an image file");
       return;
     }
     
-    // Validate file size
     if (file.size > 10 * 1024 * 1024) {
       toast.error("Image size must be less than 10MB");
       return;
     }
 
-    // Start loading animation
     setIsImageUploading(true);
 
     try {
-      // Compress and convert image to PNG
-      console.log('Converting and compressing image...');
       const compressedFile = await compressAndConvertImage(file, {
-        maxWidth: options.maxWidth || 1920,  // Maximum width
-        maxHeight: options.maxHeight || 1080,  // Maximum height
-        quality: options.quality || 0.85   // Quality (85%)
+        maxWidth: options.maxWidth || 1920,
+        maxHeight: options.maxHeight || 1080,
+        quality: options.quality || 0.85
       });
       
-      // Upload compressed image
       const publicUrl = await handleImageUpload(compressedFile, config);
 
       if (publicUrl) {
@@ -363,12 +411,10 @@ export const handleImageSelect = async (
       console.error('Error processing image:', error);
       toast.error("Failed to process image. Please try again.");
     } finally {
-      // Stop loading animation
       setIsImageUploading(false);
     }
   }
 
-  // Reset input value
   if (e.target) {
     e.target.value = "";
   }

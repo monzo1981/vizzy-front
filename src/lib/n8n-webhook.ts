@@ -14,8 +14,12 @@ interface N8NRequest {
   timestamp: string;
   quota: string;
   session_id?: string;
-  remaining_images?: number | null;
-  remaining_videos?: number | null;
+  // New credits system
+  remaining_credits?: number | null;
+  total_credits?: number | null;
+  used_credits?: number;
+  is_unlimited?: boolean;
+  subscription_type?: string;
   is_first_time_user?: boolean;
   // New company profile fields
   company_name?: string;
@@ -48,9 +52,22 @@ interface N8NResponse {
 }
 
 interface UserLimits {
-    remaining_images: number;
-    remaining_videos: number;
+    // New credits system
+    remaining_credits: number | null;
+    total_credits: number | null;
+    used_credits: number;
+    is_trial: boolean;
+    status: string;
+    is_active: boolean;
+    is_unlimited: boolean;
     is_first_time_user: boolean;
+    subscription_type: string;
+    service_costs?: {
+        image?: number;
+        video?: number;
+        text?: number;
+        logo?: number;
+    };
 }
 
 interface CompanyProfile {
@@ -239,13 +256,18 @@ export class N8NWebhook {
         // Extract the actual data from the response structure
         const limitsData = responseData.data || responseData;
         
+        // New credits system
         const limits: Partial<UserLimits> = {
-            remaining_images: limitsData.remaining_images ?? null,
-            remaining_videos: limitsData.remaining_videos ?? null,
+            remaining_credits: limitsData.remaining_credits ?? null,
+            total_credits: limitsData.total_credits ?? null,
+            used_credits: limitsData.used_credits ?? 0,
+            is_trial: limitsData.is_trial ?? false,
+            status: limitsData.status ?? 'unknown',
+            is_active: limitsData.is_active ?? false,
+            is_unlimited: limitsData.is_unlimited ?? false,
             is_first_time_user: limitsData.is_first_time_user ?? false,
-            // Include max values if present in backend response
-            ...(limitsData.max_images !== undefined && { max_images: limitsData.max_images }),
-            ...(limitsData.max_videos !== undefined && { max_videos: limitsData.max_videos }),
+            subscription_type: limitsData.subscription_type ?? 'Trial',
+            service_costs: limitsData.service_costs || {},
         };
         
         // Note: User limits are NOT stored in localStorage as they change frequently
@@ -314,8 +336,9 @@ async sendMessage(
           name: `${this.firstName} ${this.lastName}`,
           quota: "paid",
           timestamp: new Date().toISOString(),
-          remaining_images: userLimits?.remaining_images ?? null,
-          remaining_videos: userLimits?.remaining_videos ?? null,
+          // Credits system - only what N8N needs
+          remaining_credits: userLimits?.remaining_credits ?? null,
+          subscription_type: userLimits?.subscription_type ?? 'Trial',
           is_first_time_user: userLimits?.is_first_time_user ?? false,
           // Company profile data
           company_name: this.companyProfile?.company_name || null,
@@ -387,8 +410,9 @@ async sendVoiceMessage(
           name: `${this.firstName} ${this.lastName}`,
           quota: "paid",
           timestamp: new Date().toISOString(),
-          remaining_images: userLimits?.remaining_images ?? null,
-          remaining_videos: userLimits?.remaining_videos ?? null,
+          // Credits system - only what N8N needs
+          remaining_credits: userLimits?.remaining_credits ?? null,
+          subscription_type: userLimits?.subscription_type ?? 'Trial',
           is_first_time_user: userLimits?.is_first_time_user ?? false,
           // Company profile data
           company_name: this.companyProfile?.company_name || null,
@@ -426,7 +450,7 @@ async sendVoiceMessage(
   }
 
 async sendImageMessage(
-    imageData: string, 
+    imageData: string | string[], // UPDATED: accept array or single string
     text?: string, 
     sessionId?: string, 
     chatHistory?: Array<{
@@ -437,7 +461,10 @@ async sendImageMessage(
     }>
   ): Promise<N8NResponse> {
     try {
-      console.log('Sending image message to N8N with text:', text);
+      // Convert single image to array for uniform handling
+      const images = Array.isArray(imageData) ? imageData : [imageData];
+      
+      console.log(`Sending image message to N8N with ${images.length} image(s) and text:`, text);
 
       // Force refresh profile data on first message of any session
       const isFirstMessage = !chatHistory || chatHistory.length === 0;
@@ -446,6 +473,56 @@ async sendImageMessage(
       const userLimits = await this.getUserLimits();
       const language = localStorage.getItem('language') || 'en';
 
+      // Prepare image URLs - support up to 3 images
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const requestBody: any = {
+        current_user_message: text,
+        image_url: images[0], // First image (required if images exist)
+        user_id: this.userId,
+        session_id: sessionId,
+        user_email: this.userEmail,
+        name: `${this.firstName} ${this.lastName}`,
+        quota: "paid",
+        timestamp: new Date().toISOString(),
+        // Credits system - only what N8N needs
+        remaining_credits: userLimits?.remaining_credits ?? null,
+        subscription_type: userLimits?.subscription_type ?? 'Trial',
+        is_first_time_user: userLimits?.is_first_time_user ?? false,
+        // Company profile data
+        company_name: this.companyProfile?.company_name || null,
+        company_website_url: this.companyProfile?.company_website_url || null,
+        about_company: this.companyProfile?.about_company || null,
+        logo_url: this.companyProfile?.logo_url || null,
+        industry: this.companyProfile?.industry || null,
+        job_title: this.companyProfile?.job_title || null,
+        visual_guide: this.companyProfile?.visual_guide || null,
+        logotype: this.companyProfile?.logotype || null,
+        logo_mode: this.companyProfile?.logo_mode || null,
+        // Asset files URLs
+        brand_manual_url: this.companyProfile?.brand_manual?.file_url || null,
+        company_profile_file_url: this.companyProfile?.company_profile_file?.file_url || null,
+        client_document_url: this.companyProfile?.document?.file_url || null,
+        respond_only_to: 'current_user_message',
+        previous_context: chatHistory ? chatHistory.slice(-4) : [],
+        language: language,
+      };
+
+      // Add second image if exists
+      if (images.length > 1 && images[1]) {
+        requestBody.image_url2 = images[1];
+      }
+
+      // Add third image if exists
+      if (images.length > 2 && images[2]) {
+        requestBody.image_url3 = images[2];
+      }
+
+      console.log(`[N8NWebhook] Sending ${images.length} image(s) to N8N:`, {
+        image_url: !!requestBody.image_url,
+        image_url2: !!requestBody.image_url2,
+        image_url3: !!requestBody.image_url3
+      });
+
       const response = await fetch(this.webhookUrl, {
         method: 'POST',
         headers: {
@@ -453,36 +530,7 @@ async sendImageMessage(
           '_method': 'POST',
           'key': process.env.NEXT_PUBLIC_N8N_WEBHOOK_KEY!
         },
-        body: JSON.stringify({
-          current_user_message: text,
-          image_url: imageData,
-          user_id: this.userId,
-          session_id: sessionId,
-          user_email: this.userEmail,
-          name: `${this.firstName} ${this.lastName}`,
-          quota: "paid",
-          timestamp: new Date().toISOString(),
-          remaining_images: userLimits?.remaining_images ?? null,
-          remaining_videos: userLimits?.remaining_videos ?? null,
-          is_first_time_user: userLimits?.is_first_time_user ?? false,
-          // Company profile data
-          company_name: this.companyProfile?.company_name || null,
-          company_website_url: this.companyProfile?.company_website_url || null,
-          about_company: this.companyProfile?.about_company || null,
-          logo_url: this.companyProfile?.logo_url || null,
-          industry: this.companyProfile?.industry || null,
-          job_title: this.companyProfile?.job_title || null,
-          visual_guide: this.companyProfile?.visual_guide || null,  // NEW
-          logotype: this.companyProfile?.logotype || null,  // NEW
-          logo_mode: this.companyProfile?.logo_mode || null,
-          // Asset files URLs
-          brand_manual_url: this.companyProfile?.brand_manual?.file_url || null,
-          company_profile_file_url: this.companyProfile?.company_profile_file?.file_url || null,
-          client_document_url: this.companyProfile?.document?.file_url || null,
-          respond_only_to: 'current_user_message',
-          previous_context: chatHistory ? chatHistory.slice(-4) : [],
-          language: language,
-        } as N8NRequest),
+        body: JSON.stringify(requestBody as N8NRequest),
       });
 
       if (!response.ok) {
@@ -495,8 +543,8 @@ async sendImageMessage(
       
       return this.normalizeResponse(data);
     } catch (error) {
-      console.error('Error sending image to N8N:', error);
-      return { error: 'Failed to upload image. Please try again.' };
+      console.error('Error sending image(s) to N8N:', error);
+      return { error: 'Failed to upload image(s). Please try again.' };
     }
   }
   

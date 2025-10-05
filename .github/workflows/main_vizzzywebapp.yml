@@ -23,83 +23,17 @@ jobs:
         run: |
           npm ci
           npm run build
-          
-      - name: Verify build output
-        run: |
-          echo "Checking build output..."
-          ls -la .next/
-          echo "Static files:"
-          ls -la .next/static/ || echo "No static folder"
-          echo "Build completed successfully"
+          npm prune --production
       
       - name: Create deployment package
         run: |
           mkdir -p deploy
-          
-          echo "=== Creating deployment package for Regular Next.js Build ==="
-          
-          # نسخ .next كامل (يحتوي على كل البناء)
-          echo "Copying .next folder..."
-          cp -r .next deploy/.next
-          
-          # نسخ public folder
-          echo "Copying public folder..."
-          cp -r public deploy/public
-          
-          # نسخ src (للـ middleware و server components)
-          echo "Copying src folder..."
-          cp -r src deploy/src
-          
-          # نسخ node_modules
-          echo "Copying node_modules..."
-          cp -r node_modules deploy/node_modules
-          
-          # نسخ config files
-          echo "Copying config files..."
-          cp package.json deploy/package.json
-          cp package-lock.json deploy/package-lock.json
-          cp next.config.ts deploy/next.config.ts
-          cp tsconfig.json deploy/tsconfig.json
-          
-          # نسخ .deployment file
-          [ -f ".deployment" ] && cp .deployment deploy/.deployment || echo "No .deployment file"
-          
-          # التحقق من المحتويات
-          echo "=== Deployment package contents ==="
-          ls -la deploy/
-          echo "=== Static files in deployment ==="
-          ls -la deploy/.next/static/ | head -20
-          
-          # منع Oryx من البناء
-          echo "Disabling Oryx build" > deploy/.skipDeployment
-          
-          cat > deploy/web.config << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <configuration>
-            <system.webServer>
-              <handlers>
-                <add name="iisnode" path="server.js" verb="*" modules="iisnode"/>
-              </handlers>
-              <rewrite>
-                <rules>
-                  <rule name="NodeInspector" patternSyntax="ECMAScript" stopProcessing="true">
-                    <match url="^server.js\/debug[\/]?" />
-                  </rule>
-                  <rule name="StaticContent">
-                    <action type="Rewrite" url="public{REQUEST_URI}"/>
-                  </rule>
-                  <rule name="DynamicContent">
-                    <conditions>
-                      <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="True"/>
-                    </conditions>
-                    <action type="Rewrite" url="server.js"/>
-                  </rule>
-                </rules>
-              </rewrite>
-            </system.webServer>
-          </configuration>
-          EOF
-          
+          cp -r .next deploy/
+          [ -d "public" ] && cp -r public deploy/ || echo "No public folder"
+          cp package.json deploy/
+          cp package-lock.json deploy/
+          cp next.config.* deploy/ 2>/dev/null || echo "No next.config file"
+          cp -r node_modules deploy/
           cd deploy
           zip -r ../release.zip .
       
@@ -170,4 +104,5 @@ jobs:
           echo "Starting web app..."
           az webapp start --name vizzzyWebApp --resource-group vizzzyWebApp_group
           sleep 5
+
           echo "Deployment completed!"
