@@ -8,6 +8,8 @@ import { isAuthenticated } from '@/lib/auth';
 import { useTheme } from '@/contexts/ThemeContext';
 import { GradientBackground } from '@/components/gradient-background';
 import { Footer } from '@/components/Footer';
+import { PaymentButton } from '@/components/PaymentButton';
+import { SUBSCRIPTION_IDS } from '@/constants/subscriptions';
 
 // Header Component
 const Header = () => {
@@ -61,6 +63,8 @@ interface Feature {
 
 // PricingCard Component
 interface PricingCardProps {
+  subscriptionId?: string;
+  billingPeriod?: 'monthly' | 'yearly';
   title: string;
   description: string;
   price?: string;
@@ -73,6 +77,8 @@ interface PricingCardProps {
 }
 
 const PricingCard = ({ 
+  subscriptionId,
+  billingPeriod = 'monthly',
   title, 
   description, 
   price, 
@@ -144,9 +150,40 @@ const PricingCard = ({
             ))}
           </div>
 
-          <button className="w-full text-white py-3 font-medium hover:shadow-lg transition-all" style={{ background: 'linear-gradient(90deg, #4248FF 0%, rgba(66, 72, 255, 0.57) 49.12%, #4248FF 100%)', borderRadius: '50px', fontWeight: 700, fontSize: '28px' }}>
-            {buttonText}
-          </button>
+          {/* Payment Button or Contact Link */}
+          {isContactCard ? (
+            <Link 
+              href="/contact"
+              className="block w-full text-center text-white py-3 font-medium hover:shadow-lg transition-all" 
+              style={{ 
+                background: 'linear-gradient(90deg, #4248FF 0%, rgba(66, 72, 255, 0.57) 49.12%, #4248FF 100%)', 
+                borderRadius: '50px', 
+                fontWeight: 700, 
+                fontSize: '28px' 
+              }}
+            >
+              {buttonText}
+            </Link>
+          ) : subscriptionId ? (
+            <PaymentButton
+              subscriptionTypeId={subscriptionId}
+              billingPeriod={billingPeriod}
+              buttonText={buttonText}
+            />
+          ) : (
+            <button 
+              disabled 
+              className="w-full text-white py-3 font-medium opacity-50 cursor-not-allowed" 
+              style={{ 
+                background: 'linear-gradient(90deg, #4248FF 0%, rgba(66, 72, 255, 0.57) 49.12%, #4248FF 100%)', 
+                borderRadius: '50px', 
+                fontWeight: 700, 
+                fontSize: '28px' 
+              }}
+            >
+              {buttonText}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -158,13 +195,31 @@ const PricingSection = () => {
   const { isDarkMode } = useTheme();
   const [isMonthly, setIsMonthly] = useState(true);
 
-  const features = [
+  const proFeatures = [
     { text: "3,000 AI credits/month for creating images", included: true },
-    { text: "3,000 AI credits/month for creating images", included: true },
-    { text: "3,000 AI credits/month for creating images", included: true },
-    { text: "3,000 AI credits/month for creating images", included: true },
-    { text: "3,000 AI credits/month for creating images", included: false },
-    { text: "3,000 AI credits/month for creating images", included: false },
+    { text: "100 AI videos/month", included: true },
+    { text: "5 Projects", included: true },
+    { text: "Basic AI text generation", included: true },
+    { text: "Priority support", included: false },
+    { text: "Custom branding", included: false },
+  ];
+
+  const growFeatures = [
+    { text: "5,000 AI credits/month for creating images", included: true },
+    { text: "200 AI videos/month", included: true },
+    { text: "Unlimited Projects", included: true },
+    { text: "Advanced AI text generation", included: true },
+    { text: "Priority support", included: true },
+    { text: "Custom branding", included: false },
+  ];
+
+  const unlimitedFeatures = [
+    { text: "Unlimited AI credits for images", included: true },
+    { text: "Unlimited AI videos", included: true },
+    { text: "Unlimited Projects", included: true },
+    { text: "Premium AI text generation", included: true },
+    { text: "24/7 Priority support", included: true },
+    { text: "Custom branding & white-label", included: true },
   ];
 
   return (
@@ -180,7 +235,7 @@ const PricingSection = () => {
           </p>
           
           {/* Toggle */}
-          <div className="flex items-center justify-center px-1 py-1 mb-12 w-fit mx-auto" style={{ backgroundColor: isDarkMode ? '#D3E6FC33' : '#4248FF2E', borderRadius: '50px', border: isDarkMode ? '1px solid #ffffff70' : 'none' }} suppressHydrationWarning>
+          {/* <div className="flex items-center justify-center px-1 py-1 mb-12 w-fit mx-auto" style={{ backgroundColor: isDarkMode ? '#D3E6FC33' : '#4248FF2E', borderRadius: '50px', border: isDarkMode ? '1px solid #ffffff70' : 'none' }} suppressHydrationWarning>
             <button
               onClick={() => setIsMonthly(true)}
               className={`px-8 py-2 rounded-full font-bold transition-all ${
@@ -201,37 +256,45 @@ const PricingSection = () => {
             >
               Yearly
             </button>
-          </div>
+          </div> */}
         </div>
 
         {/* Pricing Cards */}
         <div className="grid md:grid-cols-3 gap-4 max-w-7xl mx-auto">
+          {/* Pro Plan */}
           <PricingCard
+            subscriptionId={SUBSCRIPTION_IDS.PRO}
+            billingPeriod={isMonthly ? 'monthly' : 'yearly'}
             title="Pro"
             description="Kick off your AI journey with all the basics to spark your creativity!"
-            price="490 EGP"
-            originalPrice="600 EGP"
-            period="month"
-            features={features}
-            buttonText="Upgrade"
+            price={isMonthly ? "490 EGP" : "4,900 EGP"}
+            originalPrice={isMonthly ? "600 EGP" : "7,200 EGP"}
+            period={isMonthly ? "month" : "year"}
+            features={proFeatures}
+            buttonText="Upgrade to Pro"
           />
           
+          {/* Grow Plan - Most Popular */}
           <PricingCard
+            subscriptionId={SUBSCRIPTION_IDS.GROW}
+            billingPeriod={isMonthly ? 'monthly' : 'yearly'}
             title="Grow"
-            description="Kick off your AI journey with all the basics to spark your creativity!"
-            price="780 EGP"
-            originalPrice="999 EGP"
-            period="month"
-            features={features}
-            buttonText="Upgrade"
+            description="Level up your content with advanced AI tools and unlimited possibilities!"
+            price={isMonthly ? "780 EGP" : "7,800 EGP"}
+            originalPrice={isMonthly ? "999 EGP" : "11,988 EGP"}
+            period={isMonthly ? "month" : "year"}
+            features={growFeatures}
+            buttonText="Upgrade to Grow"
             isPopular={true}
           />
           
+          {/* Unlimited Plan - Contact Us */}
           <PricingCard
+            subscriptionId={SUBSCRIPTION_IDS.UNLIMITED}
             title="Unlimited"
-            description="Kick off your AI journey with all the basics to spark your creativity!"
-            features={features}
-            buttonText="Upgrade"
+            description="Enterprise solution with custom features tailored to your business needs!"
+            features={unlimitedFeatures}
+            buttonText="Contact Sales"
             isContactCard={true}
           />
         </div>

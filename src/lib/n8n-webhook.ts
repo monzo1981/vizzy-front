@@ -14,8 +14,12 @@ interface N8NRequest {
   timestamp: string;
   quota: string;
   session_id?: string;
-  remaining_images?: number | null;
-  remaining_videos?: number | null;
+  // New credits system
+  remaining_credits?: number | null;
+  total_credits?: number | null;
+  used_credits?: number;
+  is_unlimited?: boolean;
+  subscription_type?: string;
   is_first_time_user?: boolean;
   // New company profile fields
   company_name?: string;
@@ -48,9 +52,22 @@ interface N8NResponse {
 }
 
 interface UserLimits {
-    remaining_images: number;
-    remaining_videos: number;
+    // New credits system
+    remaining_credits: number | null;
+    total_credits: number | null;
+    used_credits: number;
+    is_trial: boolean;
+    status: string;
+    is_active: boolean;
+    is_unlimited: boolean;
     is_first_time_user: boolean;
+    subscription_type: string;
+    service_costs?: {
+        image?: number;
+        video?: number;
+        text?: number;
+        logo?: number;
+    };
 }
 
 interface CompanyProfile {
@@ -239,13 +256,18 @@ export class N8NWebhook {
         // Extract the actual data from the response structure
         const limitsData = responseData.data || responseData;
         
+        // New credits system
         const limits: Partial<UserLimits> = {
-            remaining_images: limitsData.remaining_images ?? null,
-            remaining_videos: limitsData.remaining_videos ?? null,
+            remaining_credits: limitsData.remaining_credits ?? null,
+            total_credits: limitsData.total_credits ?? null,
+            used_credits: limitsData.used_credits ?? 0,
+            is_trial: limitsData.is_trial ?? false,
+            status: limitsData.status ?? 'unknown',
+            is_active: limitsData.is_active ?? false,
+            is_unlimited: limitsData.is_unlimited ?? false,
             is_first_time_user: limitsData.is_first_time_user ?? false,
-            // Include max values if present in backend response
-            ...(limitsData.max_images !== undefined && { max_images: limitsData.max_images }),
-            ...(limitsData.max_videos !== undefined && { max_videos: limitsData.max_videos }),
+            subscription_type: limitsData.subscription_type ?? 'Trial',
+            service_costs: limitsData.service_costs || {},
         };
         
         // Note: User limits are NOT stored in localStorage as they change frequently
@@ -314,8 +336,9 @@ async sendMessage(
           name: `${this.firstName} ${this.lastName}`,
           quota: "paid",
           timestamp: new Date().toISOString(),
-          remaining_images: userLimits?.remaining_images ?? null,
-          remaining_videos: userLimits?.remaining_videos ?? null,
+          // Credits system - only what N8N needs
+          remaining_credits: userLimits?.remaining_credits ?? null,
+          subscription_type: userLimits?.subscription_type ?? 'Trial',
           is_first_time_user: userLimits?.is_first_time_user ?? false,
           // Company profile data
           company_name: this.companyProfile?.company_name || null,
@@ -387,8 +410,9 @@ async sendVoiceMessage(
           name: `${this.firstName} ${this.lastName}`,
           quota: "paid",
           timestamp: new Date().toISOString(),
-          remaining_images: userLimits?.remaining_images ?? null,
-          remaining_videos: userLimits?.remaining_videos ?? null,
+          // Credits system - only what N8N needs
+          remaining_credits: userLimits?.remaining_credits ?? null,
+          subscription_type: userLimits?.subscription_type ?? 'Trial',
           is_first_time_user: userLimits?.is_first_time_user ?? false,
           // Company profile data
           company_name: this.companyProfile?.company_name || null,
@@ -460,8 +484,9 @@ async sendImageMessage(
         name: `${this.firstName} ${this.lastName}`,
         quota: "paid",
         timestamp: new Date().toISOString(),
-        remaining_images: userLimits?.remaining_images ?? null,
-        remaining_videos: userLimits?.remaining_videos ?? null,
+        // Credits system - only what N8N needs
+        remaining_credits: userLimits?.remaining_credits ?? null,
+        subscription_type: userLimits?.subscription_type ?? 'Trial',
         is_first_time_user: userLimits?.is_first_time_user ?? false,
         // Company profile data
         company_name: this.companyProfile?.company_name || null,
