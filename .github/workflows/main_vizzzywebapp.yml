@@ -23,56 +23,11 @@ jobs:
         with:
           node-version: '22.x'
 
-      - name: npm install and build
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          NEXT_PUBLIC_SUPABASE_SERVICE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_SERVICE_KEY }}
-        run: |
-          npm ci
-          npm run build
+      - name: Install dependencies only
+        run: npm ci
 
-      - name: Create deployment package
-        run: |
-          echo "Creating deployment package..."
-          mkdir -p deployment
-          
-          echo "Copying .next folder..."
-          cp -r .next deployment/.next
-          
-          echo "Copying node_modules..."
-          cp -r node_modules deployment/node_modules
-          
-          echo "Copying public folder..."
-          cp -r public deployment/public
-          
-          echo "Copying src folder (for middleware)..."
-          cp -r src deployment/src 2>/dev/null || echo "No src folder found"
-          
-          echo "Copying package files..."
-          cp package.json deployment/package.json
-          cp package-lock.json deployment/package-lock.json
-          
-          echo "Copying next.config files..."
-          cp next.config.* deployment/ 2>/dev/null || true
-          
-          echo "Copying tsconfig.json..."
-          cp tsconfig.json deployment/ 2>/dev/null || true
-          
-          echo "Verifying .next folder..."
-          ls -la deployment/.next/
-          echo "Verifying .next/server folder..."
-          ls -la deployment/.next/server/ || echo "No server folder found"
-          echo "Verifying .next/server/app folder..."
-          ls -la deployment/.next/server/app/ || echo "No app folder found"
-          
-          echo "Creating release.zip..."
-          cd deployment
-          zip -r ../release.zip .
-          cd ..
-          
-          echo "Deployment package created successfully"
-          ls -lh release.zip
+      - name: Zip all files for deployment
+        run: zip -r release.zip . -x "*.git*" -x "node_modules/*"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -93,19 +48,8 @@ jobs:
         with:
           name: node-app
       
-      - name: Unzip deployment package
-        run: |
-          echo "Unzipping release.zip..."
-          unzip -q release.zip -d deployment
-          
-          echo "Verifying deployment contents..."
-          ls -la deployment/
-          
-          echo "Verifying .next folder in deployment..."
-          ls -la deployment/.next/ || echo ".next folder not found!"
-          
-          echo "Verifying .next/server folder..."
-          ls -la deployment/.next/server/ || echo "server folder not found!"
+      - name: Unzip for deployment
+        run: unzip release.zip -d deployment
       
       - name: Login to Azure
         uses: azure/login@v2
