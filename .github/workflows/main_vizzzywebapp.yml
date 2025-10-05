@@ -1,4 +1,8 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
 name: Build and deploy Node.js app to Azure Web App - vizzzyWebApp
+
 on:
   push:
     branches:
@@ -9,125 +13,44 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-    
+      contents: read #This is required for actions/checkout
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Node.js version
         uses: actions/setup-node@v3
         with:
           node-version: '22.x'
-      
-      - name: npm install and build
+
+      - name: npm install, build, and test
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_SUPABASE_SERVICE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_SERVICE_KEY }}
         run: |
-          npm ci
-          npm run build
-          
-      - name: Verify build output
-        run: |
-          echo "Checking build output..."
-          ls -la .next/
-          echo "Static files:"
-          ls -la .next/static/ || echo "No static folder"
-          echo "Build completed successfully"
-      
-      - name: Create deployment package
-        run: |
-          mkdir -p deploy
-          
-          echo "=== Creating deployment package for Regular Next.js Build ==="
-          
-          # نسخ .next كامل (يحتوي على كل البناء)
-          echo "Copying .next folder..."
-          cp -r .next deploy/.next
-          
-          # نسخ public folder
-          echo "Copying public folder..."
-          cp -r public deploy/public
-          
-          # نسخ src (للـ middleware و server components)
-          echo "Copying src folder..."
-          cp -r src deploy/src
-          
-          # نسخ node_modules
-          echo "Copying node_modules..."
-          cp -r node_modules deploy/node_modules
-          
-          # نسخ config files
-          echo "Copying config files..."
-          cp package.json deploy/package.json
-          cp package-lock.json deploy/package-lock.json
-          cp next.config.ts deploy/next.config.ts
-          cp tsconfig.json deploy/tsconfig.json
-          
-          # نسخ .deployment file
-          [ -f ".deployment" ] && cp .deployment deploy/.deployment || echo "No .deployment file"
-          
-          # التحقق من المحتويات
-          echo "=== Deployment package contents ==="
-          ls -la deploy/
-          echo "=== Static files in deployment ==="
-          ls -la deploy/.next/static/ | head -20
-          
-          # منع Oryx من البناء
-          echo "Disabling Oryx build" > deploy/.skipDeployment
-          
-          cat > deploy/web.config << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <configuration>
-            <system.webServer>
-              <handlers>
-                <add name="iisnode" path="server.js" verb="*" modules="iisnode"/>
-              </handlers>
-              <rewrite>
-                <rules>
-                  <rule name="NodeInspector" patternSyntax="ECMAScript" stopProcessing="true">
-                    <match url="^server.js\/debug[\/]?" />
-                  </rule>
-                  <rule name="StaticContent">
-                    <action type="Rewrite" url="public{REQUEST_URI}"/>
-                  </rule>
-                  <rule name="DynamicContent">
-                    <conditions>
-                      <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="True"/>
-                    </conditions>
-                    <action type="Rewrite" url="server.js"/>
-                  </rule>
-                </rules>
-              </rewrite>
-            </system.webServer>
-          </configuration>
-          EOF
-          
-          cd deploy
-          zip -r ../release.zip .
-      
+          npm install
+          npm run build --if-present
+          npm run test --if-present
+
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: release.zip
+          path: .
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
     permissions:
-      id-token: write
-      contents: read
-    
+      id-token: write #This is required for requesting the JWT
+      contents: read #This is required for actions/checkout
+
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: node-app
-      
-      - name: Unzip artifact for deployment
-        run: unzip release.zip
       
       - name: Login to Azure
         uses: azure/login@v2
@@ -135,31 +58,7 @@ jobs:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_60CD296CA9544952A2889AC6F6DF1C24 }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_31FD7D403C2D4B368D7609E371CC7AA5 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_908A8BEBFD224116AB5FC8808EEAE4EA }}
-      
-      - name: Stop Web App
-        run: |
-          echo "Stopping web app..."
-          az webapp stop --name vizzzyWebApp --resource-group vizzzyWebApp_group
-          sleep 10
-      
-      - name: Delete old files from wwwroot
-        run: |
-          echo "Cleaning old deployment files..."
-          az webapp deployment source delete --name vizzzyWebApp --resource-group vizzzyWebApp_group || true
-          
-          # استخدام Kudu API لمسح الملفات
-          PUBLISH_PROFILE=$(az webapp deployment list-publishing-profiles --name vizzzyWebApp --resource-group vizzzyWebApp_group --xml)
-          KUDU_USER=$(echo $PUBLISH_PROFILE | grep -oP 'userName="\K[^"]+' | head -1)
-          KUDU_PASS=$(echo $PUBLISH_PROFILE | grep -oP 'userPWD="\K[^"]+' | head -1)
-          
-          # مسح oryx-manifest.toml وnode_modules.tar.gz
-          curl -X DELETE "https://vizzzywebapp-dcb8azg7asc4h4av.scm.canadacentral-01.azurewebsites.net/api/vfs/site/wwwroot/oryx-manifest.toml" \
-            -u "$KUDU_USER:$KUDU_PASS" || echo "No manifest to delete"
-          
-          curl -X DELETE "https://vizzzywebapp-dcb8azg7asc4h4av.scm.canadacentral-01.azurewebsites.net/api/vfs/site/wwwroot/node_modules.tar.gz" \
-            -u "$KUDU_USER:$KUDU_PASS" || echo "No tar.gz to delete"
-        continue-on-error: true
-      
+
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
@@ -167,12 +66,3 @@ jobs:
           app-name: 'vizzzyWebApp'
           slot-name: 'Production'
           package: .
-          clean: true
-      
-      - name: Start Web App
-        run: |
-          echo "Starting web app..."
-          az webapp start --name vizzzyWebApp --resource-group vizzzyWebApp_group
-          sleep 5
-
-          echo "Deployment completed!"
