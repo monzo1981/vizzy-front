@@ -58,6 +58,16 @@ jobs:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_60CD296CA9544952A2889AC6F6DF1C24 }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_31FD7D403C2D4B368D7609E371CC7AA5 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_908A8BEBFD224116AB5FC8808EEAE4EA }}
+      
+      - name: Configure Azure Web App Settings
+        run: |
+          az webapp config appsettings set --name vizzzyWebApp --resource-group vizzzyWebApp_group \
+            --settings \
+              SCM_DO_BUILD_DURING_DEPLOYMENT=false \
+              WEBSITE_NODE_DEFAULT_VERSION=22-lts
+          
+          az webapp config set --name vizzzyWebApp --resource-group vizzzyWebApp_group \
+            --startup-file "npx next start -p 8080"
 
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
