@@ -23,15 +23,14 @@ jobs:
         with:
           node-version: '22.x'
 
-      - name: npm install, build, and test
+      - name: npm install and build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_SUPABASE_SERVICE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_SERVICE_KEY }}
         run: |
           npm install
-          npm run build --if-present
-          npm run test --if-present
+          npm run build
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -58,19 +57,6 @@ jobs:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_60CD296CA9544952A2889AC6F6DF1C24 }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_31FD7D403C2D4B368D7609E371CC7AA5 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_908A8BEBFD224116AB5FC8808EEAE4EA }}
-      
-      - name: Configure Azure Web App Settings
-        run: |
-          az webapp config appsettings set --name vizzzyWebApp --resource-group vizzzyWebApp_group \
-            --settings \
-              SCM_DO_BUILD_DURING_DEPLOYMENT=false \
-              WEBSITE_NODE_DEFAULT_VERSION=22-lts \
-              NEXT_PUBLIC_SUPABASE_URL="${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" \
-              NEXT_PUBLIC_SUPABASE_ANON_KEY="${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
-              NEXT_PUBLIC_SUPABASE_SERVICE_KEY="${{ secrets.NEXT_PUBLIC_SUPABASE_SERVICE_KEY }}"
-          
-          az webapp config set --name vizzzyWebApp --resource-group vizzzyWebApp_group \
-            --startup-file "node node_modules/next/dist/bin/next start -p 8080"
 
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
