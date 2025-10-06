@@ -46,7 +46,6 @@ export function ServicesCarousel({ isDarkMode = false, themeReady = false, class
       id: "card2",
       title: "Service 2",
       image: language === 'ar' ? "/cards/card2-ar.png" : "/cards/card2.png",
-      cardTitle: language === 'ar' ? "خطة احترافية متكاملة لحملاتك الاعلانية للحصول على أفضل  النتائج" : "Professional Budgeting, & Targeting assuring best results",
       message: {
         en: "I need help with professional budgeting and targeting for my ad campaigns",
         ar: "أحتاج مساعدة في وضع ميزانية احترافية واستهداف لحملاتي الإعلانية"
@@ -74,8 +73,6 @@ export function ServicesCarousel({ isDarkMode = false, themeReady = false, class
       id: "card5",
       title: "Service 5",
       image: language === 'ar' ? "/cards/card5-ar.png" : "/cards/card5.png",
-      cardTitle: language === 'ar' ? "فيديو مراجعة لمنتجك" : "Instant UGC!",
-      subtitle: language === 'ar' ? "اشرح مميزات منتجك بفيديو .. فقط من صورة المنتج!" : "Create a preview video For your products",
       message: {
         en: "I want to create a product review video from just a product image",
         ar: "أريد إنشاء فيديو مراجعة للمنتج من مجرد صورة المنتج"
@@ -112,8 +109,33 @@ export function ServicesCarousel({ isDarkMode = false, themeReady = false, class
       id: "card9",
       title: "Service 9",
       image: language === 'ar' ? "/cards/card9-ar.png" : "/cards/card9.png",
-      cardTitle: language === 'ar' ? "تخيل موقعك الإلكتروني" : "Imagine Your Website",
-      subtitle: language === 'ar' ? "تصميم احترافي لموقعك مناسب لمشروعك" : "Professional website layout with just a chat",
+      message: {
+        en: "I want to design a professional website for my business",
+        ar: "أريد تصميم موقع إلكتروني احترافي لعملي"
+      }
+    },
+      {
+      id: "card10",
+      title: "Service 10",
+      image: language === 'ar' ? "/cards/card10-ar.png" : "/cards/card10.png",
+      message: {
+        en: "I want to design a professional website for my business",
+        ar: "أريد تصميم موقع إلكتروني احترافي لعملي"
+      }
+    },
+    {
+      id: "card11",
+      title: "Service 11",
+      image: language === 'ar' ? "/cards/card11-ar.png" : "/cards/card11.png",
+      message: {
+        en: "I want to design a professional website for my business",
+        ar: "أريد تصميم موقع إلكتروني احترافي لعملي"
+      }
+    },
+    {
+      id: "card12",
+      title: "Service 12",
+      image: language === 'ar' ? "/cards/card12-ar.png" : "/cards/card12.png",
       message: {
         en: "I want to design a professional website for my business",
         ar: "أريد تصميم موقع إلكتروني احترافي لعملي"

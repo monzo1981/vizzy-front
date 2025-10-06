@@ -674,7 +674,7 @@ export default function ProfilePage() {
                         <p style={{ color: '#11002E', fontWeight: 400, fontSize: '16px' }}>{t('profile.upgradeMessage')}</p>
                       </div>
                       <Button 
-                        className="w-full"
+                        className="cursor-pointer w-full"
                         style={{
                           background: '#4248FF',
                           color: 'white',
@@ -684,6 +684,7 @@ export default function ProfilePage() {
                           paddingTop: '14px',
                           paddingBottom: '14px',
                         }}
+                        onClick={() => router.push(createLocalizedPath('pricing'))}
                       >
                         {t('profile.upgradeNow')}
                       </Button>

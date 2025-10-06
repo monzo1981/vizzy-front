@@ -8,16 +8,38 @@ export const Footer = () => {
   return (
     <footer className="bg-[#11002E] text-white px-6 py-16">
       <div className="max-w-6xl mx-auto">
+        {/* Logo */}
+        <div className="flex justify-start mb-4">
+          <Image src="/vizzy-logo-dark.svg" alt="VIZZY Logo" width={180} height={180} />
+        </div>
+
+        {/* Section Titles */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-8">
+          <h4 style={{ background: 'linear-gradient(90.19deg, #4248FF 3.94%, #FF4A19 109.12%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', fontWeight: 700, fontSize: '20px' }}>
+            Your Personal Agency
+          </h4>
+          <h4 style={{ background: 'linear-gradient(90.19deg, #4248FF 3.94%, #FF4A19 109.12%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', fontWeight: 700, fontSize: '20px' }}>
+            Helpful Links & Features
+          </h4>
+          <h4 style={{ background: 'linear-gradient(90.19deg, #4248FF 3.94%, #FF4A19 109.12%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', fontWeight: 700, fontSize: '20px' }}>
+            Information Center
+          </h4>
+          <div className="flex space-x-4">
+            <Link href="/" className="hover:text-white transition-colors" style={{ color: 'white', fontWeight: 700, fontSize: '16px' }}>
+              HOME
+            </Link>
+            <Link href="/pricing" className="hover:text-white transition-colors" style={{ color: 'white', fontWeight: 700, fontSize: '16px' }}>
+              Pricing
+            </Link>
+            <Link href="/services" className="hover:text-white transition-colors" style={{ color: 'white', fontWeight: 700, fontSize: '16px' }}>
+              Services
+            </Link>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
           {/* Brand Section */}
           <div className="space-y-6">
-            <div className="flex items-center space-x-2">
-              <Image src="/vizzy-logo-dark.svg" alt="VIZZY Logo" width={150} height={150} />
-            </div>
-            <p className="text-sm" style={{ background: 'linear-gradient(90.19deg, #4248FF 3.94%, #FF4A19 109.12%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', fontWeight: 700, fontSize: '20px' }}>
-              Your Personal Agency
-            </p>
-            
             <div className="space-y-4">
               <h4 className="text-lg font-semibold">About Us</h4>
               <p className="text-sm leading-relaxed" style={{ color: '#78758E', fontWeight: 400 }}>
@@ -43,9 +65,6 @@ export const Footer = () => {
 
           {/* Helpful Links & Features */}
           <div className="space-y-6">
-            <h4 style={{ background: 'linear-gradient(90.19deg, #4248FF 3.94%, #FF4A19 109.12%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', fontWeight: 700, fontSize: '20px' }}>
-              Helpful Links & Features
-            </h4>
             <div className="space-y-3 text-sm" style={{ color: '#78758E', fontWeight: 400 }}>
               <Link href="#" className="block hover:text-white transition-colors">Soon - Competitions</Link>
               <Link href="#" className="block hover:text-white transition-colors">Soon - Testimonials</Link>
@@ -57,9 +76,6 @@ export const Footer = () => {
 
           {/* Information Center */}
           <div className="space-y-6">
-            <h4 style={{ background: 'linear-gradient(90.19deg, #4248FF 3.94%, #FF4A19 109.12%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', fontWeight: 700, fontSize: '20px' }}>
-              Information Center
-            </h4>
             <div className="space-y-3 text-sm" style={{ color: '#78758E', fontWeight: 400 }}>
               <Link href="/terms" className="block hover:text-white transition-colors">Terms and Conditions</Link>
               <Link href="/privacy" className="block hover:text-white transition-colors">Privacy Policy</Link>
@@ -86,18 +102,6 @@ export const Footer = () => {
 
           {/* Newsletter & Top Links */}
           <div className="space-y-6">
-            <div className="flex space-x-4 text-sm">
-              <Link href="/" className="hover:text-white transition-colors" style={{ color: 'white', fontWeight: 700, fontSize: '16px' }}>
-                HOME
-              </Link>
-              <Link href="/pricing" className="hover:text-white transition-colors" style={{ color: 'white', fontWeight: 700, fontSize: '16px' }}>
-                Pricing
-              </Link>
-              <Link href="/services" className="hover:text-white transition-colors" style={{ color: 'white', fontWeight: 700, fontSize: '16px' }}>
-                Services
-              </Link>
-            </div>
-            
             <div className="space-y-4">
               <h4 className="text-lg font-semibold" style={{ color: '#4248FF' }}>
                 Subscribe & get offers and updates
@@ -118,9 +122,9 @@ export const Footer = () => {
         </div>
 
         {/* Copyright */}
-        <div className="border-t border-white/10 pt-6 text-center">
-          <p className="text-sm text-gray-500">
-            © All Copy Rights Is Reserved to vizzy app 2025 - Owned By Monzology
+        <div className="border-t border-white pt-6 text-center">
+          <p className="text-sm text-white">
+            © All Copy Rights is Reseved to vizzy app 2025 - Owned By  Monzology EG  and any fesa or zeta legal action will be taken.
           </p>
         </div>
       </div>

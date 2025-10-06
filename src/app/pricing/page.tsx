@@ -66,12 +66,13 @@ interface PricingCardProps {
   subscriptionId?: string;
   billingPeriod?: 'monthly' | 'yearly';
   title: string;
-  description: string;
+  description?: string;
   price?: string;
   originalPrice?: string;
   period?: string;
   features: Feature[];
   buttonText: string;
+  points?: string;
   isPopular?: boolean;
   isContactCard?: boolean;
 }
@@ -80,12 +81,12 @@ const PricingCard = ({
   subscriptionId,
   billingPeriod = 'monthly',
   title, 
-  description, 
   price, 
   originalPrice, 
   period, 
   features, 
   buttonText, 
+  points,
   isPopular = false,
   isContactCard = false 
 }: PricingCardProps) => {
@@ -109,7 +110,7 @@ const PricingCard = ({
             borderRadius: '36px'
           }}
         >
-          <div className="mb-6">
+          <div className="mb-0">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-[50px] font-bold" style={{ background: 'linear-gradient(90.77deg, #4248FF -13.59%, #370094 83.45%)', WebkitBackgroundClip: 'text', color: 'transparent', fontWeight: 700 }}>{title}</h3>
               {isPopular && (
@@ -118,7 +119,6 @@ const PricingCard = ({
                 </div>
               )}
             </div>
-            <p className="text-sm leading-relaxed" style={{ color: '#11002E', fontWeight: 300 }}>{description}</p>
           </div>
 
           <div className="mb-8">
@@ -135,15 +135,29 @@ const PricingCard = ({
                 )}
               </>
             )}
+            {points && (
+              <div className="text-center mt-2 flex items-center justify-center" style={{ color: '#FF4A19', fontWeight: 700, fontSize: '30px' }}>
+                {points.includes("∞") ? (
+                  <>
+                    <Image src="/infinety.svg" alt="infinity" width={40} height={40} className="mr-2" />
+                    Points
+                  </>
+                ) : (
+                  points
+                )}
+              </div>
+            )}
           </div>
+
+          {isContactCard && <div className="h-8"></div>}
 
           <div className="space-y-4 mb-8 flex-1">
             {features.map((feature, index) => (
               <div key={index} className="flex items-center space-x-3">
                 {feature.included ? (
-                  <Image src="/true.svg" alt="check" width={20} height={20} className="flex-shrink-0" />
+                  <Image src="/true.svg" alt="check" width={16} height={16} className="flex-shrink-0" />
                 ) : (
-                  <Image src="/false.svg" alt="x" width={20} height={20} className="flex-shrink-0" />
+                  <Image src="/false.svg" alt="x" width={16} height={16} className="flex-shrink-0" />
                 )}
                 <span className="text-sm" style={{ color: '#320580', fontWeight: 300 }}>{feature.text}</span>
               </div>
@@ -196,30 +210,30 @@ const PricingSection = () => {
   const [isMonthly, setIsMonthly] = useState(true);
 
   const proFeatures = [
-    { text: "3,000 AI credits/month for creating images", included: true },
-    { text: "100 AI videos/month", included: true },
-    { text: "5 Projects", included: true },
-    { text: "Basic AI text generation", included: true },
-    { text: "Priority support", included: false },
-    { text: "Custom branding", included: false },
+    { text: "Vizzy Chat", included: true },
+    { text: "Image Generation", included: true },
+    { text: "Video Generation", included: true },
+    { text: "Voice Chat", included: false },
+    { text: "Emailing", included: false },
+    { text: "Brand Manual", included: false },
   ];
 
   const growFeatures = [
-    { text: "5,000 AI credits/month for creating images", included: true },
-    { text: "200 AI videos/month", included: true },
-    { text: "Unlimited Projects", included: true },
-    { text: "Advanced AI text generation", included: true },
-    { text: "Priority support", included: true },
-    { text: "Custom branding", included: false },
+    { text: "Vizzy Chat", included: true },
+    { text: "Image Generation", included: true },
+    { text: "Video Generation", included: true },
+    { text: "Voice Chat", included: true },
+    { text: "Emailing", included: true },
+    { text: "Brand Manual", included: true },
   ];
 
   const unlimitedFeatures = [
-    { text: "Unlimited AI credits for images", included: true },
-    { text: "Unlimited AI videos", included: true },
-    { text: "Unlimited Projects", included: true },
-    { text: "Premium AI text generation", included: true },
-    { text: "24/7 Priority support", included: true },
-    { text: "Custom branding & white-label", included: true },
+    { text: "Vizzy Chat", included: true },
+    { text: "Image Generation", included: true },
+    { text: "Video Generation", included: true },
+    { text: "Voice Chat", included: true },
+    { text: "Emailing", included: true },
+    { text: "Brand Manual", included: true },
   ];
 
   return (
@@ -267,11 +281,12 @@ const PricingSection = () => {
             billingPeriod={isMonthly ? 'monthly' : 'yearly'}
             title="Pro"
             description="Kick off your AI journey with all the basics to spark your creativity!"
-            price={isMonthly ? "490 EGP" : "4,900 EGP"}
-            originalPrice={isMonthly ? "600 EGP" : "7,200 EGP"}
+            price={isMonthly ? "498 EGP" : "4,900 EGP"}
+            originalPrice={isMonthly ? "750 EGP" : "7,200 EGP"}
             period={isMonthly ? "month" : "year"}
             features={proFeatures}
             buttonText="Upgrade to Pro"
+            points="8,000 Point"
           />
           
           {/* Grow Plan - Most Popular */}
@@ -280,12 +295,13 @@ const PricingSection = () => {
             billingPeriod={isMonthly ? 'monthly' : 'yearly'}
             title="Grow"
             description="Level up your content with advanced AI tools and unlimited possibilities!"
-            price={isMonthly ? "780 EGP" : "7,800 EGP"}
-            originalPrice={isMonthly ? "999 EGP" : "11,988 EGP"}
+            price={isMonthly ? "753 EGP" : "7,800 EGP"}
+            originalPrice={isMonthly ? "1,130 EGP" : "11,988 EGP"}
             period={isMonthly ? "month" : "year"}
             features={growFeatures}
             buttonText="Upgrade to Grow"
             isPopular={true}
+            points="13,000 Point"
           />
           
           {/* Unlimited Plan - Contact Us */}
@@ -296,6 +312,7 @@ const PricingSection = () => {
             features={unlimitedFeatures}
             buttonText="Contact Sales"
             isContactCard={true}
+            points="∞ Points"
           />
         </div>
       </div>

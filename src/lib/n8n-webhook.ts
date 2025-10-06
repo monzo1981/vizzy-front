@@ -12,7 +12,6 @@ interface N8NRequest {
   first_name?: string;
   last_name?: string;
   timestamp: string;
-  quota: string;
   session_id?: string;
   // New credits system
   remaining_credits?: number | null;
@@ -320,6 +319,12 @@ async sendMessage(
         console.warn('[N8NWebhook] ⚠️ WARNING: Sending null industry to N8N!');
       }
 
+      // Determine logo_url based on subscription type
+      const subscriptionType = userLimits?.subscription_type ?? 'Trial';
+      const logoUrl = subscriptionType === 'Trial' 
+        ? 'https://vizzystorage.blob.core.windows.net/vizzy-users-files/Logo.png'
+        : (this.companyProfile?.logo_url || null);
+
       const response = await fetch(this.webhookUrl, {
         method: 'POST',
         headers: {
@@ -334,17 +339,16 @@ async sendMessage(
           session_id: sessionId,
           user_email: this.userEmail,
           name: `${this.firstName} ${this.lastName}`,
-          quota: "paid",
           timestamp: new Date().toISOString(),
           // Credits system - only what N8N needs
           remaining_credits: userLimits?.remaining_credits ?? null,
-          subscription_type: userLimits?.subscription_type ?? 'Trial',
+          subscription_type: subscriptionType,
           is_first_time_user: userLimits?.is_first_time_user ?? false,
           // Company profile data
           company_name: this.companyProfile?.company_name || null,
           company_website_url: this.companyProfile?.company_website_url || null,
           about_company: this.companyProfile?.about_company || null,
-          logo_url: this.companyProfile?.logo_url || null,
+          logo_url: logoUrl,
           industry: this.companyProfile?.industry || null,
           job_title: this.companyProfile?.job_title || null,
           visual_guide: this.companyProfile?.visual_guide || null,  // NEW
@@ -395,6 +399,12 @@ async sendVoiceMessage(
       const userLimits = await this.getUserLimits();
       const language = localStorage.getItem('language') || 'en';
 
+      // Determine logo_url based on subscription type
+      const subscriptionType = userLimits?.subscription_type ?? 'Trial';
+      const logoUrl = subscriptionType === 'Trial' 
+        ? 'https://vizzystorage.blob.core.windows.net/vizzy-users-files/Logo.png'
+        : (this.companyProfile?.logo_url || null);
+
       const response = await fetch(this.webhookUrl, {
         method: 'POST',
         headers: {
@@ -408,17 +418,16 @@ async sendVoiceMessage(
           user_email: this.userEmail,
           session_id: sessionId,
           name: `${this.firstName} ${this.lastName}`,
-          quota: "paid",
           timestamp: new Date().toISOString(),
           // Credits system - only what N8N needs
           remaining_credits: userLimits?.remaining_credits ?? null,
-          subscription_type: userLimits?.subscription_type ?? 'Trial',
+          subscription_type: subscriptionType,
           is_first_time_user: userLimits?.is_first_time_user ?? false,
           // Company profile data
           company_name: this.companyProfile?.company_name || null,
           company_website_url: this.companyProfile?.company_website_url || null,
           about_company: this.companyProfile?.about_company || null,
-          logo_url: this.companyProfile?.logo_url || null,
+          logo_url: logoUrl,
           industry: this.companyProfile?.industry || null,
           job_title: this.companyProfile?.job_title || null,
           visual_guide: this.companyProfile?.visual_guide || null,  // NEW
@@ -473,6 +482,12 @@ async sendImageMessage(
       const userLimits = await this.getUserLimits();
       const language = localStorage.getItem('language') || 'en';
 
+      // Determine logo_url based on subscription type
+      const subscriptionType = userLimits?.subscription_type ?? 'Trial';
+      const logoUrl = subscriptionType === 'Trial' 
+        ? 'https://vizzystorage.blob.core.windows.net/vizzy-users-files/Logo.png'
+        : (this.companyProfile?.logo_url || null);
+
       // Prepare image URLs - support up to 3 images
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const requestBody: any = {
@@ -482,17 +497,16 @@ async sendImageMessage(
         session_id: sessionId,
         user_email: this.userEmail,
         name: `${this.firstName} ${this.lastName}`,
-        quota: "paid",
         timestamp: new Date().toISOString(),
         // Credits system - only what N8N needs
         remaining_credits: userLimits?.remaining_credits ?? null,
-        subscription_type: userLimits?.subscription_type ?? 'Trial',
+        subscription_type: subscriptionType,
         is_first_time_user: userLimits?.is_first_time_user ?? false,
         // Company profile data
         company_name: this.companyProfile?.company_name || null,
         company_website_url: this.companyProfile?.company_website_url || null,
         about_company: this.companyProfile?.about_company || null,
-        logo_url: this.companyProfile?.logo_url || null,
+        logo_url: logoUrl,
         industry: this.companyProfile?.industry || null,
         job_title: this.companyProfile?.job_title || null,
         visual_guide: this.companyProfile?.visual_guide || null,
