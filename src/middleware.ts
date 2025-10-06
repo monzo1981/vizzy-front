@@ -4,6 +4,19 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   
+  // Redirect root path to Arabic by default
+  if (pathname === '/') {
+    const hasAuth = request.cookies.has('access_token') || request.cookies.has('authToken');
+    
+    if (hasAuth) {
+      // Redirect authenticated users to Arabic chat
+      return NextResponse.redirect(new URL('/ar/chat', request.url));
+    } else {
+      // Redirect unauthenticated users to Arabic signin
+      return NextResponse.redirect(new URL('/ar', request.url));
+    }
+  }
+  
   // Handle /ar root path redirect
   if (pathname === '/ar') {
     // Check for authentication (you can customize this logic)
@@ -13,8 +26,8 @@ export function middleware(request: NextRequest) {
       // Redirect authenticated users to Arabic chat
       return NextResponse.redirect(new URL('/ar/chat', request.url));
     } else {
-      // Redirect unauthenticated users to Arabic signin
-      return NextResponse.redirect(new URL('/', request.url));
+      // Keep unauthenticated users on Arabic signin (rewrite to root signin)
+      return NextResponse.rewrite(new URL('/', request.url));
     }
   }
   
@@ -28,5 +41,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/ar', '/ar/:path*']
+  matcher: ['/', '/ar', '/ar/:path*']
 };

@@ -108,7 +108,7 @@ export default function RootLayout({
   }
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="ar" suppressHydrationWarning>
       <head>
         <title>{pageTitle}</title>
         <link rel="icon" href="/web-icon.svg" />

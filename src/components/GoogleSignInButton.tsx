@@ -44,7 +44,7 @@ const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
       if (result.success && result.data?.user) {
         console.log('[GoogleSignInButton] Login successful:', result.data.user.email);
         onSuccess?.(result.data.user);
-        router.push('/chat');
+        router.push('/ar/chat');
       } else {
         console.error('[GoogleSignInButton] Backend error:', result.error);
         throw new Error(result.error || 'Google login failed');

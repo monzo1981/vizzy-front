@@ -61,7 +61,7 @@ const SignUp = () => {
   useEffect(() => {
     // If user is already authenticated, redirect to chat
     if (isAuthenticated()) {
-      router.push('/chat');
+      router.push('/ar/chat');
     }
   }, [router]);
 
@@ -179,7 +179,7 @@ const SignUp = () => {
 
     if (result.success) {
       // Optionally show a success message before redirecting
-      router.push('/chat');
+      router.push('/ar/chat');
     } else {
       setError(result.error || 'An unexpected error occurred.');
     }

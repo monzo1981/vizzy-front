@@ -299,7 +299,7 @@ async sendMessage(
       await this.fetchCompanyProfile(isFirstMessage);
       
       const userLimits = await this.getUserLimits();
-      const language = localStorage.getItem('language') || 'en';
+      const language = localStorage.getItem('language') || 'ar'; // Default to Arabic
 
       // Log what we're sending to N8N
       const companyDataToSend = {
@@ -397,7 +397,7 @@ async sendVoiceMessage(
       await this.fetchCompanyProfile(isFirstMessage);
       
       const userLimits = await this.getUserLimits();
-      const language = localStorage.getItem('language') || 'en';
+      const language = localStorage.getItem('language') || 'ar'; // Default to Arabic
 
       // Determine logo_url based on subscription type
       const subscriptionType = userLimits?.subscription_type ?? 'Trial';
@@ -480,7 +480,7 @@ async sendImageMessage(
       await this.fetchCompanyProfile(isFirstMessage);
       
       const userLimits = await this.getUserLimits();
-      const language = localStorage.getItem('language') || 'en';
+      const language = localStorage.getItem('language') || 'ar'; // Default to Arabic
 
       // Determine logo_url based on subscription type
       const subscriptionType = userLimits?.subscription_type ?? 'Trial';

@@ -36,7 +36,7 @@ const Login = () => {
   useEffect(() => {
     // Check if user is already authenticated
     if (isAuthenticated()) {
-      router.push('/chat');
+      router.push('/ar/chat');
     } else {
       setIsCheckingAuth(false);
     }
@@ -48,7 +48,7 @@ const Login = () => {
     setIsLoading(true);
     const result = await login({ email, password });
     if (result.success) {
-      router.push('/chat');
+      router.push('/ar/chat');
     } else {
       setError(result.error || 'An unexpected error occurred.');
     }

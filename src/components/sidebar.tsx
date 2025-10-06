@@ -89,7 +89,7 @@ export function Sidebar({
   onNewChatCreated 
 }: SidebarProps) {
   const router = useRouter();
-  const { language, changeLanguage, isHydrated } = useLanguage();
+  const { language, changeLanguage, isHydrated, createLocalizedPath } = useLanguage();
   const [isExpanded, setIsExpanded] = useState(isMobile ? true : isOpen);
   const [isPinned, setIsPinned] = useState(isMobile);
   const [chatHistory, setChatHistory] = useState<ChatSession[]>([]);
@@ -165,10 +165,10 @@ export function Sidebar({
   const handleChatSelect = (sessionId: string) => {
     sessionStorage.setItem('ai_chat_session_id', sessionId);
     
-    if (window.location.pathname === '/chat') {
+    if (window.location.pathname === '/chat' || window.location.pathname === '/ar/chat') {
       window.location.reload();
     } else {
-      router.push('/chat');
+      router.push(createLocalizedPath('chat'));
     }
     
     if (isMobile) {
@@ -184,10 +184,10 @@ export function Sidebar({
   const handleNewChat = () => {
     sessionStorage.removeItem('ai_chat_session_id');
     
-    if (window.location.pathname === '/chat') {
+    if (window.location.pathname === '/chat' || window.location.pathname === '/ar/chat') {
       window.location.reload();
     } else {
-      router.push('/chat');
+      router.push(createLocalizedPath('chat'));
     }
     
     if (isMobile) {

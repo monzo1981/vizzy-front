@@ -173,7 +173,7 @@ const translations = {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguage] = useState<Language>('en'); // Always start with 'en' for SSR consistency
+  const [language, setLanguage] = useState<Language>('ar'); // Default to Arabic for SSR consistency
   const [isHydrated, setIsHydrated] = useState(false);
 
   // Enhanced URL-based language management with localStorage backup
@@ -182,17 +182,23 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       const detectAndSetLanguage = () => {
         const path = window.location.pathname;
         const isArabicPath = path.startsWith('/ar');
-        const urlLanguage = isArabicPath ? 'ar' : 'en';
         
-        // For pages without language prefix, check localStorage as fallback
-        let finalLanguage: Language = urlLanguage;
-        if (!isArabicPath && path === '/') {
-          // Only for root path, consider localStorage preference
+        // Default to Arabic unless explicitly on English path
+        let finalLanguage: Language = 'ar';
+        
+        // If path starts with /ar, use Arabic
+        if (isArabicPath) {
+          finalLanguage = 'ar';
+        } 
+        // If path is exactly '/' or doesn't start with /ar, check localStorage
+        else {
           const savedLanguage = localStorage.getItem('language') as Language;
-          if (savedLanguage === 'ar') {
-            // User prefers Arabic but is on root - redirect to /ar
-            window.history.replaceState({}, '', '/ar');
-            finalLanguage = 'ar';
+          // Default to Arabic unless explicitly set to English
+          finalLanguage = savedLanguage === 'en' ? 'en' : 'ar';
+          
+          // If user prefers Arabic, redirect to /ar path
+          if (finalLanguage === 'ar' && !isArabicPath) {
+            window.history.replaceState({}, '', '/ar' + path);
           }
         }
         
