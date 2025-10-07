@@ -257,20 +257,19 @@ export function Sidebar({
               <button
                 onClick={() => changeLanguage(language === 'en' ? 'ar' : 'en')}
                 className={cn(
-                  "p-2 rounded-lg transition-colors duration-200 flex items-center gap-2",
+                  "p-2 rounded-lg transition-colors duration-200 flex items-center gap-2 w-full",
                   mounted && isDarkMode ? "hover:bg-white/10" : "hover:bg-[#7FCAFE1A]",
-                  showExpanded ? "w-full justify-start" : "mx-auto"
+                  showExpanded ? "justify-start" : "justify-center"
                 )}
               >
                 <span 
                   className={cn(
-                    "text-sm font-bold flex-shrink-0",
-                    mounted && isDarkMode ? "text-white" : "text-gray-700"
+                    "text-sm font-bold flex-shrink-0 rounded-full w-7 h-7 flex items-center justify-center text-xs",
+                    mounted && isDarkMode ? "bg-white text-[#0E0E10]" : "text-white"
                   )}
                   style={{ 
-                    minWidth: '24px',
-                    textAlign: 'center',
-                    display: 'inline-block'
+                    fontSize: '10px',
+                    backgroundColor: mounted && isDarkMode ? undefined : '#4B5563'
                   }}
                   suppressHydrationWarning
                 >
@@ -303,9 +302,9 @@ export function Sidebar({
               <button
                 onClick={onDarkModeToggle}
                 className={cn(
-                  "p-2 rounded-lg transition-colors duration-200 flex items-center gap-2",
+                  "p-2 rounded-lg transition-colors duration-200 flex items-center gap-2 w-full",
                   mounted && isDarkMode ? "hover:bg-white/10" : "hover:bg-[#7FCAFE1A]",
-                  showExpanded ? "w-full justify-start" : "mx-auto"
+                  showExpanded ? "justify-start" : "justify-center"
                 )}
               >
                 <svg 
@@ -355,9 +354,8 @@ export function Sidebar({
               <button
                 onClick={handleTogglePin}
                 className={cn(
-                  "p-2 rounded-lg transition-colors duration-200 flex items-center gap-2",
-                  // mounted && isDarkMode ? "hover:bg-white/10" : "hover:bg-[#7FCAFE1A]",
-                  showExpanded ? "w-full justify-start" : "mx-auto"
+                  "p-2 rounded-lg transition-colors duration-200 flex items-center gap-2 w-full",
+                  showExpanded ? "justify-start" : "justify-center"
                 )}
               >
                 <img 
@@ -399,9 +397,9 @@ export function Sidebar({
               <button
                 onClick={handleNewChat}
                 className={cn(
-                  "p-2 rounded-lg transition-colors duration-200 flex items-center gap-2",
+                  "p-2 rounded-lg transition-colors duration-200 flex items-center gap-2 w-full",
                   mounted && isDarkMode ? "hover:bg-white/10" : "hover:bg-[#7FCAFE1A]",
-                  showExpanded ? "w-full justify-start" : "mx-auto"
+                  showExpanded ? "justify-start" : "justify-center"
                 )}
               >
                 <img 

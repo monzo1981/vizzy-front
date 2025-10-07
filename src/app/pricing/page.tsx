@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { GradientBackground } from '@/components/gradient-background';
 import { Footer } from '@/components/Footer';
 import { PaymentButton } from '@/components/PaymentButton';
@@ -72,7 +73,6 @@ interface PricingCardProps {
   period?: string;
   features: Feature[];
   buttonText: string;
-  points?: string;
   isPopular?: boolean;
   isContactCard?: boolean;
 }
@@ -86,7 +86,6 @@ const PricingCard = ({
   period, 
   features, 
   buttonText, 
-  points,
   isPopular = false,
   isContactCard = false 
 }: PricingCardProps) => {
@@ -135,18 +134,6 @@ const PricingCard = ({
                 )}
               </>
             )}
-            {points && (
-              <div className="text-center mt-2 flex items-center justify-center" style={{ color: '#FF4A19', fontWeight: 700, fontSize: '30px' }}>
-                {points.includes("∞") ? (
-                  <>
-                    <Image src="/infinety.svg" alt="infinity" width={40} height={40} className="mr-2" />
-                    Points
-                  </>
-                ) : (
-                  points
-                )}
-              </div>
-            )}
           </div>
 
           {isContactCard && <div className="h-8"></div>}
@@ -159,7 +146,16 @@ const PricingCard = ({
                 ) : (
                   <Image src="/false.svg" alt="x" width={16} height={16} className="flex-shrink-0" />
                 )}
-                <span className="text-sm" style={{ color: '#320580', fontWeight: 300 }}>{feature.text}</span>
+                <span 
+                  className={`text-sm ${feature.text.includes('Points') ? 'underline decoration-1 underline-offset-2' : ''}`} 
+                  style={{ 
+                    color: '#320580', 
+                    fontWeight: feature.text.includes('Points') ? 500 : 300,
+                    textDecorationColor: feature.text.includes('Points') ? '#320580' : 'none'
+                  }}
+                >
+                  {feature.text}
+                </span>
               </div>
             ))}
           </div>
@@ -207,30 +203,40 @@ const PricingCard = ({
 // PricingSection Component
 const PricingSection = () => {
   const { isDarkMode } = useTheme();
+  const { t } = useLanguage();
   const [isMonthly, setIsMonthly] = useState(true);
 
   const proFeatures = [
+    { text: "8,000 Points", included: true },
     { text: "Vizzy Chat", included: true },
     { text: "Image Generation", included: true },
+    { text: "Image Edit", included: true },
     { text: "Video Generation", included: true },
+    { text: "Branded Content", included: true },
     { text: "Voice Chat", included: false },
     { text: "Emailing", included: false },
     { text: "Brand Manual", included: false },
   ];
 
   const growFeatures = [
+    { text: "13,000 Points", included: true },
     { text: "Vizzy Chat", included: true },
     { text: "Image Generation", included: true },
+    { text: "Image Edit", included: true },
     { text: "Video Generation", included: true },
+    { text: "Branded Content", included: true },
     { text: "Voice Chat", included: true },
     { text: "Emailing", included: true },
     { text: "Brand Manual", included: true },
   ];
 
   const unlimitedFeatures = [
+    { text: "Unlimited Points!", included: true },
     { text: "Vizzy Chat", included: true },
     { text: "Image Generation", included: true },
+    { text: "Image Edit", included: true },
     { text: "Video Generation", included: true },
+    { text: "Branded Content", included: true },
     { text: "Voice Chat", included: true },
     { text: "Emailing", included: true },
     { text: "Brand Manual", included: true },
@@ -241,12 +247,9 @@ const PricingSection = () => {
       <div className="max-w-8xl mx-auto">
         {/* Header */}
         <div className="text-center mb-16">
-          <h1 className="text-5xl md:text-6xl font-bold mb-2 pb-2" style={{ background: 'linear-gradient(90deg, #FFEB77 -11.94%, #FF4A19 25.5%, #4248FF 107.91%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
-            Your Complete Marketing Solution
+          <h1 className="text-5xl md:text-6xl font-bold mb-2 pt-2 pb-2 max-w-5xl mx-auto" style={{ background: 'linear-gradient(90deg, #FFEB77 -11.94%, #FF4A19 25.5%, #4248FF 107.91%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
+            {t('pricing.completeMarketingSolution')}
           </h1>
-          <p className={`text-lg ${isDarkMode ? 'text-white' : 'text-black'} mb-8 font-medium`} dir="rtl" suppressHydrationWarning>
-            باقات و حلول متنوعة عشان تختار اللي يناسب ميزانيتك و احتياجات مشروعك
-          </p>
           
           {/* Toggle */}
           {/* <div className="flex items-center justify-center px-1 py-1 mb-12 w-fit mx-auto" style={{ backgroundColor: isDarkMode ? '#D3E6FC33' : '#4248FF2E', borderRadius: '50px', border: isDarkMode ? '1px solid #ffffff70' : 'none' }} suppressHydrationWarning>
@@ -281,12 +284,11 @@ const PricingSection = () => {
             billingPeriod={isMonthly ? 'monthly' : 'yearly'}
             title="Pro"
             description="Kick off your AI journey with all the basics to spark your creativity!"
-            price={isMonthly ? "498 EGP" : "4,900 EGP"}
+            price={isMonthly ? "499 EGP" : "4,900 EGP"}
             originalPrice={isMonthly ? "750 EGP" : "7,200 EGP"}
             period={isMonthly ? "month" : "year"}
             features={proFeatures}
             buttonText="Upgrade to Pro"
-            points="8,000 Point"
           />
           
           {/* Grow Plan - Most Popular */}
@@ -295,13 +297,12 @@ const PricingSection = () => {
             billingPeriod={isMonthly ? 'monthly' : 'yearly'}
             title="Grow"
             description="Level up your content with advanced AI tools and unlimited possibilities!"
-            price={isMonthly ? "753 EGP" : "7,800 EGP"}
+            price={isMonthly ? "759 EGP" : "7,800 EGP"}
             originalPrice={isMonthly ? "1,130 EGP" : "11,988 EGP"}
             period={isMonthly ? "month" : "year"}
             features={growFeatures}
             buttonText="Upgrade to Grow"
             isPopular={true}
-            points="13,000 Point"
           />
           
           {/* Unlimited Plan - Contact Us */}
@@ -312,7 +313,6 @@ const PricingSection = () => {
             features={unlimitedFeatures}
             buttonText="Contact Sales"
             isContactCard={true}
-            points="∞ Points"
           />
         </div>
       </div>

@@ -13,6 +13,16 @@ interface PaymentButtonProps {
   className?: string;
 }
 
+/**
+ * PaymentButton Component with Double-Click Protection
+ * 
+ * Features:
+ * - Prevents double-click/multiple payment initiations
+ * - Shows loading state during payment processing
+ * - Opens payment in popup window
+ * - Handles errors gracefully
+ * - Auto-resets after timeout for retry capability
+ */
 export const PaymentButton: React.FC<PaymentButtonProps> = ({
   subscriptionTypeId,
   billingPeriod,
@@ -24,6 +34,12 @@ export const PaymentButton: React.FC<PaymentButtonProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const handlePayment = async () => {
+    // ✅ PROTECTION: Prevent double-click
+    if (isProcessing) {
+      console.log('⚠️  Payment already in progress, ignoring click');
+      return;
+    }
+
     setIsProcessing(true);
     setError(null);
 
@@ -32,7 +48,7 @@ export const PaymentButton: React.FC<PaymentButtonProps> = ({
       billingPeriod,
       (transactionId) => {
         // Payment successful
-        console.log('Payment successful:', transactionId);
+        console.log('✅ Payment successful:', transactionId);
         setIsProcessing(false);
         
         // Redirect to success page
@@ -40,14 +56,22 @@ export const PaymentButton: React.FC<PaymentButtonProps> = ({
       },
       (errorMsg) => {
         // Payment failed
-        console.error('Payment failed:', errorMsg);
+        console.error('❌ Payment failed:', errorMsg);
         setError(errorMsg);
-        setIsProcessing(false);
+        
+        // ✅ Reset after 3 seconds to allow retry
+        setTimeout(() => {
+          setIsProcessing(false);
+        }, 3000);
       },
       () => {
         // Payment cancelled
-        console.log('Payment cancelled');
-        setIsProcessing(false);
+        console.log('⚠️  Payment cancelled by user');
+        
+        // ✅ Reset after 2 seconds
+        setTimeout(() => {
+          setIsProcessing(false);
+        }, 2000);
       }
     );
   };
@@ -66,8 +90,30 @@ export const PaymentButton: React.FC<PaymentButtonProps> = ({
           fontWeight: 700,
           fontSize: '28px',
         }}
+        aria-busy={isProcessing}
+        aria-label={isProcessing ? 'Processing payment...' : buttonText}
       >
-        {isProcessing ? 'Processing...' : buttonText}
+        {isProcessing ? (
+          <span className="flex items-center justify-center gap-2">
+            <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
+              <circle 
+                className="opacity-25" 
+                cx="12" 
+                cy="12" 
+                r="10" 
+                stroke="currentColor" 
+                strokeWidth="4"
+                fill="none"
+              />
+              <path 
+                className="opacity-75" 
+                fill="currentColor" 
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
+            </svg>
+            Processing...
+          </span>
+        ) : buttonText}
       </button>
       
       {error && (

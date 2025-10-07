@@ -90,6 +90,9 @@ const translations = {
       uploadProfilePic: "For uploading new Profile pic",
       recommendedSize: "At least 800×800 px recommended",
       allowedFormats: "JPG or PNG is allowed"
+    },
+    pricing: {
+      completeMarketingSolution: "Your Complete Marketing Solution"
     }
   },
   ar: {
@@ -166,6 +169,9 @@ const translations = {
       uploadProfilePic: "لتحديث صورة الملف الشخصي يفضل أن لا تقل أبعادها عن",
       recommendedSize: "أبعاد الصورة الحديدة عن 800X800 بكسل",
       allowedFormats: "JPG or PNG: الصيغ المقبولة"
+    },
+    pricing: {
+      completeMarketingSolution: "باقات و حلول متنوعة عشان تختار اللي يناسب ميزانيتك و احتياجات مشروعك"
     }
   }
 };
@@ -173,58 +179,70 @@ const translations = {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguage] = useState<Language>('ar'); // Default to Arabic for SSR consistency
+  // Always start with 'ar' for SSR consistency - no conditions
+  const [language, setLanguage] = useState<Language>('ar');
   const [isHydrated, setIsHydrated] = useState(false);
 
   // Enhanced URL-based language management with localStorage backup
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const detectAndSetLanguage = () => {
-        const path = window.location.pathname;
-        const isArabicPath = path.startsWith('/ar');
-        
-        // Default to Arabic unless explicitly on English path
-        let finalLanguage: Language = 'ar';
-        
-        // If path starts with /ar, use Arabic
-        if (isArabicPath) {
-          finalLanguage = 'ar';
-        } 
-        // If path is exactly '/' or doesn't start with /ar, check localStorage
-        else {
-          const savedLanguage = localStorage.getItem('language') as Language;
-          // Default to Arabic unless explicitly set to English
-          finalLanguage = savedLanguage === 'en' ? 'en' : 'ar';
+      // Delay to avoid hydration mismatch
+      const timeoutId = setTimeout(() => {
+        const detectAndSetLanguage = () => {
+          const path = window.location.pathname;
+          const isArabicPath = path.startsWith('/ar');
           
-          // If user prefers Arabic, redirect to /ar path
-          if (finalLanguage === 'ar' && !isArabicPath) {
-            window.history.replaceState({}, '', '/ar' + path);
+          // Default to Arabic unless explicitly on English path
+          let finalLanguage: Language = 'ar';
+          
+          // If path starts with /ar, use Arabic
+          if (isArabicPath) {
+            finalLanguage = 'ar';
+          } 
+          // If path is exactly '/' or doesn't start with /ar, check localStorage
+          else {
+            const savedLanguage = localStorage.getItem('language') as Language;
+            // Default to Arabic unless explicitly set to English
+            finalLanguage = savedLanguage === 'en' ? 'en' : 'ar';
+            
+            // If user prefers Arabic, redirect to /ar path
+            if (finalLanguage === 'ar' && !isArabicPath) {
+              window.history.replaceState({}, '', '/ar' + path);
+            }
           }
-        }
-        
-        // Set language immediately without comparison to fix hydration
-        setLanguage(finalLanguage);
-        setIsHydrated(true);
-        
-        // Always keep localStorage in sync
-        localStorage.setItem('language', finalLanguage);
-        
-        // Update document attributes smoothly
-        document.documentElement.lang = finalLanguage;
-        // Let components decide individually on RTL
-        document.documentElement.removeAttribute('dir');
-      };
+          
+          // Only update if different to avoid unnecessary re-renders
+          setLanguage(prevLang => {
+            if (prevLang !== finalLanguage) {
+              // Always keep localStorage in sync
+              localStorage.setItem('language', finalLanguage);
+              
+              // Update document attributes smoothly
+              document.documentElement.lang = finalLanguage;
+              // Let components decide individually on RTL
+              document.documentElement.removeAttribute('dir');
+              
+              return finalLanguage;
+            }
+            return prevLang;
+          });
+          
+          setIsHydrated(true);
+        };
 
-      // Initial detection
-      detectAndSetLanguage();
-      
-      // Listen for route changes (back/forward navigation)
-      const handlePopState = () => {
+        // Initial detection
         detectAndSetLanguage();
-      };
+        
+        // Listen for route changes (back/forward navigation)
+        const handlePopState = () => {
+          detectAndSetLanguage();
+        };
+        
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+      }, 100); // Small delay to ensure hydration completes
       
-      window.addEventListener('popstate', handlePopState);
-      return () => window.removeEventListener('popstate', handlePopState);
+      return () => clearTimeout(timeoutId);
     }
   }, []); // Empty dependency array - only run once on mount
 

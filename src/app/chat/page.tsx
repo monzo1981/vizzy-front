@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic' 
 
-import { useState, useRef, useEffect, memo, useCallback, Suspense } from "react"
+import { useState, useRef, useEffect, memo, useCallback, Suspense, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { AvatarDropdown } from "@/components/ui/avatar-dropdown"
@@ -83,8 +83,11 @@ function ChatContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { isOpen, toggle } = useSidebar()
-  const { t, createLocalizedPath } = useLanguage()
+  const { t } = useLanguage()
   const { isDarkMode, toggleDarkMode, mounted } = useTheme()
+  
+  // Memoize the title to ensure stability during hydration
+  const chatTitle = useMemo(() => t('chat.agenda'), [t])
   
   // State Management
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -206,7 +209,7 @@ function ChatContent() {
   }
 
   // Function to check company profile
-  const checkCompanyProfile = async () => {
+  const checkCompanyProfile = useCallback(async () => {
     if (companyProfileChecked) return
 
     try {
@@ -234,7 +237,7 @@ function ChatContent() {
       console.error('Error checking company profile:', error)
       setCompanyProfileChecked(true)
     }
-  }
+  }, [companyProfileChecked, showCompanyInfoModal])
 
   // Initialize auth and N8N
   useEffect(() => {
@@ -267,7 +270,7 @@ function ChatContent() {
     }
 
     initializeUser()
-  }, [router])
+  }, [router, checkCompanyProfile])
 
   // Initialize session and load existing messages
 useEffect(() => {
@@ -744,12 +747,17 @@ const markFirstMessageSent = async () => {
               
               {/* Center Content: Title and Carousel */}
               <div className="flex flex-col items-center">
-                <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-[57px] font-bold text-center leading-none mb-4 pt-1 sm:mb-4 lg:mb-6 lg:pb-2 lg:pt-2.5`} style={{
-                  background: 'linear-gradient(90.57deg, #ff9a3bff 2.54%, #FF4A19 37.91%, #4248FF 90.32%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
-                }}>
-                  {t('chat.agenda')}
+                <h1 
+                  key="chat-title"
+                  className={`text-3xl sm:text-4xl md:text-5xl lg:text-[57px] font-bold text-center leading-none mb-4 pt-1 sm:mb-4 lg:mb-6 lg:pb-2 lg:pt-2.5`} 
+                  style={{
+                    background: 'linear-gradient(90.57deg, #ff9a3bff 2.54%, #FF4A19 37.91%, #4248FF 90.32%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent'
+                  }}
+                  suppressHydrationWarning
+                >
+                  {chatTitle}
                 </h1>
 
                 {/* Services Carousel */}

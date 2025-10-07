@@ -42,7 +42,13 @@ export default function RootLayout({
   // Auto-detect Arabic text and apply appropriate font
   useEffect(() => {
     if (typeof window !== "undefined") {
+      // Flag to track if hydration is complete
+      let hydrationComplete = false;
+      
       const applyArabicFont = () => {
+        // Skip during hydration to avoid mismatch
+        if (!hydrationComplete) return;
+        
         // Arabic Unicode range: U+0600-U+06FF
         const arabicRegex = /[\u0600-\u06FF]/;
         
@@ -74,24 +80,29 @@ export default function RootLayout({
         });
       };
       
-      // Delay initial application to avoid hydration mismatch
+      // Wait for hydration to complete before applying font changes
       const timeoutId = setTimeout(() => {
+        hydrationComplete = true;
         applyArabicFont();
-      }, 100);
+      }, 500); // Increased delay to ensure hydration is complete
       
       // Apply when DOM changes (for dynamic content)
       const observer = new MutationObserver(() => {
         applyArabicFont();
       });
       
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-        characterData: true
-      });
+      // Start observing after hydration
+      const observerTimeoutId = setTimeout(() => {
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+          characterData: true
+        });
+      }, 500);
       
       return () => {
         clearTimeout(timeoutId);
+        clearTimeout(observerTimeoutId);
         observer.disconnect();
       };
     }
