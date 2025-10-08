@@ -119,7 +119,7 @@ export function AvatarDropdown({ currentUser, isDarkMode = false, onUserUpdate, 
           </button>
           
           {/* Upgrade Plan */}
-          <button onClick={() => { router.push('/pricing'); setIsDropdownOpen(false); }} className={`w-full px-3 py-2 text-left flex items-center ${isRTL ? 'flex-row-reverse' : 'flex-row'} gap-2 transition-colors duration-150 ${
+          <button onClick={() => { router.push(createLocalizedPath('pricing')); setIsDropdownOpen(false); }} className={`w-full px-3 py-2 text-left flex items-center ${isRTL ? 'flex-row-reverse' : 'flex-row'} gap-2 transition-colors duration-150 ${
             isDarkMode ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'
           }`}>
             <Zap size={16} className="text-yellow-600 font-bold" />

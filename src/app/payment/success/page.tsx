@@ -1,16 +1,18 @@
 "use client"
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { checkPaymentStatus, PaymentStatusResponse } from '@/lib/payment';
 import { GradientBackground } from '@/components/gradient-background';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 function PaymentSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const transactionId = searchParams.get('transaction_id');
+  const { createLocalizedPath } = useLanguage();
   
   const [isVerifying, setIsVerifying] = useState(true);
   const [verificationStatus, setVerificationStatus] = useState<'success' | 'failed' | 'pending'>('pending');
@@ -18,7 +20,7 @@ function PaymentSuccessContent() {
 
   useEffect(() => {
     if (!transactionId) {
-      router.push('/pricing');
+      router.push(createLocalizedPath('pricing'));
       return;
     }
 
@@ -48,7 +50,7 @@ function PaymentSuccessContent() {
     };
 
     verifyPayment();
-  }, [router, transactionId]);
+  }, [router, transactionId, createLocalizedPath]);
 
   if (isVerifying) {
     return (
@@ -134,7 +136,7 @@ function PaymentSuccessContent() {
         {/* Action Buttons */}
         <div className="flex gap-4 justify-center">
           <Link 
-            href="/chat"
+            href={createLocalizedPath('chat')}
             className="flex-1 text-center text-white py-3.5 font-semibold hover:shadow-lg transition-all"
             style={{ borderRadius: '30px', background: 'linear-gradient(90.02deg, #4248FF 0.02%, #FF4A19 103.19%)', fontSize: '20px', fontWeight: '800' }}
           >
@@ -142,7 +144,7 @@ function PaymentSuccessContent() {
           </Link>
           
           <Link 
-            href="/profile"
+            href={createLocalizedPath('profile')}
             className="flex-1 text-center text-white py-3.5 font-semibold hover:bg-blue-600 transition-all"
             style={{ borderRadius: '30px', background: 'linear-gradient(90deg, #4248FF -4.15%, #7FCAFE 108.3%)', fontSize: '20px', fontWeight: '800' }}
           >

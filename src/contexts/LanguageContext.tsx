@@ -18,7 +18,7 @@ interface LanguageContextType {
 const translations = {
   en: {
     chat: {
-      agenda: "What's Hot today?"
+      agenda: "How Can Vizzy Help?"
     },
     dropdown: {
       viewProfile: "View profile",
@@ -92,9 +92,59 @@ const translations = {
       allowedFormats: "JPG or PNG is allowed"
     },
     pricing: {
-      completeMarketingSolution: "Your Complete Marketing Solution"
+      completeMarketingSolution: "Your Complete Marketing Solution",
+      points: "8,000 Points",
+      points13k: "13,000 Points",
+      unlimitedPoints: "Unlimited Points!",
+      vizzyChat: "Vizzy Chat",
+      imageGeneration: "Image Generation",
+      imageEdit: "Image Edit",
+      videoGeneration: "Video Generation",
+      brandedContent: "Branded Content",
+      voiceChat: "Voice Chat",
+      emailing: "Emailing",
+      brandManual: "Brand Manual",
+      upgradeToPro: "Upgrade to Pro",
+      upgradeToGrow: "Upgrade to Grow",
+      contactSales: "Contact Sales",
+      contactUs: "Contact Us",
+      best: "Best Value",
+    },
+    navigation: {
+      home: "Home",
+      about: "About",
+      contact: "Contact",
+      pricing: "Pricing",
+      joinWaitingList: "Join Waiting List"
+    },
+    footer: {
+      personalAgency: "Your Personal Agency",
+      helpfulLinks: "Helpful Links & Features",
+      informationCenter: "Information Center",
+      home: "HOME",
+      pricing: "Pricing",
+      services: "Services",
+      aboutUs: "About Us",
+      aboutDescription: "VIZZY, the agency-quality marketing partner who makes your brand shine faster, simpler, and more affordably.",
+      contactUs: "Contact US",
+      supportEmail: "support@vizzy.app",
+      infoEmail: "get.info@vizzy.app",
+      competitions: "Soon - Competitions",
+      testimonials: "Soon - Testimonials",
+      tutorials: "Soon - Tutorials and tips",
+      blogs: "Soon - Blogs",
+      events: "Soon - Events",
+      terms: "Terms and Conditions",
+      privacy: "Privacy Policy",
+      support: "Support center",
+      keepInTouch: "Keep in touch",
+      subscribeTitle: "Subscribe & get offers and updates",
+      emailPlaceholder: "your.email@website.com",
+      subscribeNow: "Subscribe Now",
+      copyright: "© All Copy Rights is Reseved to vizzy app 2025 - Owned By  Monzology EG  and any fesa or zeta legal action will be taken."
     }
   },
+
   ar: {
     chat: {
       agenda: "جرّب الجديد أول بأول"
@@ -171,7 +221,56 @@ const translations = {
       allowedFormats: "JPG or PNG: الصيغ المقبولة"
     },
     pricing: {
-      completeMarketingSolution: "باقات و حلول متنوعة عشان تختار اللي يناسب ميزانيتك و احتياجات مشروعك"
+      completeMarketingSolution: "باقات و حلول متنوعة عشان تختار اللي يناسب ميزانيتك و احتياجات مشروعك",
+      points: "8,000 نقطة",
+      points13k: "13,000 نقطة",
+      unlimitedPoints: "نقاط غير محدودة!",
+      vizzyChat: "Vizzy شات",
+      imageGeneration: "توليد صور",
+      imageEdit: "تعديل الصور",
+      videoGeneration: "توليد فيديوهات",
+      brandedContent: "محتوى متواق مع هويتك البصرية",
+      voiceChat: "شات صوتي",
+      emailing: "إرسال النتائج لبريدك الإلكتروني",
+      brandManual: "تحميل و تطبيق هويتك البصرية",
+      upgradeToPro: "اشترك الان",
+      upgradeToGrow: "اشترك الان",
+      contactSales: "تواصل معنا",
+      contactUs: "اتصل بنا",
+      best: "أفضل قيمة",
+    },
+    navigation: {
+      home: "الرئيسية",
+      about: "من نحن",
+      contact: "اتصل بنا",
+      pricing: "الأسعار",
+      joinWaitingList: "انضم لقائمة الانتظار"
+    },
+    footer: {
+      personalAgency: "أول مساعد شخصي للـتسويـق بالذكـاء الاصـطناعي",
+      helpfulLinks: "أحدث الاخبار  , و الروابط",
+      informationCenter: "مركز المعلومات",
+      home: "الرئيسية",
+      pricing: "الأسعار",
+      services: "خدماتنا",
+      aboutUs: "من نحن",
+      aboutDescription: "فِيزِي (VIZZY)، مساعدك التسويقي الخاص , بكل إمكانات شركات الدعاية, الذي يجعل علامتك التجارية تتألق بشكل أسرع وأبسط وبتكلفة أقل.",
+      contactUs: "Contact US",
+      supportEmail: "support@vizzy.app",
+      infoEmail: "get.info@vizzy.app",
+      competitions: "مسابقات - قريباً",
+      testimonials: "آراء المستخدمين - قريباً",
+      tutorials: "النصائح و فيديوهات تعليمية - قريباً",
+      blogs: "المدونات - قريباً",
+      events: " الفعاليات - قريباً",
+      terms: "الشروط والأحكام",
+      privacy: "سياسة الخصوصية",
+      support: "مركز المساعدة",
+      keepInTouch: "تابعنا",
+      subscribeTitle: "اشترك و احصل على أجدد الأخبار و العروض",
+      emailPlaceholder: "your.email@website.com",
+      subscribeNow: "اشترك الآن",
+      copyright: "© جميع حقوق النشر محفوظة لتطبيق vizzy 2025 - مملوك من قبل Monzology EG وأي إجراء قانوني سيتم اتخاذه."
     }
   }
 };

@@ -450,7 +450,7 @@ const SignUp = () => {
                         className="absolute top-full left-0 right-0 bg-white z-50 mt-1"
                         style={{ 
                           borderRadius: 20,
-                          maxHeight: '150px',
+                          maxHeight: '270px',
                           overflow: 'hidden',
                           boxShadow: 'rgba(17, 0, 46, 0.1) 0px 0px 20px 2px, rgba(66, 72, 255, 0.1) 0px 1.5px 6px'
                         }}
@@ -458,7 +458,7 @@ const SignUp = () => {
                         <div 
                           className="custom-scrollbar overflow-y-auto" 
                           style={{ 
-                            maxHeight: '150px',
+                            maxHeight: '280px',
                           }}
                         >
                           {INDUSTRY_OPTIONS.map((option, index) => (

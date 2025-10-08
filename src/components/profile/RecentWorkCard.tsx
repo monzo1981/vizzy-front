@@ -1,10 +1,57 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { downloadMedia, isVideoUrl as isVideoUrlHelper } from '@/lib/chat/imageHelpers'
+import { isVideoUrl, getVideoMimeType } from '@/lib/videoUtils'
+
+// StableImage component for handling image proxies
+const StableImage = React.memo(({ 
+  src, 
+  alt, 
+  className, 
+  style, 
+  onClick 
+}: { 
+  src: string
+  alt: string
+  className: string
+  style: React.CSSProperties
+  onClick?: (e: React.MouseEvent<HTMLImageElement>) => void 
+}) => {
+  const [imageError, setImageError] = useState(false)
+  const [imageSrc, setImageSrc] = useState('')
+
+  useEffect(() => {
+    if (src) {
+      const urlWithoutTimestamp = src.includes('/api/image-proxy') 
+        ? src.split('&t=')[0] 
+        : src
+      if (urlWithoutTimestamp !== imageSrc) {
+        setImageSrc(urlWithoutTimestamp)
+        setImageError(false)
+      }
+    }
+  }, [src, imageSrc])
+
+  if (imageError || !imageSrc) return null
+
+  return (
+    <img
+      src={imageSrc}
+      alt={alt}
+      className={className}
+      style={style}
+      onClick={onClick}
+      onError={() => setImageError(true)}
+      loading="lazy"
+    />
+  )
+})
+StableImage.displayName = 'StableImage'
 
 interface RecentWorkItem {
   id: string;
@@ -23,6 +70,130 @@ interface RecentWorkCardProps {
   setIsRecentWorkModalOpen: (open: boolean) => void;
 }
 
+// ExpandedImageModal Component (internal)
+interface ExpandedImageModalProps {
+  imageUrl: string | null
+  onClose: () => void
+}
+
+const ExpandedImageModal: React.FC<ExpandedImageModalProps> = ({ 
+  imageUrl, 
+  onClose
+}) => {
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  // Handle media download in modal
+  const handleModalDownload = async () => {
+    if (!imageUrl || isDownloading) return;
+    
+    setIsDownloading(true);
+    try {
+      // Get the original URL if it's a proxied URL  
+      let originalUrl = imageUrl;
+      if (imageUrl.includes('/api/image-proxy?imageUrl=') || imageUrl.includes('/api/video-proxy?videoUrl=')) {
+        // Extract original URL from proxy
+        const urlMatch = imageUrl.match(/[?&](imageUrl|videoUrl)=([^&]+)/);
+        if (urlMatch && urlMatch[2]) {
+          originalUrl = decodeURIComponent(urlMatch[2]);
+        }
+      }
+      
+      // For user uploaded images, use the URL directly
+      if (!imageUrl.includes('/api/')) {
+        originalUrl = imageUrl;
+      }
+      
+      await downloadMedia(originalUrl);
+      console.log('Media downloaded successfully from modal');
+    } catch (error) {
+      console.error('Failed to download media from modal:', error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  if (!imageUrl) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex flex-col"
+      onClick={onClose}
+    >
+      {/* Top Controls Bar */}
+      <div className="flex justify-between items-center p-6 z-10 flex-shrink-0">
+        {/* Back/Close Arrow - Left Side */}
+        <button
+          onClick={onClose}
+          className="text-white hover:text-gray-300 transition-colors cursor-pointer"
+          aria-label="Back"
+        >
+          <svg 
+            width="32" 
+            height="32" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+          >
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+
+        {/* Download Button - Right Side */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleModalDownload();
+          }}
+          disabled={isDownloading}
+          className="transition-opacity duration-200 disabled:opacity-50 cursor-pointer hover:opacity-80"
+          title={isVideoUrl(imageUrl) ? "Download Video" : "Download Image"}
+        >
+          <Image
+            src="/download.svg"
+            alt="Download"
+            width={32}
+            height={32}
+            style={{ filter: 'brightness(0) invert(1) sepia(1)' }}
+          />
+        </button>
+      </div>
+
+      {/* Media Content - Absolutely Centered */}
+      <div className="absolute inset-0 flex items-center justify-center p-20">
+        {isVideoUrl(imageUrl) ? (
+          <video 
+            controls 
+            autoPlay
+            className="max-w-[90vw] max-h-[70vh]"
+            style={{ borderRadius: '20px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <source 
+              src={`/api/video-proxy?videoUrl=${encodeURIComponent(imageUrl)}`} 
+              type={getVideoMimeType(imageUrl)} 
+            />
+            Your browser does not support the video tag.
+          </video>
+        ) : (
+          <StableImage
+            src={imageUrl.includes('/api/') ? imageUrl : `/api/image-proxy?imageUrl=${encodeURIComponent(imageUrl)}`}
+            alt="Expanded view"
+            className="max-w-[90vw] max-h-[70vh]"
+            style={{ 
+              borderRadius: '20px',
+              objectFit: 'contain'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
 export function RecentWorkCard({
   isDarkMode,
   language,
@@ -36,6 +207,7 @@ export function RecentWorkCard({
   const [currentSlide, setCurrentSlide] = useState(0);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
+  const [expandedImage, setExpandedImage] = useState<string | null>(null);
 
   // Auto-slide effect - Continuous movement
   useEffect(() => {
@@ -72,7 +244,8 @@ export function RecentWorkCard({
   }
 
   return (
-    <Card 
+    <>
+      <Card 
       className="border-0 text-white md:col-span-3"
       dir={language === 'ar' ? 'rtl' : 'ltr'}
       style={{
@@ -191,7 +364,11 @@ export function RecentWorkCard({
                           alt={`Generated content ${index + 1}`}
                           width={160}
                           height={180}
-                          className="rounded-lg object-cover w-full h-full shadow-lg"
+                          className="rounded-lg object-cover w-full h-full shadow-lg cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent triggering the carousel click
+                            setExpandedImage(item.content_url);
+                          }}
                           onError={(e) => {
                             // Handle broken images
                             const target = e.target as HTMLImageElement
@@ -352,5 +529,14 @@ export function RecentWorkCard({
         </div>
       </CardContent>
     </Card>
+
+    {/* Expanded Image Modal */}
+    {expandedImage && (
+      <ExpandedImageModal
+        imageUrl={expandedImage}
+        onClose={() => setExpandedImage(null)}
+      />
+    )}
+    </>
   )
 }

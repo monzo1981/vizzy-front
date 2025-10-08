@@ -15,6 +15,7 @@ import { SUBSCRIPTION_IDS } from '@/constants/subscriptions';
 // Header Component
 const Header = () => {
   const { isDarkMode } = useTheme();
+  const { t, createLocalizedPath } = useLanguage();
   const [logoSrc, setLogoSrc] = useState("/vizzy-logo.svg");
 
   useEffect(() => {
@@ -25,7 +26,7 @@ const Header = () => {
     <header className="px-6 py-4">
       <div className="max-w-6xl mx-auto flex items-center justify-between">
         {/* VIZZY Logo */}
-        <Link href="/chat" className="flex items-center space-x-2">
+        <Link href={createLocalizedPath('chat')} className="flex items-center space-x-2">
           <div className="flex items-center">
             <Image src={logoSrc} alt="VIZZY Logo" width={150} height={150} suppressHydrationWarning={true} />
           </div>
@@ -33,23 +34,23 @@ const Header = () => {
 
         {/* Navigation */}
         <nav className="hidden md:flex items-center space-x-8" suppressHydrationWarning>
-          <Link href="/chat" className={`${isDarkMode ? 'text-white' : 'text-black'} transition-colors`} suppressHydrationWarning>
-            Home
+          <Link href={createLocalizedPath('chat')} className={`${isDarkMode ? 'text-white' : 'text-black'} transition-colors`} suppressHydrationWarning>
+            {t('navigation.home')}
           </Link>
-          <Link href="/about" className={`${isDarkMode ? 'text-white' : 'text-black'} transition-colors`} suppressHydrationWarning>
-            About
+          <Link href={createLocalizedPath('about')} className={`${isDarkMode ? 'text-white' : 'text-black'} transition-colors`} suppressHydrationWarning>
+            {t('navigation.about')}
           </Link>
-          <Link href="/contact" className={`${isDarkMode ? 'text-white' : 'text-black'} transition-colors`} suppressHydrationWarning>
-            Contact
+          <Link href={createLocalizedPath('contact')} className={`${isDarkMode ? 'text-white' : 'text-black'} transition-colors`} suppressHydrationWarning>
+            {t('navigation.contact')}
           </Link>
-          <Link href="/pricing" className={`${isDarkMode ? 'text-white' : 'text-black'} transition-colors`} suppressHydrationWarning>
-            Pricing
+          <Link href={createLocalizedPath('pricing')} className={`${isDarkMode ? 'text-white' : 'text-black'} transition-colors`} suppressHydrationWarning>
+            {t('navigation.pricing')}
           </Link>
         </nav>
 
         {/* Join Waiting List Button */}
         <button className="bg-[#4248FF] text-white px-6 py-2 rounded-full font-medium transition-all">
-          Join Waiting List
+          {t('navigation.joinWaitingList')}
         </button>
       </div>
     </header>
@@ -75,6 +76,9 @@ interface PricingCardProps {
   buttonText: string;
   isPopular?: boolean;
   isContactCard?: boolean;
+  isRTL?: boolean;
+  t: (key: string) => string;
+  createLocalizedPath?: (path: string) => string;
 }
 
 const PricingCard = ({ 
@@ -87,7 +91,10 @@ const PricingCard = ({
   features, 
   buttonText, 
   isPopular = false,
-  isContactCard = false 
+  isContactCard = false,
+  isRTL = false,
+  t,
+  createLocalizedPath
 }: PricingCardProps) => {
   
   return (
@@ -114,7 +121,7 @@ const PricingCard = ({
               <h3 className="text-[50px] font-bold" style={{ background: 'linear-gradient(90.77deg, #4248FF -13.59%, #370094 83.45%)', WebkitBackgroundClip: 'text', color: 'transparent', fontWeight: 700 }}>{title}</h3>
               {isPopular && (
                 <div style={{ background: 'linear-gradient(269.85deg, #4248FF -4.66%, #FF4A19 110.74%)', color: 'white', padding: '0px 16px', borderRadius: '9999px', fontSize: '20px', fontWeight: 700 }}>
-                  Best Value
+                  {t('pricing.best')}
                 </div>
               )}
             </div>
@@ -122,7 +129,7 @@ const PricingCard = ({
 
           <div className="mb-8">
             {isContactCard ? (
-              <div className="text-4xl font-bold text-center" style={{ color: '#11002E' }}>Contact Us</div>
+              <div className="text-4xl font-bold text-center" style={{ color: '#11002E' }}>{t('pricing.contactUs')}</div>
             ) : (
               <>
                 <div className="flex items-baseline justify-center">
@@ -140,18 +147,18 @@ const PricingCard = ({
 
           <div className="space-y-4 mb-8 flex-1">
             {features.map((feature, index) => (
-              <div key={index} className="flex items-center space-x-3">
+              <div key={index} className={`flex items-center ${isRTL ? 'flex-row-reverse space-x-3 space-x-reverse' : 'space-x-3'}`}>
                 {feature.included ? (
                   <Image src="/true.svg" alt="check" width={16} height={16} className="flex-shrink-0" />
                 ) : (
                   <Image src="/false.svg" alt="x" width={16} height={16} className="flex-shrink-0" />
                 )}
-                <span 
-                  className={`text-sm ${feature.text.includes('Points') ? 'underline decoration-1 underline-offset-2' : ''}`} 
-                  style={{ 
-                    color: '#320580', 
+                <span
+                  className={`text-sm ${isRTL ? 'text-right' : ''}`}
+                  style={{
+                    color: '#320580',
                     fontWeight: feature.text.includes('Points') ? 500 : 300,
-                    textDecorationColor: feature.text.includes('Points') ? '#320580' : 'none'
+                    borderBottom: feature.text.includes('Points') ? '2px dotted #320580' : 'none'
                   }}
                 >
                   {feature.text}
@@ -163,7 +170,7 @@ const PricingCard = ({
           {/* Payment Button or Contact Link */}
           {isContactCard ? (
             <Link 
-              href="/contact"
+              href={createLocalizedPath ? createLocalizedPath('contact') : '/contact'}
               className="block w-full text-center text-white py-3 font-medium hover:shadow-lg transition-all" 
               style={{ 
                 background: 'linear-gradient(90deg, #4248FF 0%, rgba(66, 72, 255, 0.57) 49.12%, #4248FF 100%)', 
@@ -202,44 +209,43 @@ const PricingCard = ({
 
 // PricingSection Component
 const PricingSection = () => {
-  const { isDarkMode } = useTheme();
-  const { t } = useLanguage();
-  const [isMonthly, setIsMonthly] = useState(true);
+  const { t, isRTL, createLocalizedPath } = useLanguage();
+  const isMonthly = true; // Currently showing monthly pricing only
 
   const proFeatures = [
-    { text: "8,000 Points", included: true },
-    { text: "Vizzy Chat", included: true },
-    { text: "Image Generation", included: true },
-    { text: "Image Edit", included: true },
-    { text: "Video Generation", included: true },
-    { text: "Branded Content", included: true },
-    { text: "Voice Chat", included: false },
-    { text: "Emailing", included: false },
-    { text: "Brand Manual", included: false },
+    { text: t('pricing.points'), included: true },
+    { text: t('pricing.vizzyChat'), included: true },
+    { text: t('pricing.imageGeneration'), included: true },
+    { text: t('pricing.imageEdit'), included: true },
+    { text: t('pricing.videoGeneration'), included: true },
+    { text: t('pricing.brandedContent'), included: true },
+    { text: t('pricing.voiceChat'), included: false },
+    { text: t('pricing.emailing'), included: false },
+    { text: t('pricing.brandManual'), included: false },
   ];
 
   const growFeatures = [
-    { text: "13,000 Points", included: true },
-    { text: "Vizzy Chat", included: true },
-    { text: "Image Generation", included: true },
-    { text: "Image Edit", included: true },
-    { text: "Video Generation", included: true },
-    { text: "Branded Content", included: true },
-    { text: "Voice Chat", included: true },
-    { text: "Emailing", included: true },
-    { text: "Brand Manual", included: true },
+    { text: t('pricing.points13k'), included: true },
+    { text: t('pricing.vizzyChat'), included: true },
+    { text: t('pricing.imageGeneration'), included: true },
+    { text: t('pricing.imageEdit'), included: true },
+    { text: t('pricing.videoGeneration'), included: true },
+    { text: t('pricing.brandedContent'), included: true },
+    { text: t('pricing.voiceChat'), included: true },
+    { text: t('pricing.emailing'), included: true },
+    { text: t('pricing.brandManual'), included: true },
   ];
 
   const unlimitedFeatures = [
-    { text: "Unlimited Points!", included: true },
-    { text: "Vizzy Chat", included: true },
-    { text: "Image Generation", included: true },
-    { text: "Image Edit", included: true },
-    { text: "Video Generation", included: true },
-    { text: "Branded Content", included: true },
-    { text: "Voice Chat", included: true },
-    { text: "Emailing", included: true },
-    { text: "Brand Manual", included: true },
+    { text: t('pricing.unlimitedPoints'), included: true },
+    { text: t('pricing.vizzyChat'), included: true },
+    { text: t('pricing.imageGeneration'), included: true },
+    { text: t('pricing.imageEdit'), included: true },
+    { text: t('pricing.videoGeneration'), included: true },
+    { text: t('pricing.brandedContent'), included: true },
+    { text: t('pricing.voiceChat'), included: true },
+    { text: t('pricing.emailing'), included: true },
+    { text: t('pricing.brandManual'), included: true },
   ];
 
   return (
@@ -288,7 +294,10 @@ const PricingSection = () => {
             originalPrice={isMonthly ? "750 EGP" : "7,200 EGP"}
             period={isMonthly ? "month" : "year"}
             features={proFeatures}
-            buttonText="Upgrade to Pro"
+            buttonText={t('pricing.upgradeToPro')}
+            isRTL={isRTL}
+            t={t}
+            createLocalizedPath={createLocalizedPath}
           />
           
           {/* Grow Plan - Most Popular */}
@@ -301,8 +310,11 @@ const PricingSection = () => {
             originalPrice={isMonthly ? "1,130 EGP" : "11,988 EGP"}
             period={isMonthly ? "month" : "year"}
             features={growFeatures}
-            buttonText="Upgrade to Grow"
+            buttonText={t('pricing.upgradeToGrow')}
             isPopular={true}
+            isRTL={isRTL}
+            t={t}
+            createLocalizedPath={createLocalizedPath}
           />
           
           {/* Unlimited Plan - Contact Us */}
@@ -311,8 +323,11 @@ const PricingSection = () => {
             title="Unlimited"
             description="Enterprise solution with custom features tailored to your business needs!"
             features={unlimitedFeatures}
-            buttonText="Contact Sales"
+            buttonText={t('pricing.contactSales')}
             isContactCard={true}
+            isRTL={isRTL}
+            t={t}
+            createLocalizedPath={createLocalizedPath}
           />
         </div>
       </div>
